@@ -16,7 +16,7 @@ Closes #
 
 - [ ] روی یک branch با الگوی `feature/*` کار شده (نه مستقیم روی `develop`/`main`)
 - [ ] commit ها Conventional هستند
-- [ ] `pnpm lint && pnpm typecheck && pnpm test && pnpm build` لوکال سبز است
+- [ ] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build` لوکال سبز است
 - [ ] منطق جدید unit test دارد
 - [ ] چک‌لیست امنیتی `CLAUDE.md` رعایت شده (authz, validation, server-authoritative)
 - [ ] اگر UI تغییر کرده، انیمیشن‌ها و `prefers-reduced-motion` بررسی شده
