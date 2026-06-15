@@ -52,7 +52,13 @@
           },
           {
             "from": "app",
-            "allow": ["app", "presentation", "application", "domain"]
+            "allow": [
+              "app",
+              "presentation",
+              "application",
+              "infrastructure",
+              "domain"
+            ]
           }
         ]
       }
