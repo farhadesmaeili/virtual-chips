@@ -51,3 +51,44 @@ export class InvalidRoomSettingsError extends DomainError {
     super(`Invalid room settings: ${message}`);
   }
 }
+
+/** Thrown when a seat tries to act out of turn. */
+export class NotYourTurnError extends DomainError {
+  readonly code = 'NOT_YOUR_TURN';
+
+  constructor(
+    readonly seat: number,
+    readonly actingSeat: number | null,
+  ) {
+    super(
+      `It is not seat ${seat}'s turn to act (acting seat: ${actingSeat ?? 'none'})`,
+    );
+  }
+}
+
+/** Thrown when an action is not legal in the current state (wrong action). */
+export class InvalidActionError extends DomainError {
+  readonly code = 'INVALID_ACTION';
+
+  constructor(message: string) {
+    super(`Invalid action: ${message}`);
+  }
+}
+
+/** Thrown when a raise does not meet the min-raise rule or is unaffordable. */
+export class InvalidRaiseError extends DomainError {
+  readonly code = 'INVALID_RAISE';
+
+  constructor(message: string) {
+    super(`Invalid raise: ${message}`);
+  }
+}
+
+/** Thrown when a betting action is attempted on a hand that is not betting. */
+export class HandNotInBettingError extends DomainError {
+  readonly code = 'HAND_NOT_IN_BETTING';
+
+  constructor(readonly status: string) {
+    super(`Hand is not in the betting phase (status: ${status})`);
+  }
+}
