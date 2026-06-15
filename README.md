@@ -54,14 +54,15 @@ npx next dev
 برای توسعه‌ی لوکال، PostgreSQL (و Redis برای فاز ۳) با Docker بالا می‌آید:
 
 ```bash
-docker compose up -d      # postgres روی 5432، redis روی 6379
+docker compose up -d      # postgres روی 5433 (host)، redis روی 6379
 docker compose ps         # وضعیت + healthcheck
 docker compose down       # توقف (داده در volume می‌ماند)
 docker compose down -v    # توقف + پاک‌کردن داده‌ی دیتابیس
 ```
 
 مقادیر سرویس postgres با `DATABASE_URL` در `.env.example` هماهنگ است
-(`postgres:postgres@localhost:5432/virtual_chips`).
+(`postgres:postgres@localhost:5433/virtual_chips`). پورت میزبان عمداً
+`5433` است تا با PostgreSQL نصب‌شده‌ی محلی روی `5432` تداخل نکند.
 
 پس از بالا آمدن دیتابیس، migration اولیه را اعمال کن:
 
