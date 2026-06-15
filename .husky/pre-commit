@@ -1,7 +1,5 @@
-. "$(dirname -- "$0")/_/husky.sh"
-
-# قانون اجباری: نه روی main/develop
+# Mandatory rule: never commit directly on main/develop
 sh scripts/check-branch.sh || exit 1
 
-# lint + format روی فایل‌های staged
+# Lint + format staged files
 pnpm exec lint-staged
