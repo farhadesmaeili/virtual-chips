@@ -1,0 +1,16 @@
+# build output
+.next/
+out/
+build/
+coverage/
+playwright-report/
+test-results/
+
+# deps & generated
+node_modules/
+pnpm-lock.yaml
+next-env.d.ts
+*.tsbuildinfo
+
+# prisma generated client (if emitted into repo)
+prisma/generated/
