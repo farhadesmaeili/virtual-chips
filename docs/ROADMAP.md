@@ -11,12 +11,12 @@
 
 هدف: زیرساخت پروژه و GitHub آماده شود، CI سبز شود.
 
-- [ ] **0.1** init پروژه‌ی Next.js + TypeScript strict + Tailwind.
-- [ ] **0.2** نصب و پیکربندی ESLint + Prettier + lint-staged.
-- [ ] **0.3** Husky hooks: `pre-commit` (lint-staged + branch guard) و `commit-msg` (commitlint).
-- [ ] **0.4** ساختار پوشه‌های Clean Architecture (`src/domain|application|infrastructure|presentation`).
+- [x] **0.1** init پروژه‌ی Next.js + TypeScript strict + Tailwind.
+- [x] **0.2** نصب و پیکربندی ESLint + Prettier + lint-staged.
+- [x] **0.3** Husky hooks: `pre-commit` (lint-staged + branch guard) و `commit-msg` (commitlint).
+- [x] **0.4** ساختار پوشه‌های Clean Architecture (`src/domain|application|infrastructure|presentation`).
 - [x] **0.5** پیکربندی Vitest + اولین تست دود (smoke test). _(زودتر، حین تسک 0.1 انجام شد تا CI سبز شود.)_
-- [ ] **0.6** بررسی و تکمیل `.github/` (CI, templates, CODEOWNERS) و سبز شدن workflow.
+- [x] **0.6** بررسی و تکمیل `.github/` (CI, templates, CODEOWNERS) و سبز شدن workflow.
 - [ ] **0.7** `.env.example`, `README` setup section.
 
 **Definition of Done:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build` لوکال و در CI سبز.
