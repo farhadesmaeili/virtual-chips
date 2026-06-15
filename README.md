@@ -30,14 +30,26 @@ Next.js · TypeScript · Socket.io · PostgreSQL/Prisma · Auth.js · Zod · Zus
 
 ## 🚀 راه‌اندازی (Setup)
 
+**پیش‌نیازها:** Node `20` (طبق `.nvmrc`) · pnpm `9` · PostgreSQL · (اختیاری) Redis.
+اگر pnpm نداری، با corepack فعالش کن: `corepack enable && corepack prepare pnpm@9 --activate`.
+
 ```bash
-# پیش‌نیاز: Node 20+, pnpm, PostgreSQL, (اختیاری) Redis
+# ۱) نصب وابستگی‌ها
 pnpm install
-cp .env.example .env        # مقادیر را پر کن
+
+# ۲) متغیرهای محیطی — کپی کن و مقادیر را پر کن (حداقل DATABASE_URL)
+cp .env.example .env
+
+# ۳) تولید Prisma client
 pnpm prisma:generate
-pnpm prisma:migrate
-pnpm dev                    # http://localhost:3000
+
+# ۴) اجرای اپ به‌صورت لوکال  →  http://localhost:3000
+npx next dev
 ```
+
+> ⚠️ **نکته‌ی مهم:** اسکریپت `pnpm dev` به یک `server.ts` سفارشی (Next + Socket.io) اشاره می‌کند که **تا Phase 3 ساخته نشده**. تا آن‌موقع برای اجرای لوکال از `npx next dev` استفاده کن. در Phase 3، `server.ts` اضافه و `pnpm dev`/`pnpm start` فعال می‌شوند.
+
+> 🗄 **مهاجرت دیتابیس:** schema و migration ها در **Phase 2** نهایی می‌شوند. بعد از آن، با `pnpm prisma:migrate` (یعنی `prisma migrate dev`) دیتابیس را آماده کن.
 
 ## ⛔️ قانون طلایی Git
 
@@ -46,5 +58,7 @@ pnpm dev                    # http://localhost:3000
 ## 🧪 کیفیت
 
 ```bash
-pnpm lint && pnpm typecheck && pnpm test && pnpm build
+pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
+
+همین زنجیره در CI (`.github/workflows/ci.yml`) هم اجرا می‌شود و مرجع نهایی است.
