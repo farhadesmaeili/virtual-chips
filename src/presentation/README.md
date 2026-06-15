@@ -14,3 +14,9 @@ layer and keep reusable UI here under `src/presentation`.
 
 **Allowed imports:** `presentation`, `application`, `domain`, and external
 packages. (Enforced by `eslint-plugin-boundaries`.)
+
+**Composition root:** `src/app` (route handlers, the custom server) is the
+outermost wiring layer and is additionally allowed to import `infrastructure`
+— that is where framework entry points compose repositories, auth, etc. The
+restriction above applies to presentation _components_, which must not reach
+into `infrastructure` directly.
