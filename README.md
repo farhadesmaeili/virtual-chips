@@ -5,6 +5,7 @@
 > **خود بازی (ارزیابی دست) پیاده‌سازی نمی‌شود** — فقط مدیریت ژتون، نوبت، اکشن‌ها، pot و تسویه.
 
 ## ✨ قابلیت‌ها
+
 - ساخت/پیوستن به room
 - اکشن‌ها: fold / check / call / bet / raise / all-in
 - timer نوبت با auto-action
@@ -15,9 +16,11 @@
 - انیمیشن‌های حرفه‌ای (Framer Motion)
 
 ## 🧱 Stack
+
 Next.js · TypeScript · Socket.io · PostgreSQL/Prisma · Auth.js · Zod · Zustand · Tailwind · Framer Motion · Vitest/Playwright
 
 ## 📚 مستندات
+
 - `CLAUDE.md` — قوانین و context برای Claude Code (**اول این را بخوان**)
 - `docs/ARCHITECTURE.md` — معماری
 - `docs/BETTING-ENGINE.md` — منطق دقیق موتور بت (side pots و ...)
@@ -37,9 +40,11 @@ pnpm dev                    # http://localhost:3000
 ```
 
 ## ⛔️ قانون طلایی Git
+
 هرگز مستقیم روی `main`/`develop` کار نکن. همیشه `feature/*`. جزئیات در `CONTRIBUTING.md`.
 
 ## 🧪 کیفیت
+
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```

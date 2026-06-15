@@ -36,13 +36,16 @@ Virtual Chips یک اپ **server-authoritative** و **real-time** است. تما
 7. اگر نوبت تغییر کرد، timer جدید با `actionDeadline` ست و broadcast می‌شود.
 
 ## چرا custom server؟
+
 Socket.io به اتصال WebSocket پایدار نیاز دارد که با Route Handler های stateless ساده نیست. یک `server.ts` سفارشی، Next.js و Socket.io را با هم بالا می‌آورد. برای scale افقی، **Redis adapter** پیام‌ها را بین instance ها همگام می‌کند.
 
 ## مرزهای لایه‌ها (وابستگی فقط رو به داخل)
+
 - `domain` ← هیچ import از بیرون.
 - `application` ← فقط `domain` + interface های port.
 - `infrastructure` ← پیاده‌سازی port ها (Prisma/Socket/Auth).
 - `presentation` ← فقط از طریق use-case ها / socket با backend حرف می‌زند.
 
 ## State عمومی vs خصوصی
+
 چون اطلاعات پنهانِ کارت نداریم، تقریباً همه‌ی state عمومی است. با این حال هرگز فیلدهای داخلی (مثلاً userId خام یا session) را به‌جای داده‌ی نمایشی broadcast نکن؛ یک **public projection** از Hand بساز.

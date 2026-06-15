@@ -39,6 +39,7 @@ git push -u origin feature/3.4-turn-timer
 types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `build`, `ci`.
 
 مثال‌ها:
+
 - `feat(engine): add side-pot layer peeling`
 - `fix(realtime): prevent acting out of turn`
 - `test(engine): cover multi all-in side pots`
@@ -52,6 +53,7 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
 
 ## Pull Request
+
 - به سمت `develop` باز کن.
 - قالب PR را پر کن.
 - CI باید سبز باشد و حداقل یک review لازم است (طبق branch protection).

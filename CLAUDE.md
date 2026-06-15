@@ -30,7 +30,7 @@ git push -u origin feature/<task-id>-<short-name>
 
 ## 🎯 پروژه چیست
 
-**Virtual Chips** یک لایه‌ی *betting* برای بازی‌های نوع پوکر است — **خود بازی (hand evaluation) را پیاده‌سازی نمی‌کنیم**. فقط مدیریت ژتون مجازی، نوبت‌ها، اکشن‌ها، pot و تسویه را انجام می‌دهیم.
+**Virtual Chips** یک لایه‌ی _betting_ برای بازی‌های نوع پوکر است — **خود بازی (hand evaluation) را پیاده‌سازی نمی‌کنیم**. فقط مدیریت ژتون مجازی، نوبت‌ها، اکشن‌ها، pot و تسویه را انجام می‌دهیم.
 
 - بازیکن‌ها یک **Room** می‌سازند و با هم بازی می‌کنند.
 - هر بازیکن در نوبت خودش با **timer** اکت می‌کند: `fold` / `check` / `call` / `bet` / `raise` / `all-in`.
@@ -47,18 +47,18 @@ git push -u origin feature/<task-id>-<short-name>
 
 ## 🧱 Tech Stack
 
-| لایه | تکنولوژی |
-|---|---|
-| Framework | Next.js 14+ (App Router) + TypeScript (strict) |
-| Real-time | Socket.io (custom server) + Redis adapter (برای scale) |
-| Database | PostgreSQL + Prisma |
-| Auth | Auth.js (NextAuth) |
-| Validation | Zod (schema مشترک client/server) |
-| Client State | Zustand |
-| Styling | Tailwind CSS |
-| Animations | **Framer Motion** (الزامی — انیمیشن‌های حرفه‌ای) |
-| Tests | Vitest (unit) + Playwright (e2e) |
-| Tooling | ESLint + Prettier + Husky + lint-staged + Commitlint |
+| لایه         | تکنولوژی                                               |
+| ------------ | ------------------------------------------------------ |
+| Framework    | Next.js 14+ (App Router) + TypeScript (strict)         |
+| Real-time    | Socket.io (custom server) + Redis adapter (برای scale) |
+| Database     | PostgreSQL + Prisma                                    |
+| Auth         | Auth.js (NextAuth)                                     |
+| Validation   | Zod (schema مشترک client/server)                       |
+| Client State | Zustand                                                |
+| Styling      | Tailwind CSS                                           |
+| Animations   | **Framer Motion** (الزامی — انیمیشن‌های حرفه‌ای)       |
+| Tests        | Vitest (unit) + Playwright (e2e)                       |
+| Tooling      | ESLint + Prettier + Husky + lint-staged + Commitlint   |
 
 ---
 
@@ -84,6 +84,7 @@ src/
 ```
 
 **اصول:**
+
 - موتور بت (`domain/engine`) باید **pure و کاملاً قابل تست** باشد؛ ورودی state می‌گیرد، state جدید برمی‌گرداند. هیچ I/O داخلش نباشد.
 - SOLID را رعایت کن؛ مخصوصاً Dependency Inversion بین `application` و `infrastructure`.
 - Side-effect ها (DB, socket) فقط در لایه‌ی infrastructure.

@@ -42,14 +42,14 @@ Pot
 
 `toCall(player) = currentBet - player.committedThisStreet`
 
-| اکشن | شرط مجاز بودن | اثر |
-|---|---|---|
-| `FOLD` | همیشه (وقتی نوبت اوست) | `state='folded'` |
-| `CHECK` | `toCall == 0` | فقط `hasActedThisStreet=true` |
-| `CALL` | `toCall > 0` و `stack >= toCall` | `stack -= toCall`، اضافه به committed |
-| `BET` | `currentBet == 0` و `amount >= minBet` و `amount <= stack` | باز کردن بتینگ |
-| `RAISE` | `currentBet > 0` و raiseTo `>= currentBet + lastRaiseSize` و `<= committed+stack` | افزایش |
-| `ALL_IN` | همیشه (وقتی نوبت اوست) | کل `stack` را commit می‌کند |
+| اکشن     | شرط مجاز بودن                                                                     | اثر                                   |
+| -------- | --------------------------------------------------------------------------------- | ------------------------------------- |
+| `FOLD`   | همیشه (وقتی نوبت اوست)                                                            | `state='folded'`                      |
+| `CHECK`  | `toCall == 0`                                                                     | فقط `hasActedThisStreet=true`         |
+| `CALL`   | `toCall > 0` و `stack >= toCall`                                                  | `stack -= toCall`، اضافه به committed |
+| `BET`    | `currentBet == 0` و `amount >= minBet` و `amount <= stack`                        | باز کردن بتینگ                        |
+| `RAISE`  | `currentBet > 0` و raiseTo `>= currentBet + lastRaiseSize` و `<= committed+stack` | افزایش                                |
+| `ALL_IN` | همیشه (وقتی نوبت اوست)                                                            | کل `stack` را commit می‌کند           |
 
 - `minBet` = big blind (تنظیمات room).
 - **Min-raise:** حداقل افزایش = اندازه‌ی آخرین bet/raise (`lastRaiseSize`). اولین bet در هر street، `lastRaiseSize = minBet`.
@@ -70,6 +70,7 @@ Pot
    - `committedThisStreet == currentBet` (همه برابر شده‌اند).
 
 سپس:
+
 - `committedThisStreet` ها صفر می‌شوند، `currentBet=0`, `lastRaiseSize=minBet`, `hasActedThisStreet=false`.
 - اگر street بعدی وجود دارد → `street++` و نوبت از اولین `active` سمت چپ button.
 - اگر همه‌ی street ها تمام شد یا فقط یک نفر مانده → `status` به سمت showdown/settlement می‌رود (بخش ۵).
@@ -104,6 +105,7 @@ Pot
 ```
 
 **مثال:**
+
 - A all-in با 100، B all-in با 60، C با 200 (call تا 200).
 - contributions: A=100, B=60, C=200.
 - لایه‌ی ۱ (level=60): از هرکدام 60 → main pot = 180، eligible = {A,B,C}.
@@ -121,18 +123,23 @@ Pot
 ## 5) تعیین برنده و تسویه
 
 ### pot بدون رقیب (uncontested)
+
 اگر در یک pot فقط یک بازیکن `eligible` و غیر-folded باقی بماند → خودکار برنده است، بدون نیاز به اعلام انسانی.
 
 ### حالت A — Banker-declared
+
 در `awaiting_showdown`، بانکدار برای **هر pot** برنده/برنده‌ها را از میان `eligibleSeats` انتخاب می‌کند. تقسیم مساوی برای split (باقیمانده‌ی تقسیم به نزدیک‌ترین بازیکن سمت چپ button — odd chip rule).
 
 ### حالت B — Player-showdown
+
 بازیکنان `active` باقیمانده هر کدام «claim» یا «muck» می‌کنند؛ سپس **بانکدار تأیید نهایی** می‌کند (چون hand evaluation نداریم). تا قبل از تأیید بانکدار، ژتون منتقل نمی‌شود.
 
 تنظیم `room.settlementMode: 'banker' | 'showdown'`.
 
 ### پایان بازی (Banker ends game)
+
 بانکدار «پایان» را می‌زند:
+
 - `net[player] = currentChips - totalBuyIn`
 - مجموع net ها باید صفر باشد (zero-sum). اگر rake فعال است، از این مجموع کسر شده و گزارش می‌شود.
 - نتیجه در DB ذخیره و برای history نگه‌داری می‌شود.
