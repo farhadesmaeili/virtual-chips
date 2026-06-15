@@ -1,0 +1,41 @@
+# Local development services for Virtual Chips.
+#   docker compose up -d        # start
+#   docker compose down         # stop (keeps the data volume)
+#   docker compose down -v      # stop and wipe the database volume
+services:
+  postgres:
+    image: postgres:16 # same major version as CI
+    container_name: virtual-chips-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: virtual_chips
+    ports:
+      # Host 5433 → container 5432, to avoid clashing with a natively
+      # installed PostgreSQL that often holds the default 5432.
+      - '5433:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d virtual_chips']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis is not needed until Phase 3 (Socket.io adapter / horizontal scale).
+  # It is included now so the dev stack is complete; safe to leave running.
+  redis:
+    image: redis:7
+    container_name: virtual-chips-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres-data:
