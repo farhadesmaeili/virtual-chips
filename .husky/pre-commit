@@ -1,0 +1,7 @@
+. "$(dirname -- "$0")/_/husky.sh"
+
+# قانون اجباری: نه روی main/develop
+sh scripts/check-branch.sh || exit 1
+
+# lint + format روی فایل‌های staged
+pnpm exec lint-staged

@@ -1,0 +1,102 @@
+// Prisma schema — Virtual Chips
+// شروع‌کننده؛ در Phase 2 کامل و migrate می‌شود.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String       @id @default(cuid())
+  email     String       @unique
+  username  String       @unique
+  password  String // hash — هرگز plain text
+  createdAt DateTime     @default(now())
+  memberships RoomMember[]
+  settlements Settlement[]
+}
+
+model Room {
+  id             String       @id @default(cuid())
+  name           String
+  bankerId       String
+  status         RoomStatus   @default(WAITING)
+  // تنظیمات بازی
+  actionTimeoutMs Int         @default(30000)
+  smallBlind     Int          @default(1)
+  bigBlind       Int          @default(2)
+  settlementMode SettlementMode @default(BANKER)
+  createdAt      DateTime     @default(now())
+  members        RoomMember[]
+  games          Game[]
+}
+
+model RoomMember {
+  id        String   @id @default(cuid())
+  roomId    String
+  userId    String
+  seat      Int
+  buyInTotal Int     @default(0)
+  chips     Int      @default(0)
+  joinedAt  DateTime @default(now())
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([roomId, userId])
+  @@unique([roomId, seat])
+}
+
+model Game {
+  id          String       @id @default(cuid())
+  roomId      String
+  startedAt   DateTime     @default(now())
+  endedAt     DateTime?
+  room        Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  hands       Hand[]
+  settlements Settlement[]
+}
+
+model Hand {
+  id        String      @id @default(cuid())
+  gameId    String
+  // snapshot وضعیت نهایی دست برای history (JSON)
+  state     Json
+  createdAt DateTime    @default(now())
+  game      Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  actions   ActionLog[]
+}
+
+model ActionLog {
+  id        String   @id @default(cuid())
+  handId    String
+  seat      Int
+  action    String
+  amount    Int?
+  createdAt DateTime @default(now())
+  hand      Hand     @relation(fields: [handId], references: [id], onDelete: Cascade)
+}
+
+model Settlement {
+  id        String   @id @default(cuid())
+  gameId    String
+  userId    String
+  net       Int // مثبت = برد، منفی = باخت
+  createdAt DateTime @default(now())
+  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+enum RoomStatus {
+  WAITING
+  PLAYING
+  ENDED
+}
+
+enum SettlementMode {
+  BANKER
+  SHOWDOWN
+}

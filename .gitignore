@@ -1,0 +1,31 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# next
+.next/
+out/
+build/
+
+# env
+.env
+.env.local
+.env.*.local
+
+# db
+*.db
+
+# logs
+*.log
+npm-debug.log*
+
+# test
+coverage/
+playwright-report/
+test-results/
+
+# os/editor
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json

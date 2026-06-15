@@ -1,0 +1,6 @@
+# هر PR به این افراد برای review اختصاص می‌یابد.
+# <username> خودت را جایگزین کن.
+* @farhadesmaeili
+
+/src/domain/        @farhadesmaeili
+/.github/           @farhadesmaeili
