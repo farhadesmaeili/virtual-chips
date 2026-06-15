@@ -8,13 +8,14 @@
 ---
 
 ## Phase 0 — Foundation & Tooling
+
 هدف: زیرساخت پروژه و GitHub آماده شود، CI سبز شود.
 
 - [ ] **0.1** init پروژه‌ی Next.js + TypeScript strict + Tailwind.
 - [ ] **0.2** نصب و پیکربندی ESLint + Prettier + lint-staged.
 - [ ] **0.3** Husky hooks: `pre-commit` (lint-staged + branch guard) و `commit-msg` (commitlint).
 - [ ] **0.4** ساختار پوشه‌های Clean Architecture (`src/domain|application|infrastructure|presentation`).
-- [ ] **0.5** پیکربندی Vitest + اولین تست دود (smoke test).
+- [x] **0.5** پیکربندی Vitest + اولین تست دود (smoke test). _(زودتر، حین تسک 0.1 انجام شد تا CI سبز شود.)_
 - [ ] **0.6** بررسی و تکمیل `.github/` (CI, templates, CODEOWNERS) و سبز شدن workflow.
 - [ ] **0.7** `.env.example`, `README` setup section.
 
@@ -23,6 +24,7 @@
 ---
 
 ## Phase 1 — Domain: Betting Engine (pure)
+
 هدف: موتور بت طبق `docs/BETTING-ENGINE.md`، بدون هیچ I/O.
 
 - [ ] **1.1** Entities و Value Objects: `Room`, `PlayerInHand`, `Hand`, `Pot`, `Chips`.
@@ -37,6 +39,7 @@
 ---
 
 ## Phase 2 — Persistence & Auth
+
 هدف: دیتابیس و احراز هویت.
 
 - [ ] **2.1** Prisma schema: `User`, `Room`, `RoomMember`, `Game`, `Hand`, `ActionLog`, `Settlement`.
@@ -49,6 +52,7 @@
 ---
 
 ## Phase 3 — Real-time Gateway
+
 هدف: Socket.io سرور-مرجع طبق `docs/REALTIME-EVENTS.md`.
 
 - [ ] **3.1** custom server (Next + Socket.io) + auth بر روی connection.
@@ -63,6 +67,7 @@
 ---
 
 ## Phase 4 — Frontend (Table UI)
+
 هدف: میز، صندلی‌ها، کنترل اکشن‌ها، اتصال real-time.
 
 - [ ] **4.1** صفحه‌ی Lobby (ساخت/پیوستن به room).
@@ -77,6 +82,7 @@
 ---
 
 ## Phase 5 — Animations (الزامی، حرفه‌ای)
+
 هدف: انیمیشن‌های سطح بالا با Framer Motion (`docs/ANIMATIONS.md`).
 
 - [ ] **5.1** حرکت ژتون بازیکن→pot و pot→برنده (spring، chip stack).
@@ -90,6 +96,7 @@
 ---
 
 ## Phase 6 — Banker, Settlement & History
+
 - [ ] **6.1** هر دو mode تعیین برنده (banker / showdown-confirm).
 - [ ] **6.2** صفحه‌ی تسویه‌ی پایان بازی + گزارش net.
 - [ ] **6.3** صفحه‌ی تاریخچه‌ی بازی‌ها (per user).
@@ -99,6 +106,7 @@
 ---
 
 ## Phase 7 — Hardening
+
 - [ ] **7.1** تست‌های e2e با Playwright (سناریوی کامل + all-in/side-pot).
 - [ ] **7.2** مرور امنیتی طبق چک‌لیست `CLAUDE.md` (IDOR, injection, authz).
 - [ ] **7.3** edge case ها: disconnect وسط نوبت، خروج بانکدار (انتقال نقش)، room خالی.
@@ -110,6 +118,7 @@
 ---
 
 ## یادداشت اجرای هر تسک
+
 1. `git switch develop && git pull`
 2. `git switch -c feature/<phase>.<task>-<slug>`
 3. اعلام تسک به کاربر.
