@@ -92,3 +92,12 @@ export class HandNotInBettingError extends DomainError {
     super(`Hand is not in the betting phase (status: ${status})`);
   }
 }
+
+/** Thrown when settlement input is invalid or chips are not conserved. */
+export class InvalidSettlementError extends DomainError {
+  readonly code = 'INVALID_SETTLEMENT';
+
+  constructor(message: string) {
+    super(`Invalid settlement: ${message}`);
+  }
+}
