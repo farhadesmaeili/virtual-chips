@@ -1,14 +1,68 @@
 {
   "root": true,
   "parser": "@typescript-eslint/parser",
-  "plugins": ["@typescript-eslint"],
+  "plugins": ["@typescript-eslint", "boundaries"],
   "extends": ["next/core-web-vitals", "prettier"],
+  "settings": {
+    "import/resolver": {
+      "typescript": { "alwaysTryTypes": true }
+    },
+    "boundaries/include": [
+      "src/domain/**",
+      "src/application/**",
+      "src/infrastructure/**",
+      "src/presentation/**",
+      "src/app/**"
+    ],
+    "boundaries/elements": [
+      { "type": "domain", "pattern": "src/domain/**" },
+      { "type": "application", "pattern": "src/application/**" },
+      { "type": "infrastructure", "pattern": "src/infrastructure/**" },
+      { "type": "presentation", "pattern": "src/presentation/**" },
+      { "type": "app", "pattern": "src/app/**" }
+    ]
+  },
   "rules": {
     "@typescript-eslint/no-explicit-any": "error",
     "@typescript-eslint/no-unused-vars": [
       "error",
       { "argsIgnorePattern": "^_", "varsIgnorePattern": "^_" }
     ],
-    "no-console": ["warn", { "allow": ["warn", "error"] }]
+    "no-console": ["warn", { "allow": ["warn", "error"] }],
+    "boundaries/element-types": [
+      "error",
+      {
+        "default": "disallow",
+        "rules": [
+          { "from": "domain", "allow": ["domain"] },
+          { "from": "application", "allow": ["application", "domain"] },
+          {
+            "from": "infrastructure",
+            "allow": ["infrastructure", "application", "domain"]
+          },
+          {
+            "from": "presentation",
+            "allow": ["presentation", "application", "domain"]
+          },
+          {
+            "from": "app",
+            "allow": ["app", "presentation", "application", "domain"]
+          }
+        ]
+      }
+    ],
+    "boundaries/external": [
+      "error",
+      {
+        "default": "allow",
+        "rules": [
+          {
+            "from": ["domain"],
+            "disallow": ["*", "@*/*"],
+            "message": "domain must stay pure: no external package imports"
+          }
+        ]
+      }
+    ]
   }
 }
