@@ -49,7 +49,30 @@ npx next dev
 
 > ⚠️ **نکته‌ی مهم:** اسکریپت `pnpm dev` به یک `server.ts` سفارشی (Next + Socket.io) اشاره می‌کند که **تا Phase 3 ساخته نشده**. تا آن‌موقع برای اجرای لوکال از `npx next dev` استفاده کن. در Phase 3، `server.ts` اضافه و `pnpm dev`/`pnpm start` فعال می‌شوند.
 
-> 🗄 **مهاجرت دیتابیس:** schema و migration ها در **Phase 2** نهایی می‌شوند. بعد از آن، با `pnpm prisma:migrate` (یعنی `prisma migrate dev`) دیتابیس را آماده کن.
+## 🐳 راه‌اندازی دیتابیس با Docker
+
+برای توسعه‌ی لوکال، PostgreSQL (و Redis برای فاز ۳) با Docker بالا می‌آید:
+
+```bash
+docker compose up -d      # postgres روی 5432، redis روی 6379
+docker compose ps         # وضعیت + healthcheck
+docker compose down       # توقف (داده در volume می‌ماند)
+docker compose down -v    # توقف + پاک‌کردن داده‌ی دیتابیس
+```
+
+مقادیر سرویس postgres با `DATABASE_URL` در `.env.example` هماهنگ است
+(`postgres:postgres@localhost:5432/virtual_chips`).
+
+پس از بالا آمدن دیتابیس، migration اولیه را اعمال کن:
+
+```bash
+pnpm prisma:migrate       # = prisma migrate dev  (در dev)
+# یا برای اعمال migration های موجود بدون ساختن جدید:
+pnpm prisma migrate deploy
+```
+
+> migration اولیه از قبل در `prisma/migrations/*_init` آماده است؛ فقط وقتی
+> دیتابیس بالا باشد اعمال می‌شود.
 
 ## ⛔️ قانون طلایی Git
 

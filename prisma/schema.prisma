@@ -1,5 +1,8 @@
 // Prisma schema — Virtual Chips
-// شروع‌کننده؛ در Phase 2 کامل و migrate می‌شود.
+// Persistence model behind the application ports. Per-hand betting state lives
+// in Hand.state (JSON snapshot of the domain Hand); RoomMember holds the
+// durable chip balances. Enum casing differs from the domain string unions and
+// is mapped at the repository layer.
 
 generator client {
   provider = "prisma-client-js"
@@ -11,83 +14,110 @@ datasource db {
 }
 
 model User {
-  id        String       @id @default(cuid())
-  email     String       @unique
-  username  String       @unique
-  password  String // hash — هرگز plain text
-  createdAt DateTime     @default(now())
+  id          String       @id @default(cuid())
+  email       String       @unique
+  username    String       @unique
+  password    String // hash — never plain text
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
   memberships RoomMember[]
   settlements Settlement[]
+  bankedRooms Room[]       @relation("RoomBanker")
 }
 
 model Room {
-  id             String       @id @default(cuid())
-  name           String
-  bankerId       String
-  status         RoomStatus   @default(WAITING)
-  // تنظیمات بازی
-  actionTimeoutMs Int         @default(30000)
-  smallBlind     Int          @default(1)
-  bigBlind       Int          @default(2)
-  settlementMode SettlementMode @default(BANKER)
-  createdAt      DateTime     @default(now())
-  members        RoomMember[]
-  games          Game[]
+  id       String     @id @default(cuid())
+  name     String
+  bankerId String
+  status   RoomStatus @default(WAITING)
+
+  // Game settings (mirror the domain RoomSettings value object).
+  actionTimeoutMs Int            @default(30000)
+  smallBlind      Int            @default(1)
+  bigBlind        Int            @default(2)
+  settlementMode  SettlementMode @default(BANKER)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  banker  User         @relation("RoomBanker", fields: [bankerId], references: [id])
+  members RoomMember[]
+  games   Game[]
+
+  @@index([bankerId])
 }
 
 model RoomMember {
-  id        String   @id @default(cuid())
-  roomId    String
-  userId    String
-  seat      Int
-  buyInTotal Int     @default(0)
-  chips     Int      @default(0)
-  joinedAt  DateTime @default(now())
-  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id])
+  id         String   @id @default(cuid())
+  roomId     String
+  userId     String
+  seat       Int
+  buyInTotal Int      @default(0)
+  chips      Int      @default(0)
+  joinedAt   DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  room Room @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([roomId, userId])
   @@unique([roomId, seat])
+  @@index([userId])
 }
 
 model Game {
-  id          String       @id @default(cuid())
-  roomId      String
-  startedAt   DateTime     @default(now())
-  endedAt     DateTime?
+  id        String    @id @default(cuid())
+  roomId    String
+  startedAt DateTime  @default(now())
+  endedAt   DateTime?
+  updatedAt DateTime  @updatedAt
+
   room        Room         @relation(fields: [roomId], references: [id], onDelete: Cascade)
   hands       Hand[]
   settlements Settlement[]
+
+  @@index([roomId])
 }
 
 model Hand {
-  id        String      @id @default(cuid())
+  id        String   @id @default(cuid())
   gameId    String
-  // snapshot وضعیت نهایی دست برای history (JSON)
+  // Snapshot of the domain Hand state (for live state and history).
   state     Json
-  createdAt DateTime    @default(now())
-  game      Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  actions   ActionLog[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game    Game        @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  actions ActionLog[]
+
+  @@index([gameId])
 }
 
 model ActionLog {
-  id        String   @id @default(cuid())
+  id        String     @id @default(cuid())
   handId    String
   seat      Int
-  action    String
+  action    ActionType
   amount    Int?
-  createdAt DateTime @default(now())
-  hand      Hand     @relation(fields: [handId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+
+  hand Hand @relation(fields: [handId], references: [id], onDelete: Cascade)
+
+  @@index([handId])
 }
 
 model Settlement {
   id        String   @id @default(cuid())
   gameId    String
   userId    String
-  net       Int // مثبت = برد، منفی = باخت
+  net       Int // positive = win, negative = loss
   createdAt DateTime @default(now())
-  game      Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id])
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([gameId])
+  @@index([userId])
 }
 
 enum RoomStatus {
@@ -99,4 +129,13 @@ enum RoomStatus {
 enum SettlementMode {
   BANKER
   SHOWDOWN
+}
+
+enum ActionType {
+  FOLD
+  CHECK
+  CALL
+  BET
+  RAISE
+  ALL_IN
 }
