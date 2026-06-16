@@ -78,6 +78,89 @@ body::before {
     inset 0 1px 0 rgb(255 255 255 / 0.06);
 }
 
+/* --- The table (4.2) -------------------------------------------------- */
+
+/* The 3D stage: a single perspective so the tabletop reclines into the room. */
+.vc-table-stage {
+  perspective: 1500px;
+  perspective-origin: 50% 28%;
+}
+
+/* The felt+rail oval reclines slightly; its children live in the tilted plane
+   (preserve-3d) so chips and the pot can lift off the surface. */
+.vc-table {
+  transform: rotateX(13deg);
+  transform-style: preserve-3d;
+}
+
+/* The stitched walnut rail — the casino-table tell a plain <div> never gives. */
+.vc-rail {
+  border-radius: 44% / 50%;
+  background: linear-gradient(
+    180deg,
+    var(--vc-rail-edge) 0%,
+    var(--vc-rail) 34%,
+    #1c130d 100%
+  );
+  box-shadow:
+    0 44px 90px -30px rgb(0 0 0 / 0.82),
+    inset 0 2px 1px rgb(255 255 255 / 0.1),
+    inset 0 -7px 16px rgb(0 0 0 / 0.55);
+}
+
+/* Felt surface inset within the rail; the lamp lands on its upper center. */
+.vc-felt-oval {
+  border-radius: 42% / 49%;
+  background: radial-gradient(
+    116% 82% at 50% 14%,
+    var(--vc-felt-lamp) 0%,
+    var(--vc-felt) 40%,
+    var(--vc-felt-deep) 72%,
+    var(--vc-felt-edge) 100%
+  );
+  box-shadow: inset 0 0 130px 40px rgb(0 0 0 / 0.55);
+}
+
+/* Hairline stitch running just inside the rail. */
+.vc-felt-oval::after {
+  content: '';
+  position: absolute;
+  inset: 11px;
+  border-radius: inherit;
+  border: 1.5px dashed
+    color-mix(in srgb, var(--vc-rail-stitch) 80%, transparent);
+  pointer-events: none;
+}
+
+/* Seat contents stand upright out of the reclined felt (counter-rotation). */
+.vc-seat-stand {
+  transform: rotateX(-13deg);
+  transform-style: preserve-3d;
+}
+
+/* Center pieces float above the felt for genuine depth. */
+.vc-lift-pot {
+  transform: translateZ(30px) rotateX(-13deg);
+}
+.vc-lift-btn {
+  transform: translateZ(18px) rotateX(-13deg);
+}
+
+@media (max-width: 640px) {
+  .vc-table {
+    transform: rotateX(8deg);
+  }
+  .vc-seat-stand {
+    transform: rotateX(-8deg);
+  }
+  .vc-lift-pot {
+    transform: translateZ(22px) rotateX(-8deg);
+  }
+  .vc-lift-btn {
+    transform: translateZ(14px) rotateX(-8deg);
+  }
+}
+
 /* Semi-3D casino chip (the brand atom). Set --chip to a denomination color. */
 .vc-chip {
   --chip: var(--vc-chip-25);
