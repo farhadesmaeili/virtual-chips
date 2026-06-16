@@ -1,7 +1,10 @@
 import { type NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { prisma } from '../persistence/prisma';
+import { PrismaUserRepository } from '../persistence/prisma-user-repository';
 import { verifyCredentials } from './credentials';
+
+const userRepository = new PrismaUserRepository(prisma);
 
 /**
  * NextAuth configuration. Uses the JWT session strategy because the
@@ -20,16 +23,9 @@ export const authOptions: NextAuthOptions = {
         password: { label: 'Password', type: 'password' },
       },
       async authorize(credentials) {
-        const user = await verifyCredentials(credentials, async (email) => {
-          const found = await prisma.user.findUnique({ where: { email } });
-          if (found === null) return null;
-          return {
-            id: found.id,
-            email: found.email,
-            username: found.username,
-            passwordHash: found.password,
-          };
-        });
+        const user = await verifyCredentials(credentials, (email) =>
+          userRepository.findCredentialByEmail(email),
+        );
         // Return null on any failure → NextAuth surfaces a single generic
         // error, so we never reveal which field was wrong.
         if (user === null) return null;

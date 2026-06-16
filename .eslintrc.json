@@ -72,6 +72,11 @@
             "from": ["domain"],
             "disallow": ["*", "@*/*"],
             "message": "domain must stay pure: no external package imports"
+          },
+          {
+            "from": ["application"],
+            "disallow": ["@prisma/client", "prisma"],
+            "message": "application must depend on ports, not Prisma (Dependency Inversion)"
           }
         ]
       }
