@@ -1,0 +1,60 @@
+import { createServer } from 'node:http';
+import { parse } from 'node:url';
+import { loadEnvConfig } from '@next/env';
+import next from 'next';
+import { Server, type DefaultEventsMap } from 'socket.io';
+import {
+  createSocketAuthMiddleware,
+  type AppSocket,
+  type SocketData,
+} from './src/infrastructure/realtime/socket-auth';
+
+const dev = process.env.NODE_ENV !== 'production';
+const port = Number(process.env.PORT ?? '3000');
+
+async function main(): Promise<void> {
+  // A standalone server does not get Next's automatic .env loading until later;
+  // load it explicitly so server-side env (e.g. NEXTAUTH_SECRET, DATABASE_URL)
+  // is available before anything reads it.
+  loadEnvConfig(process.cwd());
+
+  const app = next({ dev });
+  const handle = app.getRequestHandler();
+  await app.prepare();
+
+  const httpServer = createServer((req, res) => {
+    void handle(req, res, parse(req.url ?? '', true));
+  });
+
+  const io = new Server<
+    DefaultEventsMap,
+    DefaultEventsMap,
+    DefaultEventsMap,
+    SocketData
+  >(httpServer);
+
+  // Authenticate every connection from the NextAuth session cookie.
+  io.use(createSocketAuthMiddleware());
+
+  io.on('connection', (socket: AppSocket) => {
+    const { user } = socket.data;
+    console.info(
+      `socket connected: ${socket.id} as ${user.username} (${user.id})`,
+    );
+    // Connection acknowledgement so the client knows auth succeeded.
+    socket.emit('session:ready', { user });
+
+    socket.on('disconnect', (reason) => {
+      console.info(`socket disconnected: ${socket.id} (${reason})`);
+    });
+  });
+
+  httpServer.listen(port, () => {
+    console.info(`> Server ready on http://localhost:${port}`);
+  });
+}
+
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});
