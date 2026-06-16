@@ -54,22 +54,32 @@ export class PrismaRoomRepository implements RoomRepository {
         buyInTotal: member.buyInTotal,
         chips: member.chips,
       },
+      include: { user: { select: { username: true } } },
     });
     return {
       userId: created.userId,
+      username: created.user.username,
       seat: created.seat,
       buyInTotal: created.buyInTotal,
       chips: created.chips,
     };
   }
 
+  async removeMember(roomId: string, userId: string): Promise<void> {
+    await this.prisma.roomMember.delete({
+      where: { roomId_userId: { roomId, userId } },
+    });
+  }
+
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     const members = await this.prisma.roomMember.findMany({
       where: { roomId },
       orderBy: { seat: 'asc' },
+      include: { user: { select: { username: true } } },
     });
     return members.map((m) => ({
       userId: m.userId,
+      username: m.user.username,
       seat: m.seat,
       buyInTotal: m.buyInTotal,
       chips: m.chips,

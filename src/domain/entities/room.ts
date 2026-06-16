@@ -4,6 +4,9 @@ import { Chips } from '../value-objects/chips';
 export type RoomStatus = 'waiting' | 'playing' | 'ended';
 export type SettlementMode = 'banker' | 'showdown';
 
+/** Maximum number of seats (players) at a table. */
+export const MAX_SEATS = 9;
+
 export interface RoomSettings {
   readonly actionTimeoutMs: number;
   readonly smallBlind: number;

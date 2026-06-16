@@ -13,6 +13,9 @@ export type DomainErrorCode =
   | 'INSUFFICIENT_CHIPS'
   | 'INVALID_ROOM_SETTINGS'
   | 'ROOM_FULL'
+  | 'ROOM_NOT_FOUND'
+  | 'ALREADY_IN_ROOM'
+  | 'NOT_ROOM_MEMBER'
   | 'NOT_YOUR_TURN'
   | 'INVALID_ACTION'
   | 'INVALID_RAISE'
@@ -81,6 +84,33 @@ export class RoomFullError extends DomainError {
 
   constructor(readonly capacity: number) {
     super(`Room is full (capacity: ${capacity})`);
+  }
+}
+
+/** Thrown when a room cannot be found by id. */
+export class RoomNotFoundError extends DomainError {
+  readonly code = 'ROOM_NOT_FOUND';
+
+  constructor(readonly roomId: string) {
+    super(`Room not found: ${roomId}`);
+  }
+}
+
+/** Thrown when a user tries to join a room they are already a member of. */
+export class AlreadyInRoomError extends DomainError {
+  readonly code = 'ALREADY_IN_ROOM';
+
+  constructor(readonly roomId: string) {
+    super(`Already a member of room: ${roomId}`);
+  }
+}
+
+/** Thrown when a user acts on a room they are not a member of. */
+export class NotRoomMemberError extends DomainError {
+  readonly code = 'NOT_ROOM_MEMBER';
+
+  constructor(readonly roomId: string) {
+    super(`Not a member of room: ${roomId}`);
   }
 }
 

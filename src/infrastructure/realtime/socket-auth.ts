@@ -1,6 +1,6 @@
 import type { IncomingMessage } from 'node:http';
 import { getToken, type JWT } from 'next-auth/jwt';
-import type { DefaultEventsMap, Socket } from 'socket.io';
+import type { DefaultEventsMap, Server, Socket } from 'socket.io';
 
 /** The authenticated identity attached to a socket. */
 export interface SocketUser {
@@ -14,6 +14,13 @@ export interface SocketData {
 }
 
 export type AppSocket = Socket<
+  DefaultEventsMap,
+  DefaultEventsMap,
+  DefaultEventsMap,
+  SocketData
+>;
+
+export type AppServer = Server<
   DefaultEventsMap,
   DefaultEventsMap,
   DefaultEventsMap,
