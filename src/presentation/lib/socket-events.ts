@@ -1,5 +1,16 @@
 // Client-side view of the realtime contract (docs/REALTIME-EVENTS.md). Kept in
-// the presentation layer so components never import server infrastructure.
+// the presentation layer so components never import server infrastructure; these
+// types mirror the server projections (infrastructure/realtime/*-projection.ts).
+
+export type RoomStatus = 'waiting' | 'playing' | 'ended';
+export type SettlementMode = 'banker' | 'showdown';
+
+export interface RoomSettings {
+  readonly actionTimeoutMs: number;
+  readonly smallBlind: number;
+  readonly bigBlind: number;
+  readonly settlementMode: SettlementMode;
+}
 
 export interface PublicRoomMember {
   readonly seat: number;
@@ -12,8 +23,44 @@ export interface PublicRoomMember {
 export interface PublicRoomState {
   readonly id: string;
   readonly name: string;
-  readonly status: 'waiting' | 'playing' | 'ended';
+  readonly status: RoomStatus;
+  readonly settings: RoomSettings;
   readonly members: readonly PublicRoomMember[];
+}
+
+// --- Hand state (broadcast on `hand:state`) -------------------------------
+// The table renders from these; in 4.2 the wiring is partial (full socket sync
+// lands in later 4.x tasks), so components must treat `hand` as possibly null.
+
+export type PlayerState = 'active' | 'folded' | 'all_in' | 'sitting_out';
+export type HandStatus = 'betting' | 'awaiting_showdown' | 'settled';
+
+export interface PublicHandPlayer {
+  readonly seat: number;
+  readonly stack: number;
+  readonly committedThisStreet: number;
+  readonly committedTotal: number;
+  readonly state: PlayerState;
+  readonly hasActedThisStreet: boolean;
+}
+
+export interface PublicPot {
+  readonly amount: number;
+  readonly eligibleSeats: readonly number[];
+}
+
+export interface PublicHandState {
+  readonly id: string;
+  readonly roomId: string;
+  readonly street: number;
+  readonly buttonSeat: number;
+  readonly currentBet: number;
+  readonly actingSeat: number | null;
+  readonly actionDeadline: number | null;
+  readonly status: HandStatus;
+  readonly players: readonly PublicHandPlayer[];
+  readonly pots: readonly PublicPot[];
+  readonly totalPot: number;
 }
 
 export interface SocketError {

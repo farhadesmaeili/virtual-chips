@@ -1,0 +1,81 @@
+'use client';
+
+import { Seat } from './seat';
+import { MAX_SEATS, seatSlots } from './seat-layout';
+import type {
+  PublicHandState,
+  PublicRoomState,
+} from '@/presentation/lib/socket-events';
+
+export interface PokerTableProps {
+  readonly room: PublicRoomState;
+  /** Live hand state when a hand is in play; null between hands (4.2 wiring). */
+  readonly hand?: PublicHandState | null;
+}
+
+/**
+ * The poker table: a lamp-lit felt oval framed by a stitched walnut rail, with
+ * up to {@link MAX_SEATS} seats around it. Pure presentation driven by room +
+ * hand state; responsive (portrait on mobile, landscape on desktop) and built
+ * for Phase 5 animation (per-seat countdown ring, chips→pot, turn highlight).
+ */
+export function PokerTable({
+  room,
+  hand = null,
+}: PokerTableProps): React.ReactElement {
+  const slots = seatSlots(MAX_SEATS);
+  const memberBySeat = new Map(room.members.map((m) => [m.seat, m]));
+  const playerBySeat = new Map((hand?.players ?? []).map((p) => [p.seat, p]));
+  const livePot =
+    hand !== null && hand.status !== 'settled' ? hand.totalPot : 0;
+
+  return (
+    <div className="vc-table-stage w-full pb-10 pt-2">
+      <div className="relative mx-auto aspect-[4/5] w-full max-w-[34rem] sm:aspect-[16/10] sm:max-w-[44rem]">
+        <div className="vc-table absolute inset-0">
+          {/* Rail framing the felt. */}
+          <div className="vc-rail absolute inset-0 p-[6%] sm:p-[4%]">
+            <div className="vc-felt-oval relative h-full w-full">
+              {/* Center tote board — the pot lives in the lit zone. */}
+              <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2">
+                <div className="vc-lift-pot flex flex-col items-center text-center">
+                  {livePot > 0 ? (
+                    <>
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-vc-ink-muted">
+                        Pot
+                      </span>
+                      <span className="font-mono text-2xl font-bold tabular-nums text-vc-gold [text-shadow:0_2px_8px_rgb(0_0_0/0.6)] sm:text-3xl">
+                        {livePot.toLocaleString()}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-xs font-medium tracking-wide text-vc-ink-faint">
+                      {room.status === 'waiting'
+                        ? 'Waiting for the deal'
+                        : 'No pot yet'}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Seats sit at the rail; the overlay spans the table box but tucks in
+              horizontally on mobile so side seats and nameplates never clip. */}
+          <div className="absolute inset-y-0 inset-x-[9%] sm:inset-x-0">
+            {slots.map((slot) => (
+              <Seat
+                key={slot.seat}
+                slot={slot}
+                member={memberBySeat.get(slot.seat)}
+                handPlayer={playerBySeat.get(slot.seat)}
+                isActing={hand?.actingSeat === slot.seat}
+                isButton={hand?.buttonSeat === slot.seat}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
