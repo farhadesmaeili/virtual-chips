@@ -2,10 +2,144 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Virtual Chips visual identity — see .claude/skills/vc-design/SKILL.md */
 :root {
+  --vc-felt-lamp: #1b4332;
+  --vc-felt: #15392e;
+  --vc-felt-deep: #103027;
+  --vc-felt-edge: #0b231c;
+  --vc-rail: #2a1e16;
+  --vc-rail-edge: #4a372a;
+  --vc-rail-stitch: #6b533e;
+  --vc-gold: #f4c04a;
+  --vc-gold-deep: #c8922e;
+  --vc-emerald: #34d399;
+  --vc-emerald-deep: #0e9f6e;
+  --vc-ink: #ede9e0;
+  --vc-ink-muted: #9aa39b;
+  --vc-ink-faint: #5e6a61;
+  --vc-danger: #e0584b;
+  --vc-chip-1: #edeae2;
+  --vc-chip-5: #c2473d;
+  --vc-chip-25: #2f8f6b;
+  --vc-chip-100: #171717;
+  --vc-chip-500: #6b4e9e;
+  --vc-chip-1000: #c8922e;
   color-scheme: dark;
 }
 
 body {
-  @apply bg-felt-dark text-zinc-100 antialiased;
+  @apply font-body text-vc-ink antialiased;
+  min-height: 100dvh;
+  /* The whole viewport is the felt, lit from a single overhead lamp. */
+  background:
+    radial-gradient(
+        125% 86% at 50% 6%,
+        var(--vc-felt-lamp) 0%,
+        var(--vc-felt) 36%,
+        var(--vc-felt-deep) 68%,
+        var(--vc-felt-edge) 100%
+      )
+      fixed,
+    var(--vc-felt-edge);
+}
+
+/* Vignette overlay so the lamp falls off toward the rail. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  box-shadow: inset 0 0 220px 70px rgb(0 0 0 / 0.5);
+}
+
+/* The felt surface used by the table (4.2) and any inset felt panel. */
+.vc-felt-surface {
+  background: radial-gradient(
+    120% 82% at 50% 12%,
+    var(--vc-felt-lamp) 0%,
+    var(--vc-felt) 38%,
+    var(--vc-felt-deep) 70%,
+    var(--vc-felt-edge) 100%
+  );
+  box-shadow: inset 0 0 180px 48px rgb(0 0 0 / 0.55);
+}
+
+/* A dealer's tray: a felt-toned panel framed by the rail, sitting on the felt. */
+.vc-tray {
+  border: 1px solid color-mix(in srgb, var(--vc-rail-edge) 55%, transparent);
+  border-radius: 18px;
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.04), rgb(0 0 0 / 0.14)),
+    var(--vc-felt-deep);
+  box-shadow:
+    0 26px 60px -18px rgb(0 0 0 / 0.7),
+    inset 0 1px 0 rgb(255 255 255 / 0.06);
+}
+
+/* Semi-3D casino chip (the brand atom). Set --chip to a denomination color. */
+.vc-chip {
+  --chip: var(--vc-chip-25);
+  position: relative;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle at 50% 34%,
+    color-mix(in srgb, var(--chip) 82%, white),
+    var(--chip) 62%
+  );
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -3px 6px rgb(0 0 0 / 0.4),
+    0 8px 14px rgb(0 0 0 / 0.45);
+}
+/* Edge spots around the rim. */
+.vc-chip::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-conic-gradient(
+    var(--vc-chip-1) 0deg 11deg,
+    transparent 11deg 30deg
+  );
+  -webkit-mask: radial-gradient(
+    circle,
+    transparent 58%,
+    #000 60%,
+    #000 74%,
+    transparent 77%
+  );
+  mask: radial-gradient(
+    circle,
+    transparent 58%,
+    #000 60%,
+    #000 74%,
+    transparent 77%
+  );
+  opacity: 0.9;
+}
+/* Inner dashed face ring. */
+.vc-chip::after {
+  content: '';
+  position: absolute;
+  inset: 20%;
+  border-radius: inherit;
+  border: 1.5px dashed rgb(255 255 255 / 0.22);
+}
+
+/* Visible keyboard focus everywhere (quality floor). */
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--vc-emerald) 70%, white);
+  outline-offset: 2px;
+}
+
+/* Respect users who prefer less motion (CLAUDE.md animation rules). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
 }
