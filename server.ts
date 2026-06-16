@@ -10,6 +10,7 @@ import {
   JoinRoom,
   LeaveRoom,
   PlayerAct,
+  ResyncRoom,
   StartHand,
 } from './src/application/use-cases';
 import { InMemoryHandStore } from './src/infrastructure/persistence/in-memory-hand-store';
@@ -60,6 +61,7 @@ async function main(): Promise<void> {
     createRoom: new CreateRoom(roomRepository, idGenerator),
     joinRoom: new JoinRoom(roomRepository),
     leaveRoom: new LeaveRoom(roomRepository),
+    resyncRoom: new ResyncRoom(roomRepository, handStore),
   };
   const handGateway = new HandGateway(
     io,

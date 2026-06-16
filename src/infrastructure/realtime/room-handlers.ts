@@ -1,6 +1,17 @@
-import type { CreateRoom, JoinRoom, LeaveRoom } from '@/application/use-cases';
+import type {
+  CreateRoom,
+  JoinRoom,
+  LeaveRoom,
+  ResyncRoom,
+} from '@/application/use-cases';
+import { toPublicHandState } from './hand-projection';
 import { toPublicRoomState } from './room-projection';
-import { createRoomSchema, joinRoomSchema, leaveRoomSchema } from './schemas';
+import {
+  createRoomSchema,
+  joinRoomSchema,
+  leaveRoomSchema,
+  resyncRoomSchema,
+} from './schemas';
 import { emitError, handleError } from './socket-errors';
 import type { AppServer, AppSocket } from './socket-auth';
 
@@ -8,6 +19,7 @@ export interface RoomHandlerDeps {
   readonly createRoom: CreateRoom;
   readonly joinRoom: JoinRoom;
   readonly leaveRoom: LeaveRoom;
+  readonly resyncRoom: ResyncRoom;
 }
 
 /**
@@ -81,6 +93,33 @@ export function registerRoomHandlers(
         // Update the remaining members, and ack the leaver.
         io.to(snapshot.id).emit('room:state', state);
         socket.emit('room:state', state);
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  // Reconnect: re-join the socket.io room and send the current snapshots to
+  // this socket only, so the client resumes without losing state. The hand
+  // state carries the current actionDeadline, so the countdown continues from
+  // where it is (not from the start).
+  socket.on('room:resync', (payload: unknown) => {
+    void (async () => {
+      const parsed = resyncRoomSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid room:resync payload');
+        return;
+      }
+      try {
+        const { snapshot, hand } = await deps.resyncRoom.execute({
+          userId,
+          roomId: parsed.data.roomId,
+        });
+        await socket.join(snapshot.id);
+        socket.emit('room:state', toPublicRoomState(snapshot));
+        if (hand !== null) {
+          socket.emit('hand:state', toPublicHandState(hand));
+        }
       } catch (error) {
         handleError(socket, error);
       }
