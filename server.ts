@@ -18,6 +18,11 @@ import { prisma } from './src/infrastructure/persistence/prisma';
 import { PrismaRoomRepository } from './src/infrastructure/persistence/prisma-room-repository';
 import { HandGateway } from './src/infrastructure/realtime/hand-gateway';
 import { registerHandHandlers } from './src/infrastructure/realtime/hand-handlers';
+import {
+  PLAYER_ACT_LIMIT,
+  ROOM_CREATE_LIMIT,
+  TokenBucketRateLimiter,
+} from './src/infrastructure/realtime/rate-limiter';
 import { registerRoomHandlers } from './src/infrastructure/realtime/room-handlers';
 import {
   createSocketAuthMiddleware,
@@ -57,11 +62,14 @@ async function main(): Promise<void> {
   const handStore = new InMemoryHandStore();
   const idGenerator: IdGenerator = { generate: () => randomUUID() };
   const clock: Clock = { now: () => Date.now() };
+  const createLimiter = new TokenBucketRateLimiter(ROOM_CREATE_LIMIT, clock);
+  const actLimiter = new TokenBucketRateLimiter(PLAYER_ACT_LIMIT, clock);
   const roomHandlerDeps = {
     createRoom: new CreateRoom(roomRepository, idGenerator),
     joinRoom: new JoinRoom(roomRepository),
     leaveRoom: new LeaveRoom(roomRepository),
     resyncRoom: new ResyncRoom(roomRepository, handStore),
+    createLimiter,
   };
   const handGateway = new HandGateway(
     io,
@@ -79,7 +87,7 @@ async function main(): Promise<void> {
     socket.emit('session:ready', { user });
 
     registerRoomHandlers(io, socket, roomHandlerDeps);
-    registerHandHandlers(socket, { gateway: handGateway });
+    registerHandHandlers(socket, { gateway: handGateway, actLimiter });
 
     // Clear a room's turn timer when its last member disconnects (no zombies).
     socket.on('disconnecting', () => {

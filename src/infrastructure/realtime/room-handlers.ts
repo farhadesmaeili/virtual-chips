@@ -5,6 +5,7 @@ import type {
   ResyncRoom,
 } from '@/application/use-cases';
 import { toPublicHandState } from './hand-projection';
+import type { RateLimiter } from './rate-limiter';
 import { toPublicRoomState } from './room-projection';
 import {
   createRoomSchema,
@@ -20,6 +21,8 @@ export interface RoomHandlerDeps {
   readonly joinRoom: JoinRoom;
   readonly leaveRoom: LeaveRoom;
   readonly resyncRoom: ResyncRoom;
+  /** Rate limiter for the expensive room:create action. */
+  readonly createLimiter: RateLimiter;
 }
 
 /**
@@ -40,6 +43,10 @@ export function registerRoomHandlers(
       const parsed = createRoomSchema.safeParse(payload);
       if (!parsed.success) {
         emitError(socket, 'INVALID_PAYLOAD', 'Invalid room:create payload');
+        return;
+      }
+      if (!deps.createLimiter.tryAcquire(userId)) {
+        emitError(socket, 'RATE_LIMITED', 'Too many rooms created; slow down');
         return;
       }
       try {

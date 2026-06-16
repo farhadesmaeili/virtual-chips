@@ -1,10 +1,13 @@
 import type { HandGateway } from './hand-gateway';
+import type { RateLimiter } from './rate-limiter';
 import { handStartSchema, playerActSchema } from './schemas';
 import { emitError, handleError } from './socket-errors';
 import type { AppSocket } from './socket-auth';
 
 export interface HandHandlerDeps {
   readonly gateway: HandGateway;
+  /** Rate limiter for frequent player:act actions. */
+  readonly actLimiter: RateLimiter;
 }
 
 /**
@@ -38,6 +41,12 @@ export function registerHandHandlers(
       const parsed = playerActSchema.safeParse(payload);
       if (!parsed.success) {
         emitError(socket, 'INVALID_PAYLOAD', 'Invalid player:act payload');
+        return;
+      }
+      // Server auto-actions go through the gateway directly, so they are never
+      // rate-limited here — only client-initiated actions are.
+      if (!deps.actLimiter.tryAcquire(userId)) {
+        emitError(socket, 'RATE_LIMITED', 'Too many actions; slow down');
         return;
       }
       try {

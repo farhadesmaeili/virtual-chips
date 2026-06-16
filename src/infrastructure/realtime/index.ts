@@ -5,4 +5,5 @@ export * from './room-handlers';
 export * from './hand-projection';
 export * from './hand-gateway';
 export * from './hand-handlers';
+export * from './rate-limiter';
 export * from './schemas';
