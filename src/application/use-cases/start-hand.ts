@@ -1,4 +1,5 @@
 import type {
+  Clock,
   HandStore,
   IdGenerator,
   RoomRepository,
@@ -32,6 +33,7 @@ export class StartHand {
     private readonly rooms: RoomRepository,
     private readonly hands: HandStore,
     private readonly ids: IdGenerator,
+    private readonly clock: Clock,
   ) {}
 
   async execute({ roomId, requesterId }: StartHandInput): Promise<Hand> {
@@ -61,7 +63,15 @@ export class StartHand {
       buttonSeat,
       lastRaiseSize: minBet,
     });
-    const hand: Hand = { ...base, actingSeat: firstActiveAfterButton(base) };
+    const actingSeat = firstActiveAfterButton(base);
+    const hand: Hand = {
+      ...base,
+      actingSeat,
+      actionDeadline:
+        actingSeat === null
+          ? null
+          : this.clock.now() + room.settings.actionTimeoutMs,
+    };
 
     await this.hands.save(roomId, hand);
     await this.rooms.updateStatus(roomId, 'playing');

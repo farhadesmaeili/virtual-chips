@@ -69,6 +69,9 @@ const ids = () => {
   return { generate: () => `hand-${++n}` };
 };
 
+const NOW = 1000;
+const clock = { now: () => NOW };
+
 function member(userId: string, seat: number, chips: number): RoomMemberRecord {
   return { userId, username: userId, seat, chips, buyInTotal: chips };
 }
@@ -95,7 +98,7 @@ describe('StartHand', () => {
       member('bob', 1, 100),
       member('carol', 2, 100),
     ]);
-    const hand = await new StartHand(rooms, store, ids()).execute({
+    const hand = await new StartHand(rooms, store, ids(), clock).execute({
       roomId: 'r1',
       requesterId: 'banker',
     });
@@ -104,12 +107,14 @@ describe('StartHand', () => {
     expect(hand.actingSeat).toBe(1); // first active left of button
     expect(hand.players.map((p) => p.seat)).toEqual([0, 1, 2]);
     expect(hand.lastRaiseSize).toBe(10); // minBet = bigBlind
+    // deadline = now + actionTimeoutMs (default 30000)
+    expect(hand.actionDeadline).toBe(NOW + 30000);
   });
 
   it('rejects a non-banker', async () => {
     rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
     await expect(
-      new StartHand(rooms, store, ids()).execute({
+      new StartHand(rooms, store, ids(), clock).execute({
         roomId: 'r1',
         requesterId: 'bob',
       }),
@@ -119,7 +124,7 @@ describe('StartHand', () => {
   it('rejects when fewer than two players are funded', async () => {
     rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 0)]);
     await expect(
-      new StartHand(rooms, store, ids()).execute({
+      new StartHand(rooms, store, ids(), clock).execute({
         roomId: 'r1',
         requesterId: 'banker',
       }),
@@ -128,7 +133,7 @@ describe('StartHand', () => {
 
   it('rejects starting while a hand is in progress', async () => {
     rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
-    const start = new StartHand(rooms, store, ids());
+    const start = new StartHand(rooms, store, ids(), clock);
     await start.execute({ roomId: 'r1', requesterId: 'banker' });
     await expect(
       start.execute({ roomId: 'r1', requesterId: 'banker' }),
@@ -143,7 +148,7 @@ describe('PlayerAct', () => {
       member('bob', 1, 100),
       member('carol', 2, 100),
     ]);
-    await new StartHand(rooms, store, ids()).execute({
+    await new StartHand(rooms, store, ids(), clock).execute({
       roomId: 'r1',
       requesterId: 'banker',
     });
@@ -151,7 +156,7 @@ describe('PlayerAct', () => {
 
   it('applies an action and advances the turn clockwise', async () => {
     await startedHand();
-    const act = new PlayerAct(rooms, store);
+    const act = new PlayerAct(rooms, store, clock);
     // seat 1 acts first (left of button); check is allowed (currentBet 0).
     const result = await act.execute({
       roomId: 'r1',
@@ -164,11 +169,12 @@ describe('PlayerAct', () => {
       amount: undefined,
     });
     expect(result.hand.actingSeat).toBe(2); // turn moved to seat 2
+    expect(result.hand.actionDeadline).toBe(NOW + 30000); // deadline refreshed
   });
 
   it('lets a bet then a call update the pot and move the turn', async () => {
     await startedHand();
-    const act = new PlayerAct(rooms, store);
+    const act = new PlayerAct(rooms, store, clock);
     await act.execute({
       roomId: 'r1',
       userId: 'bob',
@@ -187,7 +193,7 @@ describe('PlayerAct', () => {
 
   it('rejects acting out of turn', async () => {
     await startedHand();
-    const act = new PlayerAct(rooms, store);
+    const act = new PlayerAct(rooms, store, clock);
     // seat 1 is to act; carol (seat 2) tries to act.
     await expect(
       act.execute({ roomId: 'r1', userId: 'carol', action: { type: 'CHECK' } }),
@@ -197,7 +203,7 @@ describe('PlayerAct', () => {
   it('rejects acting when there is no hand', async () => {
     rooms.seedRoom(room, [member('banker', 0, 100)]);
     await expect(
-      new PlayerAct(rooms, store).execute({
+      new PlayerAct(rooms, store, clock).execute({
         roomId: 'r1',
         userId: 'banker',
         action: { type: 'CHECK' },

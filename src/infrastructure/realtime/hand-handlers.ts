@@ -1,21 +1,18 @@
-import type { PlayerAct, StartHand } from '@/application/use-cases';
-import { toPublicHandState } from './hand-projection';
+import type { HandGateway } from './hand-gateway';
 import { handStartSchema, playerActSchema } from './schemas';
 import { emitError, handleError } from './socket-errors';
-import type { AppServer, AppSocket } from './socket-auth';
+import type { AppSocket } from './socket-auth';
 
 export interface HandHandlerDeps {
-  readonly startHand: StartHand;
-  readonly playerAct: PlayerAct;
+  readonly gateway: HandGateway;
 }
 
 /**
  * Binds the hand/betting events for an authenticated socket
- * (docs/REALTIME-EVENTS.md). The acting user comes from the socket; banker and
- * turn checks live in the use-cases and the pure engine.
+ * (docs/REALTIME-EVENTS.md). The acting user comes from the socket; banker,
+ * turn checks, broadcasting and the turn timer live in the gateway / engine.
  */
 export function registerHandHandlers(
-  io: AppServer,
   socket: AppSocket,
   deps: HandHandlerDeps,
 ): void {
@@ -29,16 +26,7 @@ export function registerHandHandlers(
         return;
       }
       try {
-        const hand = await deps.startHand.execute({
-          roomId: parsed.data.roomId,
-          requesterId: userId,
-        });
-        const state = toPublicHandState(hand);
-        io.to(parsed.data.roomId).emit('hand:state', state);
-        io.to(parsed.data.roomId).emit('turn:changed', {
-          actingSeat: state.actingSeat,
-          actionDeadline: state.actionDeadline,
-        });
+        await deps.gateway.start(parsed.data.roomId, userId);
       } catch (error) {
         handleError(socket, error);
       }
@@ -53,24 +41,10 @@ export function registerHandHandlers(
         return;
       }
       try {
-        const { hand, applied } = await deps.playerAct.execute({
-          roomId: parsed.data.roomId,
-          userId,
-          action: { type: parsed.data.action, amount: parsed.data.amount },
+        await deps.gateway.act(parsed.data.roomId, userId, {
+          type: parsed.data.action,
+          amount: parsed.data.amount,
         });
-        const state = toPublicHandState(hand);
-        const room = parsed.data.roomId;
-        io.to(room).emit('action:applied', {
-          seat: applied.seat,
-          action: applied.type,
-          amount: applied.amount ?? null,
-        });
-        io.to(room).emit('hand:state', state);
-        io.to(room).emit('turn:changed', {
-          actingSeat: state.actingSeat,
-          actionDeadline: state.actionDeadline,
-        });
-        io.to(room).emit('pot:updated', { pots: state.pots });
       } catch (error) {
         handleError(socket, error);
       }
