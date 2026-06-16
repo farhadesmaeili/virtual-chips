@@ -5,9 +5,17 @@ import { loadEnvConfig } from '@next/env';
 import next from 'next';
 import { Server, type DefaultEventsMap } from 'socket.io';
 import type { IdGenerator } from './src/application/ports';
-import { CreateRoom, JoinRoom, LeaveRoom } from './src/application/use-cases';
+import {
+  CreateRoom,
+  JoinRoom,
+  LeaveRoom,
+  PlayerAct,
+  StartHand,
+} from './src/application/use-cases';
+import { InMemoryHandStore } from './src/infrastructure/persistence/in-memory-hand-store';
 import { prisma } from './src/infrastructure/persistence/prisma';
 import { PrismaRoomRepository } from './src/infrastructure/persistence/prisma-room-repository';
+import { registerHandHandlers } from './src/infrastructure/realtime/hand-handlers';
 import { registerRoomHandlers } from './src/infrastructure/realtime/room-handlers';
 import {
   createSocketAuthMiddleware,
@@ -42,13 +50,18 @@ async function main(): Promise<void> {
   // Authenticate every connection from the NextAuth session cookie.
   io.use(createSocketAuthMiddleware());
 
-  // Compose the room use-cases over the Prisma repositories (composition root).
+  // Compose the use-cases over the repositories (composition root).
   const roomRepository = new PrismaRoomRepository(prisma);
+  const handStore = new InMemoryHandStore();
   const idGenerator: IdGenerator = { generate: () => randomUUID() };
   const roomHandlerDeps = {
     createRoom: new CreateRoom(roomRepository, idGenerator),
     joinRoom: new JoinRoom(roomRepository),
     leaveRoom: new LeaveRoom(roomRepository),
+  };
+  const handHandlerDeps = {
+    startHand: new StartHand(roomRepository, handStore, idGenerator),
+    playerAct: new PlayerAct(roomRepository, handStore),
   };
 
   io.on('connection', (socket: AppSocket) => {
@@ -60,6 +73,7 @@ async function main(): Promise<void> {
     socket.emit('session:ready', { user });
 
     registerRoomHandlers(io, socket, roomHandlerDeps);
+    registerHandHandlers(io, socket, handHandlerDeps);
 
     socket.on('disconnect', (reason) => {
       console.info(`socket disconnected: ${socket.id} (${reason})`);

@@ -1,26 +1,13 @@
 import type { CreateRoom, JoinRoom, LeaveRoom } from '@/application/use-cases';
-import { isDomainError } from '@/domain/errors';
 import { toPublicRoomState } from './room-projection';
 import { createRoomSchema, joinRoomSchema, leaveRoomSchema } from './schemas';
+import { emitError, handleError } from './socket-errors';
 import type { AppServer, AppSocket } from './socket-auth';
 
 export interface RoomHandlerDeps {
   readonly createRoom: CreateRoom;
   readonly joinRoom: JoinRoom;
   readonly leaveRoom: LeaveRoom;
-}
-
-function emitError(socket: AppSocket, code: string, message: string): void {
-  socket.emit('error', { code, message });
-}
-
-function handleError(socket: AppSocket, error: unknown): void {
-  if (isDomainError(error)) {
-    emitError(socket, error.code, error.message);
-    return;
-  }
-  // Never leak internals for unexpected errors.
-  emitError(socket, 'INTERNAL', 'Internal error');
 }
 
 /**

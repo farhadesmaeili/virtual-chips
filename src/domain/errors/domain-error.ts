@@ -16,6 +16,9 @@ export type DomainErrorCode =
   | 'ROOM_NOT_FOUND'
   | 'ALREADY_IN_ROOM'
   | 'NOT_ROOM_MEMBER'
+  | 'NOT_ENOUGH_PLAYERS'
+  | 'HAND_IN_PROGRESS'
+  | 'NO_ACTIVE_HAND'
   | 'NOT_YOUR_TURN'
   | 'INVALID_ACTION'
   | 'INVALID_RAISE'
@@ -111,6 +114,33 @@ export class NotRoomMemberError extends DomainError {
 
   constructor(readonly roomId: string) {
     super(`Not a member of room: ${roomId}`);
+  }
+}
+
+/** Thrown when a hand is started with fewer than two funded players. */
+export class NotEnoughPlayersError extends DomainError {
+  readonly code = 'NOT_ENOUGH_PLAYERS';
+
+  constructor(readonly roomId: string) {
+    super(`Not enough players with chips to start a hand in room: ${roomId}`);
+  }
+}
+
+/** Thrown when starting a hand while one is already in progress. */
+export class HandInProgressError extends DomainError {
+  readonly code = 'HAND_IN_PROGRESS';
+
+  constructor(readonly roomId: string) {
+    super(`A hand is already in progress in room: ${roomId}`);
+  }
+}
+
+/** Thrown when acting while no hand is in progress. */
+export class NoActiveHandError extends DomainError {
+  readonly code = 'NO_ACTIVE_HAND';
+
+  constructor(readonly roomId: string) {
+    super(`No active hand in room: ${roomId}`);
   }
 }
 

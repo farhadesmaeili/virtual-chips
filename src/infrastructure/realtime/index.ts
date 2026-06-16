@@ -1,4 +1,7 @@
 export * from './socket-auth';
+export * from './socket-errors';
 export * from './room-projection';
 export * from './room-handlers';
+export * from './hand-projection';
+export * from './hand-handlers';
 export * from './schemas';

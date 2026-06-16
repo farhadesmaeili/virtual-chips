@@ -22,6 +22,19 @@ export const joinRoomSchema = z.object({ roomId: z.string().min(1) }).strict();
 
 export const leaveRoomSchema = z.object({ roomId: z.string().min(1) }).strict();
 
+export const handStartSchema = z.object({ roomId: z.string().min(1) }).strict();
+
+export const playerActSchema = z
+  .object({
+    roomId: z.string().min(1),
+    action: z.enum(['FOLD', 'CHECK', 'CALL', 'BET', 'RAISE', 'ALL_IN']),
+    // Only the raise/bet amount is taken from the client; chips/pot are never.
+    amount: z.number().int().positive().optional(),
+  })
+  .strict();
+
 export type CreateRoomPayload = z.infer<typeof createRoomSchema>;
 export type JoinRoomPayload = z.infer<typeof joinRoomSchema>;
 export type LeaveRoomPayload = z.infer<typeof leaveRoomSchema>;
+export type HandStartPayload = z.infer<typeof handStartSchema>;
+export type PlayerActPayload = z.infer<typeof playerActSchema>;
