@@ -1,4 +1,4 @@
-import type { HandStore, RoomRepository } from '@/application/ports';
+import type { Clock, HandStore, RoomRepository } from '@/application/ports';
 import type { Hand } from '@/domain/entities';
 import { advanceHand, applyAction, type ActionType } from '@/domain/engine';
 import {
@@ -35,6 +35,7 @@ export class PlayerAct {
   constructor(
     private readonly rooms: RoomRepository,
     private readonly hands: HandStore,
+    private readonly clock: Clock,
   ) {}
 
   async execute({
@@ -65,9 +66,18 @@ export class PlayerAct {
     );
     const advanced = advanceHand(afterAction, { minBet });
 
-    await this.hands.save(roomId, advanced);
+    // Set the next player's deadline (or clear it when betting has ended).
+    const withDeadline: Hand = {
+      ...advanced,
+      actionDeadline:
+        advanced.actingSeat === null
+          ? null
+          : this.clock.now() + room.settings.actionTimeoutMs,
+    };
+
+    await this.hands.save(roomId, withDeadline);
     return {
-      hand: advanced,
+      hand: withDeadline,
       applied: { seat: player.seat, type: action.type, amount: action.amount },
     };
   }
