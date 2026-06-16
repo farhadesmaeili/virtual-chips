@@ -7,6 +7,12 @@ describe('friendlyError', () => {
     expect(friendlyError('RATE_LIMITED')).toContain('slow down');
   });
 
+  it('maps betting action codes', () => {
+    expect(friendlyError('NOT_YOUR_TURN')).toContain('turn');
+    expect(friendlyError('INSUFFICIENT_CHIPS')).toContain('all in');
+    expect(friendlyError('INVALID_RAISE')).toContain('minimum');
+  });
+
   it('uses the fallback for unknown codes', () => {
     expect(friendlyError('WAT', 'custom fallback')).toBe('custom fallback');
   });

@@ -1,5 +1,6 @@
 import type { IdGenerator, RoomRepository } from '@/application/ports';
 import { createRoom, type RoomSettings } from '@/domain/entities';
+import { DEFAULT_BUY_IN } from './funding';
 import { toRoomSnapshot, type RoomSnapshot } from './room-snapshot';
 
 export interface CreateRoomInput {
@@ -29,8 +30,9 @@ export class CreateRoom {
     await this.rooms.addMember(room.id, {
       userId: input.bankerId,
       seat: 0,
-      buyInTotal: 0,
-      chips: 0,
+      // Temporary default buy-in until task 4.6 adds banker-controlled buy-ins.
+      buyInTotal: DEFAULT_BUY_IN,
+      chips: DEFAULT_BUY_IN,
     });
     const members = await this.rooms.listMembers(room.id);
     return toRoomSnapshot(room, members);

@@ -47,6 +47,7 @@ describe('toPublicHandState', () => {
     expect(state.pots).toEqual([{ amount: 40, eligibleSeats: [0, 1] }]);
     expect(state.totalPot).toBe(40);
     expect(state.currentBet).toBe(20);
+    expect(state.lastRaiseSize).toBe(0);
     expect(state.actingSeat).toBe(0);
   });
 

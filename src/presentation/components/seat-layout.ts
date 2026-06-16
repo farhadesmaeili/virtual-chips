@@ -11,7 +11,7 @@ const RADIUS_X = 46;
 const RADIUS_Y = 41;
 
 export interface SeatSlot {
-  /** 1-based seat number; slot 1 is the hero seat at bottom center. */
+  /** 0-based seat index (matches the domain); seat 0 is the hero at bottom. */
   readonly seat: number;
   /** Center of the seat, as a percentage of the table box (0–100). */
   readonly xPct: number;
@@ -23,21 +23,21 @@ export interface SeatSlot {
 const round = (n: number): number => Math.round(n * 100) / 100;
 
 /**
- * Distributes `capacity` seats evenly around the oval, seat 1 at bottom center
- * (where the hero sits) and increasing clockwise. `capacity` is clamped to
- * [1, MAX_SEATS].
+ * Distributes `capacity` seats evenly around the oval, seat 0 at bottom center
+ * (where the hero sits) and increasing clockwise. Seat indices are 0-based to
+ * match the domain. `capacity` is clamped to [1, MAX_SEATS].
  */
 export function seatSlots(capacity: number): SeatSlot[] {
   const count = Math.max(1, Math.min(MAX_SEATS, Math.floor(capacity)));
   const slots: SeatSlot[] = [];
 
   for (let i = 0; i < count; i += 1) {
-    // 90° points down the screen (y grows downward), so seat 1 lands at bottom.
+    // 90° points down the screen (y grows downward), so seat 0 lands at bottom.
     const angle = ((90 + (360 * i) / count) * Math.PI) / 180;
     const cos = Math.cos(angle);
     const sin = Math.sin(angle);
     slots.push({
-      seat: i + 1,
+      seat: i,
       xPct: round(50 + RADIUS_X * cos),
       yPct: round(50 + RADIUS_Y * sin),
       // Kept at full precision so it stays a true unit vector.

@@ -55,6 +55,8 @@ export interface PublicHandState {
   readonly street: number;
   readonly buttonSeat: number;
   readonly currentBet: number;
+  /** Size of the last full bet/raise this street; the min-raise increment. */
+  readonly lastRaiseSize: number;
   readonly actingSeat: number | null;
   readonly actionDeadline: number | null;
   readonly status: HandStatus;
