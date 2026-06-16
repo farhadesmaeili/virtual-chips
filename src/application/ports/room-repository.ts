@@ -3,6 +3,7 @@ import type { Room, RoomStatus } from '@/domain/entities';
 /** A member's seat and chips within a room. */
 export interface RoomMemberRecord {
   readonly userId: string;
+  readonly username: string;
   readonly seat: number;
   readonly buyInTotal: number;
   readonly chips: number;
@@ -24,5 +25,6 @@ export interface RoomRepository {
   findById(id: string): Promise<Room | null>;
   updateStatus(id: string, status: RoomStatus): Promise<void>;
   addMember(roomId: string, member: AddMemberInput): Promise<RoomMemberRecord>;
+  removeMember(roomId: string, userId: string): Promise<void>;
   listMembers(roomId: string): Promise<RoomMemberRecord[]>;
 }
