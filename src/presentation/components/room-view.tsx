@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActionPanel } from './action-panel';
 import { deriveActions, type ActionKind } from './action-availability';
+import { BankerBar } from './banker-bar';
 import { PokerTable } from './poker-table';
 import { getSocket } from '@/presentation/lib/socket';
 import { friendlyError } from '@/presentation/lib/error-messages';
@@ -71,6 +72,18 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     [roomId],
   );
 
+  const startHand = useCallback((): void => {
+    setPending(true);
+    setActionError(null);
+    getSocket().emit('hand:start', { roomId });
+  }, [roomId]);
+
+  // A live hand blocks dealing; treat a settled hand as no hand in play.
+  const handInPlay = hand !== null && hand.status !== 'settled';
+  const heroIsBanker =
+    heroSeat !== null &&
+    (room?.members.find((m) => m.seat === heroSeat)?.isBanker ?? false);
+
   const availability = deriveActions(
     hand,
     heroSeat,
@@ -116,6 +129,15 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               {room.members.length} seated · {room.status}
             </p>
           </div>
+
+          {heroIsBanker && (
+            <BankerBar
+              handInPlay={handInPlay}
+              pending={pending}
+              error={actionError}
+              onStartHand={startHand}
+            />
+          )}
 
           <PokerTable room={room} hand={hand} />
 
