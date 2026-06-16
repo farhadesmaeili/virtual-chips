@@ -25,29 +25,29 @@ const room: PublicRoomState = {
   },
   members: [
     {
-      seat: 1,
+      seat: 0,
       username: 'You',
       chips: 3400,
       buyInTotal: 4000,
       isBanker: false,
     },
     {
-      seat: 2,
+      seat: 1,
       username: 'Mara',
       chips: 2120,
       buyInTotal: 2000,
       isBanker: true,
     },
-    { seat: 3, username: 'Devon Park', chips: 980, buyInTotal: 2000, isBanker: false }, // prettier-ignore
+    { seat: 2, username: 'Devon Park', chips: 980, buyInTotal: 2000, isBanker: false }, // prettier-ignore
     {
-      seat: 5,
+      seat: 4,
       username: 'Ines',
       chips: 5600,
       buyInTotal: 4000,
       isBanker: false,
     },
-    { seat: 6, username: 'Kofi', chips: 0, buyInTotal: 2000, isBanker: false },
-    { seat: 8, username: 'Lena R', chips: 1750, buyInTotal: 2000, isBanker: false }, // prettier-ignore
+    { seat: 5, username: 'Kofi', chips: 0, buyInTotal: 2000, isBanker: false },
+    { seat: 7, username: 'Lena R', chips: 1750, buyInTotal: 2000, isBanker: false }, // prettier-ignore
   ],
 };
 
@@ -55,25 +55,25 @@ const hand: PublicHandState = {
   id: 'preview-hand',
   roomId: 'preview',
   street: 1,
-  buttonSeat: 2,
+  buttonSeat: 1,
   currentBet: 40,
   lastRaiseSize: 20,
-  actingSeat: 1,
+  actingSeat: 0,
   actionDeadline: Date.now() + 22_000,
   status: 'betting',
   players: [
-    { seat: 1, stack: 3400, committedThisStreet: 20, committedTotal: 20, state: 'active', hasActedThisStreet: false }, // prettier-ignore
-    { seat: 2, stack: 2120, committedThisStreet: 40, committedTotal: 40, state: 'active', hasActedThisStreet: true }, // prettier-ignore
-    { seat: 3, stack: 980, committedThisStreet: 0, committedTotal: 0, state: 'folded', hasActedThisStreet: true }, // prettier-ignore
-    { seat: 5, stack: 0, committedThisStreet: 200, committedTotal: 200, state: 'all_in', hasActedThisStreet: true }, // prettier-ignore
-    { seat: 6, stack: 0, committedThisStreet: 0, committedTotal: 0, state: 'sitting_out', hasActedThisStreet: false }, // prettier-ignore
-    { seat: 8, stack: 1750, committedThisStreet: 40, committedTotal: 40, state: 'active', hasActedThisStreet: true }, // prettier-ignore
+    { seat: 0, stack: 3400, committedThisStreet: 20, committedTotal: 20, state: 'active', hasActedThisStreet: false }, // prettier-ignore
+    { seat: 1, stack: 2120, committedThisStreet: 40, committedTotal: 40, state: 'active', hasActedThisStreet: true }, // prettier-ignore
+    { seat: 2, stack: 980, committedThisStreet: 0, committedTotal: 0, state: 'folded', hasActedThisStreet: true }, // prettier-ignore
+    { seat: 4, stack: 0, committedThisStreet: 200, committedTotal: 200, state: 'all_in', hasActedThisStreet: true }, // prettier-ignore
+    { seat: 5, stack: 0, committedThisStreet: 0, committedTotal: 0, state: 'sitting_out', hasActedThisStreet: false }, // prettier-ignore
+    { seat: 7, stack: 1750, committedThisStreet: 40, committedTotal: 40, state: 'active', hasActedThisStreet: true }, // prettier-ignore
   ],
-  pots: [{ amount: 300, eligibleSeats: [1, 2, 5, 8] }],
+  pots: [{ amount: 300, eligibleSeats: [0, 1, 4, 7] }],
   totalPot: 300,
 };
 
-const HERO_SEAT = 1;
+const HERO_SEAT = 0;
 
 export function TablePreview(): React.ReactElement {
   const [lastAction, setLastAction] = useState<string | null>(null);

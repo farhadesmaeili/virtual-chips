@@ -5,6 +5,7 @@ import {
   RoomFullError,
   RoomNotFoundError,
 } from '@/domain/errors';
+import { DEFAULT_BUY_IN } from './funding';
 import { toRoomSnapshot, type RoomSnapshot } from './room-snapshot';
 
 export interface JoinRoomInput {
@@ -34,8 +35,9 @@ export class JoinRoom {
     await this.rooms.addMember(roomId, {
       userId,
       seat,
-      buyInTotal: 0,
-      chips: 0,
+      // Temporary default buy-in until task 4.6 adds banker-controlled buy-ins.
+      buyInTotal: DEFAULT_BUY_IN,
+      chips: DEFAULT_BUY_IN,
     });
     const updated = await this.rooms.listMembers(roomId);
     return toRoomSnapshot(room, updated);

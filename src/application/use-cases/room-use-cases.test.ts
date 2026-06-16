@@ -12,6 +12,7 @@ import {
 } from '@/domain/errors';
 import { MAX_SEATS, type Room, type RoomStatus } from '@/domain/entities';
 import { CreateRoom } from './create-room';
+import { DEFAULT_BUY_IN } from './funding';
 import { JoinRoom } from './join-room';
 import { LeaveRoom } from './leave-room';
 
@@ -91,8 +92,8 @@ describe('CreateRoom', () => {
         userId: 'banker',
         username: 'bankerName',
         seat: 0,
-        chips: 0,
-        buyInTotal: 0,
+        chips: DEFAULT_BUY_IN,
+        buyInTotal: DEFAULT_BUY_IN,
       },
     ]);
   });
@@ -120,7 +121,10 @@ describe('JoinRoom', () => {
     const roomId = await seededRoom();
     const snap = await new JoinRoom(repo).execute({ userId: 'bob', roomId });
     expect(snap.members.map((m) => m.seat)).toEqual([0, 1]);
-    expect(snap.members.find((m) => m.userId === 'bob')?.seat).toBe(1);
+    const bob = snap.members.find((m) => m.userId === 'bob');
+    expect(bob?.seat).toBe(1);
+    // Seating grants the temporary default buy-in so hands can be dealt.
+    expect(bob?.chips).toBe(DEFAULT_BUY_IN);
   });
 
   it('fills the lowest free seat (gaps first)', async () => {

@@ -13,10 +13,10 @@ describe('seatSlots', () => {
     expect(seatSlots(20)).toHaveLength(MAX_SEATS);
   });
 
-  it('places seat 1 at the bottom center (the hero seat)', () => {
+  it('places seat 0 at the bottom center (the hero seat)', () => {
     const hero = seatSlots(9)[0];
     expect(hero).toBeDefined();
-    expect(hero?.seat).toBe(1);
+    expect(hero?.seat).toBe(0);
     expect(hero?.xPct).toBeCloseTo(50, 1);
     expect(hero?.yPct ?? 0).toBeGreaterThan(80); // toward the bottom edge
   });
@@ -30,8 +30,8 @@ describe('seatSlots', () => {
     }
   });
 
-  it('numbers seats 1..capacity in order', () => {
-    expect(seatSlots(5).map((s) => s.seat)).toEqual([1, 2, 3, 4, 5]);
+  it('numbers seats 0..capacity-1 in order', () => {
+    expect(seatSlots(5).map((s) => s.seat)).toEqual([0, 1, 2, 3, 4]);
   });
 
   it('gives a unit vector pointing from the seat toward the table center', () => {
@@ -39,7 +39,7 @@ describe('seatSlots', () => {
       const { x, y } = slot.towardCenter;
       expect(Math.hypot(x, y)).toBeCloseTo(1, 2);
       // The hero at the bottom should point upward (negative y) to the center.
-      if (slot.seat === 1) expect(y).toBeLessThan(0);
+      if (slot.seat === 0) expect(y).toBeLessThan(0);
     }
   });
 
