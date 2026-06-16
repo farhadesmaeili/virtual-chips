@@ -2,27 +2,44 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActionPanel } from './action-panel';
+import { deriveActions, type ActionKind } from './action-availability';
 import { PokerTable } from './poker-table';
 import { getSocket } from '@/presentation/lib/socket';
+import { friendlyError } from '@/presentation/lib/error-messages';
 import type {
   PublicHandState,
   PublicRoomState,
+  SocketError,
 } from '@/presentation/lib/socket-events';
 import { useConnectionStore } from '@/presentation/stores/connection-store';
 
 export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   const reduce = useReducedMotion();
   const status = useConnectionStore((s) => s.status);
+  const user = useConnectionStore((s) => s.user);
   const [room, setRoom] = useState<PublicRoomState | null>(null);
   const [hand, setHand] = useState<PublicHandState | null>(null);
+  const [pending, setPending] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
     const onState = (state: PublicRoomState): void => setRoom(state);
-    const onHand = (state: PublicHandState): void => setHand(state);
+    const onHand = (state: PublicHandState): void => {
+      // A fresh hand state means our last action landed (or the turn moved on).
+      setHand(state);
+      setPending(false);
+      setActionError(null);
+    };
+    const onError = (err: SocketError): void => {
+      setPending(false);
+      setActionError(friendlyError(err.code, err.message));
+    };
     socket.on('room:state', onState);
     socket.on('hand:state', onHand);
+    socket.on('error', onError);
 
     // Ask for the current snapshot (works on first load and on reconnect).
     const resync = (): void => {
@@ -34,9 +51,37 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     return () => {
       socket.off('room:state', onState);
       socket.off('hand:state', onHand);
+      socket.off('error', onError);
       socket.off('session:ready', resync);
     };
   }, [roomId]);
+
+  // The seat the current user occupies (null if they are only watching).
+  const heroSeat = useMemo(() => {
+    if (room === null || user === null) return null;
+    return room.members.find((m) => m.username === user.username)?.seat ?? null;
+  }, [room, user]);
+
+  const act = useCallback(
+    (action: ActionKind, amount?: number): void => {
+      setPending(true);
+      setActionError(null);
+      getSocket().emit('player:act', { roomId, action, amount });
+    },
+    [roomId],
+  );
+
+  const availability = deriveActions(
+    hand,
+    heroSeat,
+    room?.settings.bigBlind ?? 0,
+  );
+
+  // Whose turn it is, for the panel's waiting state.
+  const actingName =
+    hand?.actingSeat != null
+      ? room?.members.find((m) => m.seat === hand.actingSeat)?.username
+      : undefined;
 
   return (
     <main className="relative z-10 mx-auto flex min-h-[100dvh] w-full max-w-4xl flex-col gap-6 p-6">
@@ -61,7 +106,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
           initial={reduce ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-          className="flex flex-col gap-4"
+          className="flex flex-1 flex-col gap-4"
         >
           <div className="text-center">
             <h1 className="font-display text-2xl font-bold tracking-tightish text-vc-ink">
@@ -74,10 +119,17 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
 
           <PokerTable room={room} hand={hand} />
 
-          <p className="text-center text-xs text-vc-ink-faint">
-            Betting controls and the banker view arrive next (tasks 4.3–4.6);
-            chip and turn animations land in Phase 5.
-          </p>
+          {/* Remounting on turn/bet change resets the local sizing controls. */}
+          <ActionPanel
+            key={`${hand?.id ?? 'none'}:${hand?.actingSeat ?? 'x'}:${hand?.currentBet ?? 0}`}
+            availability={availability}
+            pot={hand?.totalPot ?? 0}
+            currentBet={hand?.currentBet ?? 0}
+            pending={pending}
+            error={actionError}
+            actingName={actingName}
+            onAct={act}
+          />
         </motion.div>
       )}
     </main>
