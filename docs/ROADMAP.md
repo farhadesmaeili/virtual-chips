@@ -70,14 +70,85 @@
 
 هدف: میز، صندلی‌ها، کنترل اکشن‌ها، اتصال real-time.
 
-- [ ] **4.1** صفحه‌ی Lobby (ساخت/پیوستن به room).
-- [ ] **4.2** کامپوننت میز + چیدمان صندلی‌ها (responsive).
-- [ ] **4.3** پنل اکشن بازیکن (fold/check/call/bet/raise/all-in) با مقادیر معتبر.
-- [ ] **4.4** نمایش pot، stack ها، dealer button، نوبت فعال.
-- [ ] **4.5** Zustand store + اتصال به socket events.
+- [x] **4.1** صفحه‌ی Lobby (ساخت/پیوستن به room).
+- [x] **4.2** کامپوننت میز + چیدمان صندلی‌ها (responsive).
+- [x] **4.3** پنل اکشن بازیکن (fold/check/call/bet/raise/all-in) با مقادیر معتبر. _(شامل دکمه‌ی موقت «Start hand» بانکدار و buy-in پیش‌فرض موقت `DEFAULT_BUY_IN`.)_
+- [ ] **4.4** نمایش pot، stack ها، dealer button، نوبت فعال. _(عمدتاً حین 4.2/4.3 پیاده شد؛ countdown تایمر در 4.9 بررسی می‌شود.)_
+- [ ] **4.5** Zustand store + اتصال به socket events. _(پایه حین 4.1–4.3 پیاده شد: `connection-store` + socket wiring.)_
 - [ ] **4.6** نمای بانکدار (buy-in control, end game, declare winner).
+  - شامل **جایگزینی** buy-in پیش‌فرضِ موقتِ تسک 4.3 (`DEFAULT_BUY_IN` در `application/use-cases/funding.ts`) با کنترل buy-in/rebuy واقعیِ بانکدار. آن‌موقع نشستن باید 0 chips بدهد و بانکدار funding کند.
 
 **DoD:** یک بازی کامل از create تا settle قابل انجام در UI.
+
+---
+
+## Phase 4.5 — کنترل دستی جریان بازی (banker-driven)
+
+> این فاز از تست دستیِ بعد از 4.3 بیرون آمد: چون **خود بازی دستی است** (بدون
+> hand evaluation، کارت‌های فیزیکی)، pace را انسان کنترل می‌کند نه موتور.
+
+- [ ] **4.7** پیشروی دستی street ها (banker-confirmed).
+      بعد از کامل‌شدن بتینگِ هر street، بازی باید **متوقف** بماند تا بانکدار دستی
+      «street بعدی» را تأیید کند (preflop→flop→turn→river). **پیشروی خودکار نداریم**؛
+      زمان هر مرحله نامحدود است چون انسان کارت‌ها را فیزیکی pace می‌کند.
+  - **تداخل با موتور فعلی:** در `application/use-cases/player-act.ts`، بعد از
+    `applyAction` تابع `advanceHand` (`domain/engine/street.ts`) صدا زده می‌شود که
+    هنگام کامل‌شدن street **خودکار** `startNextStreet` را اجرا و actor بعدی را
+    می‌گذارد. این رفتار باید بشکند.
+  - **تغییرات لازم:**
+    - `domain/entities` (HandStatus): افزودن وضعیت `'awaiting_street'` (بتینگِ این
+      street تمام شد و street های بعدی مانده) — جدا از `'awaiting_showdown'` (همه‌ی
+      street ها تمام یا uncontested → settle).
+    - `domain/engine/street.ts`: تفکیک `advanceHand` به‌طوری‌که هنگام **کامل‌شدنِ
+      street با وجود street بعدی** به `'awaiting_street'` برود و **`startNextStreet`
+      را صدا نزند**. `startNextStreet` (pure، موجود) به use-case جدید منتقل می‌شود.
+      منطق uncontested → `awaiting_showdown` و pass-to-next-seat بدون تغییر می‌ماند.
+    - حالت all-in: وقتی هیچ‌کس نمی‌تواند اکت کند (همه all-in)، باز هم بانکدار باید
+      street-به-street تا river جلو ببرد (برای pace کردن run-out فیزیکی)، فقط بدون
+      بتینگ. پس `'awaiting_street'` این حالت را هم پوشش می‌دهد (حلقه‌ی skip فعلی در
+      `advanceHand` حذف/جایگزین می‌شود).
+    - `application/use-cases`: use-case جدید `AdvanceStreet` (banker-only) — چک
+      می‌کند requester بانکدار است و hand در `'awaiting_street'` است، سپس
+      `startNextStreet` را اعمال + save می‌کند.
+    - `infrastructure/realtime`: event + handler جدید (مثلاً `hand:advance-street`
+      → broadcast `hand:state` + `turn:changed`)، schema با Zod؛ turn-timer در
+      `'awaiting_street'` نباید بشمارد (هیچ نوبتی pending نیست).
+    - `presentation`: افزودن `'awaiting_street'` به `PublicHandState.status` کلاینت؛
+      کنترل بانکدارِ «Deal flop / turn / river» (لیبل بر اساس `street`)؛ نمایش حالت
+      توقف به بقیه («Waiting for the banker to deal»).
+  - **DoD:** بعد از پایان بتینگِ هر street بازی منتظر می‌ماند؛ فقط بانکدار street
+    بعدی را شروع می‌کند؛ unit test برای گذارها (street کامل → `awaiting_street` →
+    street بعدی) و authorization؛ هیچ پیشرویِ خودکاری رخ نمی‌دهد.
+
+- [ ] **4.8** چرخه‌ی دست توسط بانکدار: تأیید پایان دست + شروع دست بعدی با چرخش dealer button.
+      بعد از settle، بانکدار باید بتواند **دست بعدی** را شروع کند و **dealer button
+      بچرخد** (نه ثابت).
+  - **وضعیت فعلی:** `StartHand` دکمه را `Math.min(funded seats)` می‌گذارد (ثابت،
+    بدون چرخش). دکمه‌ی موقت «Start hand» (4.3) فقط دست را شروع می‌کند.
+  - **تغییرات لازم:**
+    - `StartHand`: اگر دستِ `settled` قبلی وجود دارد، button را به اولین صندلیِ
+      occupied **بعد از** button قبلی (clockwise، با wrap) بچرخان؛ در غیر این صورت
+      (دست اول) رفتار فعلی.
+    - تأیید پایان دست: بعد از `awaiting_showdown` و settle (settlement = 1.5/6.1)،
+      گذار صریح به `settled` و آماده‌ی دست بعد.
+    - UI بانکدار: «Start next hand» بعد از settle (کنار/به‌جای «Start hand»).
+  - **DoD:** چند دستِ پشت‌سرهم با چرخش درست button؛ unit test برای rotation
+    (occupied seats، wrap، تک‌بازیکنِ باقی‌مانده).
+
+- [ ] **4.9** بررسی/رفع نمایش تایمر نوبت (countdown ring) در بازی واقعی.
+      حلقه‌ی countdown دور آواتار فعال (`presentation/components/seat.tsx`) ساخته شده
+      ولی در بازی واقعی دیده نمی‌شد.
+  - **تشخیص اولیه:** ریشه‌ی اصلی همان off-by-one صندلی‌ها بود (`actingSeat` صفرمبنا
+    با اسلاتِ یک‌مبنا تطبیق نمی‌خورد) که در fix تسک 4.3 رفع شد → حالا باید روی
+    صندلیِ acting دیده شود. ضمناً حلقه فعلاً **استاتیک** است؛ countdownِ واقعیِ
+    driven-by-`actionDeadline` بخشِ 5.2 است و `turn:changed`/`actionDeadline` هنوز
+    توسط کلاینت برای شمارش مصرف نمی‌شود.
+  - **کار:** اول تأیید کن که بعد از 4.3 حلقه روی صندلیِ acting ظاهر می‌شود؛ سپس یک
+    تایمر حداقلیِ قابل‌مشاهده که از `actionDeadline` (مطلق) رانده شود وصل کن — یا اگر
+    انیمیشن کامل به 5.2 موکول می‌شود، صریح در همان‌جا مشخص کن. (cross-ref: سرور 3.4،
+    انیمیشن 5.2.)
+  - **DoD:** در بازی واقعی نوبت فعال به‌وضوح تایمر دارد؛ سازگار با
+    `prefers-reduced-motion`.
 
 ---
 
