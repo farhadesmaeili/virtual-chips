@@ -5,19 +5,24 @@ import type {
   RoomRepository,
 } from '@/application/ports';
 import {
+  createHand,
+  createPlayerInHand,
   createRoom,
   type Hand,
+  type PlayerInHand,
   type Room,
   type RoomStatus,
 } from '@/domain/entities';
 import {
   HandInProgressError,
+  InvalidSettlementError,
   NoActiveHandError,
   NotBankerError,
   NotEnoughPlayersError,
   NotYourTurnError,
 } from '@/domain/errors';
 import { PlayerAct } from './player-act';
+import { SettleHand } from './settle-hand';
 import { StartHand } from './start-hand';
 
 class FakeRoomRepository implements RoomRepository {
@@ -48,6 +53,17 @@ class FakeRoomRepository implements RoomRepository {
   }
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     return [...(this.membersByRoom.get(roomId) ?? [])];
+  }
+  async updateMemberChips(
+    roomId: string,
+    userId: string,
+    chips: number,
+  ): Promise<void> {
+    const members = this.membersByRoom.get(roomId) ?? [];
+    this.membersByRoom.set(
+      roomId,
+      members.map((m) => (m.userId === userId ? { ...m, chips } : m)),
+    );
   }
 }
 
@@ -207,6 +223,116 @@ describe('PlayerAct', () => {
         roomId: 'r1',
         userId: 'banker',
         action: { type: 'CHECK' },
+      }),
+    ).rejects.toThrow(NoActiveHandError);
+  });
+});
+
+describe('SettleHand', () => {
+  // A player at showdown: committed `committedTotal` over the hand, `stack` left.
+  function showdownPlayer(
+    seat: number,
+    userId: string,
+    stack: number,
+    committedTotal: number,
+    state: PlayerInHand['state'] = 'active',
+  ): PlayerInHand {
+    return {
+      ...createPlayerInHand({ seat, userId, stack }),
+      committedTotal,
+      committedThisStreet: 0,
+      state,
+      hasActedThisStreet: true,
+    };
+  }
+
+  function awaitingHand(players: PlayerInHand[]): Hand {
+    const base = createHand({ id: 'h1', roomId: 'r1', buttonSeat: 0, players });
+    return { ...base, status: 'awaiting_showdown', actingSeat: null };
+  }
+
+  it('auto-awards an uncontested pot and persists final stacks', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    await store.save(
+      'r1',
+      awaitingHand([
+        showdownPlayer(0, 'banker', 80, 20, 'active'),
+        showdownPlayer(1, 'bob', 80, 20, 'folded'),
+      ]),
+    );
+
+    const result = await new SettleHand(rooms, store).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+
+    expect(result.hand.status).toBe('settled');
+    expect(result.payouts.get(0)).toBe(40); // pot 20 + 20 → only contender
+    expect(result.snapshot.members.find((m) => m.seat === 0)?.chips).toBe(120);
+    expect(result.snapshot.members.find((m) => m.seat === 1)?.chips).toBe(80);
+  });
+
+  it('awards a contested pot to the banker-declared winner', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    await store.save(
+      'r1',
+      awaitingHand([
+        showdownPlayer(0, 'banker', 80, 20, 'active'),
+        showdownPlayer(1, 'bob', 80, 20, 'active'),
+      ]),
+    );
+
+    const result = await new SettleHand(rooms, store).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+      declarations: [[1]], // bob wins the single pot
+    });
+
+    expect(result.payouts.get(1)).toBe(40);
+    expect(result.snapshot.members.find((m) => m.seat === 1)?.chips).toBe(120);
+    expect(result.snapshot.members.find((m) => m.seat === 0)?.chips).toBe(80);
+  });
+
+  it('rejects a contested pot with no declaration', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    await store.save(
+      'r1',
+      awaitingHand([
+        showdownPlayer(0, 'banker', 80, 20, 'active'),
+        showdownPlayer(1, 'bob', 80, 20, 'active'),
+      ]),
+    );
+    await expect(
+      new SettleHand(rooms, store).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+      }),
+    ).rejects.toThrow(InvalidSettlementError);
+  });
+
+  it('rejects a non-banker', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    await store.save(
+      'r1',
+      awaitingHand([
+        showdownPlayer(0, 'banker', 80, 20, 'active'),
+        showdownPlayer(1, 'bob', 80, 20, 'folded'),
+      ]),
+    );
+    await expect(
+      new SettleHand(rooms, store).execute({
+        roomId: 'r1',
+        requesterId: 'bob',
+      }),
+    ).rejects.toThrow(NotBankerError);
+  });
+
+  it('rejects when there is no hand', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100)]);
+    await expect(
+      new SettleHand(rooms, store).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
       }),
     ).rejects.toThrow(NoActiveHandError);
   });

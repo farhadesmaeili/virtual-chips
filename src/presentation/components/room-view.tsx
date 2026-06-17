@@ -7,9 +7,11 @@ import { ActionPanel } from './action-panel';
 import { deriveActions, type ActionKind } from './action-availability';
 import { BankerBar } from './banker-bar';
 import { PokerTable } from './poker-table';
+import { ShowdownControls } from './showdown-controls';
 import { getSocket } from '@/presentation/lib/socket';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import type {
+  HandSettled,
   PublicHandState,
   PublicRoomState,
   SocketError,
@@ -24,6 +26,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   const [hand, setHand] = useState<PublicHandState | null>(null);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [payouts, setPayouts] = useState<HandSettled['payouts'] | null>(null);
 
   useEffect(() => {
     const socket = getSocket();
@@ -33,6 +36,12 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
       setHand(state);
       setPending(false);
       setActionError(null);
+      // A new betting hand clears the previous hand's result banner.
+      if (state.status === 'betting') setPayouts(null);
+    };
+    const onSettled = (result: HandSettled): void => {
+      setPending(false);
+      setPayouts(result.payouts);
     };
     const onError = (err: SocketError): void => {
       setPending(false);
@@ -40,6 +49,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     };
     socket.on('room:state', onState);
     socket.on('hand:state', onHand);
+    socket.on('hand:settled', onSettled);
     socket.on('error', onError);
 
     // Ask for the current snapshot (works on first load and on reconnect).
@@ -52,6 +62,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     return () => {
       socket.off('room:state', onState);
       socket.off('hand:state', onHand);
+      socket.off('hand:settled', onSettled);
       socket.off('error', onError);
       socket.off('session:ready', resync);
     };
@@ -77,6 +88,15 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     setActionError(null);
     getSocket().emit('hand:start', { roomId });
   }, [roomId]);
+
+  const settle = useCallback(
+    (declarations: number[][]): void => {
+      setPending(true);
+      setActionError(null);
+      getSocket().emit('hand:settle', { roomId, declarations });
+    },
+    [roomId],
+  );
 
   // A live hand blocks dealing; treat a settled hand as no hand in play.
   const handInPlay = hand !== null && hand.status !== 'settled';
@@ -130,7 +150,8 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
             </p>
           </div>
 
-          {heroIsBanker && (
+          {/* Banker deal control, except at showdown where settling takes over. */}
+          {heroIsBanker && hand?.status !== 'awaiting_showdown' && (
             <BankerBar
               handInPlay={handInPlay}
               pending={pending}
@@ -141,17 +162,49 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
 
           <PokerTable room={room} hand={hand} />
 
-          {/* Remounting on turn/bet change resets the local sizing controls. */}
-          <ActionPanel
-            key={`${hand?.id ?? 'none'}:${hand?.actingSeat ?? 'x'}:${hand?.currentBet ?? 0}`}
-            availability={availability}
-            pot={hand?.totalPot ?? 0}
-            currentBet={hand?.currentBet ?? 0}
-            pending={pending}
-            error={actionError}
-            actingName={actingName}
-            onAct={act}
-          />
+          {/* Result of the last settled hand, until the next deal. */}
+          {payouts !== null &&
+            payouts.length > 0 &&
+            hand?.status === 'settled' && (
+              <p className="text-center text-sm text-vc-ink-muted">
+                {payouts.map((p, i) => (
+                  <span key={p.seat}>
+                    {i > 0 && ' · '}
+                    <span className="font-medium text-vc-ink">
+                      {room.members.find((m) => m.seat === p.seat)?.username ??
+                        `Seat ${p.seat}`}
+                    </span>{' '}
+                    won{' '}
+                    <span className="font-mono tabular-nums text-vc-gold">
+                      {p.amount.toLocaleString()}
+                    </span>
+                  </span>
+                ))}
+              </p>
+            )}
+
+          {hand?.status === 'awaiting_showdown' ? (
+            <ShowdownControls
+              hand={hand}
+              members={room.members}
+              isBanker={heroIsBanker}
+              pending={pending}
+              error={actionError}
+              onSettle={settle}
+            />
+          ) : (
+            // Remounting on turn/bet change resets the local sizing controls.
+            <ActionPanel
+              key={`${hand?.id ?? 'none'}:${hand?.actingSeat ?? 'x'}:${hand?.currentBet ?? 0}`}
+              availability={availability}
+              pot={hand?.totalPot ?? 0}
+              currentBet={hand?.currentBet ?? 0}
+              pending={pending}
+              error={actionError}
+              actingName={actingName}
+              onAct={act}
+            />
+          )}
         </motion.div>
       )}
     </main>

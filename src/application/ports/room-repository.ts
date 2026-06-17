@@ -27,4 +27,10 @@ export interface RoomRepository {
   addMember(roomId: string, member: AddMemberInput): Promise<RoomMemberRecord>;
   removeMember(roomId: string, userId: string): Promise<void>;
   listMembers(roomId: string): Promise<RoomMemberRecord[]>;
+  /** Sets a member's current chip stack (e.g. persisting settlement results). */
+  updateMemberChips(
+    roomId: string,
+    userId: string,
+    chips: number,
+  ): Promise<void>;
 }

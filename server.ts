@@ -12,6 +12,7 @@ import {
   LeaveRoom,
   PlayerAct,
   ResyncRoom,
+  SettleHand,
   StartHand,
 } from './src/application/use-cases';
 import { InMemoryHandStore } from './src/infrastructure/persistence/in-memory-hand-store';
@@ -107,6 +108,7 @@ async function main(): Promise<void> {
     io,
     new StartHand(roomRepository, handStore, idGenerator, clock),
     new PlayerAct(roomRepository, handStore, clock),
+    new SettleHand(roomRepository, handStore),
     handStore,
   );
 

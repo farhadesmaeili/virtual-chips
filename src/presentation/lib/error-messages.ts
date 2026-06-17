@@ -19,6 +19,7 @@ const MESSAGES: Readonly<Record<string, string>> = {
   NOT_ENOUGH_PLAYERS: 'You need at least two funded players to deal.',
   HAND_IN_PROGRESS: 'A hand is already in play.',
   NOT_BANKER: 'Only the banker can do that.',
+  INVALID_SETTLEMENT: 'Pick a winner for each contested pot first.',
 };
 
 /** Returns a friendly message for an error code, falling back to a default. */

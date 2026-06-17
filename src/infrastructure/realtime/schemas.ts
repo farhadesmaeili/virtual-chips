@@ -28,6 +28,15 @@ export const resyncRoomSchema = z
 
 export const handStartSchema = z.object({ roomId: z.string().min(1) }).strict();
 
+export const handSettleSchema = z
+  .object({
+    roomId: z.string().min(1),
+    // Winner seats per pot (aligned with the hand's side pots). Optional —
+    // uncontested pots auto-award. Seats are validated again by the engine.
+    declarations: z.array(z.array(z.number().int().nonnegative())).optional(),
+  })
+  .strict();
+
 export const playerActSchema = z
   .object({
     roomId: z.string().min(1),
@@ -42,4 +51,5 @@ export type JoinRoomPayload = z.infer<typeof joinRoomSchema>;
 export type LeaveRoomPayload = z.infer<typeof leaveRoomSchema>;
 export type ResyncRoomPayload = z.infer<typeof resyncRoomSchema>;
 export type HandStartPayload = z.infer<typeof handStartSchema>;
+export type HandSettlePayload = z.infer<typeof handSettleSchema>;
 export type PlayerActPayload = z.infer<typeof playerActSchema>;
