@@ -1,5 +1,6 @@
 'use client';
 
+import { ChipStack } from './chip';
 import { Seat } from './seat';
 import { MAX_SEATS, seatSlots } from './seat-layout';
 import type {
@@ -26,8 +27,10 @@ export function PokerTable({
   const slots = seatSlots(MAX_SEATS);
   const memberBySeat = new Map(room.members.map((m) => [m.seat, m]));
   const playerBySeat = new Map((hand?.players ?? []).map((p) => [p.seat, p]));
-  const livePot =
-    hand !== null && hand.status !== 'settled' ? hand.totalPot : 0;
+  const inPlay = hand !== null && hand.status !== 'settled';
+  const livePot = inPlay ? hand.totalPot : 0;
+  // Side pots come straight from the authoritative hand state.
+  const sidePots = inPlay && hand.pots.length > 1 ? hand.pots : [];
 
   return (
     <div className="vc-table-stage w-full pb-10 pt-2">
@@ -41,12 +44,36 @@ export function PokerTable({
                 <div className="vc-lift-pot flex flex-col items-center text-center">
                   {livePot > 0 ? (
                     <>
+                      {/* The pot pile — gold (value), and the anchor chips
+                          spring to in Phase 5. */}
+                      <ChipStack
+                        amount={livePot}
+                        size={24}
+                        height={4}
+                        color="var(--vc-chip-1000)"
+                        className="mb-1.5"
+                      />
                       <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-vc-ink-muted">
                         Pot
                       </span>
                       <span className="font-mono text-2xl font-bold tabular-nums text-vc-gold [text-shadow:0_2px_8px_rgb(0_0_0/0.6)] sm:text-3xl">
                         {livePot.toLocaleString()}
                       </span>
+                      {sidePots.length > 0 && (
+                        <div className="mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5">
+                          {sidePots.map((pot, i) => (
+                            <span
+                              key={i}
+                              className="font-mono text-[11px] tabular-nums text-vc-ink-muted"
+                            >
+                              <span className="text-vc-ink-faint">
+                                {i === 0 ? 'Main' : `Side ${i}`}{' '}
+                              </span>
+                              {pot.amount.toLocaleString()}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </>
                   ) : (
                     <span className="text-xs font-medium tracking-wide text-vc-ink-faint">
