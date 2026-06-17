@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { createServer } from 'node:http';
+import { networkInterfaces } from 'node:os';
 import { parse } from 'node:url';
 import { loadEnvConfig } from '@next/env';
 import next from 'next';
@@ -32,12 +33,43 @@ import {
 
 const dev = process.env.NODE_ENV !== 'production';
 const port = Number(process.env.PORT ?? '3000');
+// Bind to all interfaces so the dev server is reachable from other devices on
+// the LAN (e.g. a phone on the same Wi-Fi). Override with HOST if needed.
+const host = process.env.HOST ?? '0.0.0.0';
+
+/** Non-internal IPv4 addresses of this machine, for the "open on your phone" hint. */
+function lanAddresses(): string[] {
+  const out: string[] = [];
+  for (const list of Object.values(networkInterfaces())) {
+    for (const ni of list ?? []) {
+      // Node may report `family` as 'IPv4' (string) or 4 (number) across versions.
+      const isIPv4 = ni.family === 'IPv4' || (ni.family as unknown) === 4;
+      if (isIPv4 && !ni.internal) out.push(ni.address);
+    }
+  }
+  return out;
+}
 
 async function main(): Promise<void> {
   // A standalone server does not get Next's automatic .env loading until later;
   // load it explicitly so server-side env (e.g. NEXTAUTH_SECRET, DATABASE_URL)
   // is available before anything reads it.
   loadEnvConfig(process.cwd());
+
+  // Dev convenience: a NEXTAUTH_URL pinned to localhost breaks auth when the app
+  // is opened from another device by LAN IP (NextAuth validates/redirects against
+  // that origin). In dev we drop a localhost value so NextAuth infers the origin
+  // per-request from the Host header — working for both localhost and the LAN IP.
+  // Never touched in production, where NEXTAUTH_URL must be set explicitly.
+  if (dev) {
+    const url = process.env.NEXTAUTH_URL;
+    if (
+      url !== undefined &&
+      /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(url)
+    ) {
+      delete process.env.NEXTAUTH_URL;
+    }
+  }
 
   const app = next({ dev });
   const handle = app.getRequestHandler();
@@ -103,8 +135,14 @@ async function main(): Promise<void> {
     });
   });
 
-  httpServer.listen(port, () => {
+  httpServer.listen(port, host, () => {
     console.info(`> Server ready on http://localhost:${port}`);
+    if (dev) {
+      for (const ip of lanAddresses()) {
+        console.info(`> On your network:  http://${ip}:${port}`);
+      }
+      console.info('> Open a network URL on your phone (same Wi-Fi) to test.');
+    }
   });
 }
 

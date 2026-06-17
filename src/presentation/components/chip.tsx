@@ -66,14 +66,20 @@ export function ChipStack({
     >
       {Array.from({ length: count }, (_, i) => (
         // Lowest disc at the bottom; each sits a little higher to read as height.
+        // Position/display are set inline so they beat the `.vc-chip` class
+        // (which sets position: relative and leaves the span display: inline,
+        // collapsing width/height to 0).
         <span
           key={i}
-          className="vc-chip absolute left-0"
+          className="vc-chip"
           style={
             {
+              position: 'absolute',
+              left: 0,
+              bottom: i * offset,
+              display: 'block',
               width: size,
               height: size,
-              bottom: i * offset,
               '--chip': tint,
             } as CSSProperties
           }
