@@ -40,6 +40,7 @@ class FakeRoomRepository implements RoomRepository {
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     return [...(this.members.get(roomId) ?? [])];
   }
+  async updateMemberChips(): Promise<void> {}
 }
 
 class FakeHandStore implements HandStore {

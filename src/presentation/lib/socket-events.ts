@@ -65,6 +65,14 @@ export interface PublicHandState {
   readonly totalPot: number;
 }
 
+/** Chips won per seat, broadcast on `hand:settled` after the banker settles. */
+export interface HandSettled {
+  readonly payouts: readonly {
+    readonly seat: number;
+    readonly amount: number;
+  }[];
+}
+
 export interface SocketError {
   readonly code: string;
   readonly message: string;

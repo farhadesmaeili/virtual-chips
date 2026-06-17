@@ -64,6 +64,18 @@ class FakeRoomRepository implements RoomRepository {
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     return [...(this.members.get(roomId) ?? [])];
   }
+
+  async updateMemberChips(
+    roomId: string,
+    userId: string,
+    chips: number,
+  ): Promise<void> {
+    const list = this.members.get(roomId) ?? [];
+    this.members.set(
+      roomId,
+      list.map((m) => (m.userId === userId ? { ...m, chips } : m)),
+    );
+  }
 }
 
 const fakeIds = () => {

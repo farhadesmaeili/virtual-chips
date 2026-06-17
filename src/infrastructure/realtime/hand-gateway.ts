@@ -1,8 +1,10 @@
 import type { HandStore } from '@/application/ports';
-import type { PlayerAct, StartHand } from '@/application/use-cases';
+import type { PlayerAct, SettleHand, StartHand } from '@/application/use-cases';
 import type { Hand } from '@/domain/entities';
 import { autoActionType, type ActionType } from '@/domain/engine';
+import type { PotDeclaration } from '@/domain/engine';
 import { toPublicHandState } from './hand-projection';
+import { toPublicRoomState } from './room-projection';
 import type { AppServer } from './socket-auth';
 
 /**
@@ -22,6 +24,7 @@ export class HandGateway {
     private readonly io: AppServer,
     private readonly startHand: StartHand,
     private readonly playerAct: PlayerAct,
+    private readonly settleHand: SettleHand,
     private readonly hands: HandStore,
   ) {}
 
@@ -59,6 +62,26 @@ export class HandGateway {
     });
     this.io.to(roomId).emit('pot:updated', { pots: state.pots });
     this.scheduleTimer(roomId, hand);
+  }
+
+  async settle(
+    roomId: string,
+    userId: string,
+    declarations?: readonly PotDeclaration[],
+  ): Promise<void> {
+    const { hand, payouts, snapshot } = await this.settleHand.execute({
+      roomId,
+      requesterId: userId,
+      declarations,
+    });
+    // A settled hand has no turn pending.
+    this.clear(roomId);
+    this.io.to(roomId).emit('hand:state', toPublicHandState(hand));
+    // Members' stacks changed — push the fresh room state too.
+    this.io.to(roomId).emit('room:state', toPublicRoomState(snapshot));
+    this.io.to(roomId).emit('hand:settled', {
+      payouts: [...payouts].map(([seat, amount]) => ({ seat, amount })),
+    });
   }
 
   /** Cancels a room's turn timer (e.g. when the room empties). */

@@ -1,6 +1,6 @@
 import type { HandGateway } from './hand-gateway';
 import type { RateLimiter } from './rate-limiter';
-import { handStartSchema, playerActSchema } from './schemas';
+import { handSettleSchema, handStartSchema, playerActSchema } from './schemas';
 import { emitError, handleError } from './socket-errors';
 import type { AppSocket } from './socket-auth';
 
@@ -30,6 +30,26 @@ export function registerHandHandlers(
       }
       try {
         await deps.gateway.start(parsed.data.roomId, userId);
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  socket.on('hand:settle', (payload: unknown) => {
+    void (async () => {
+      const parsed = handSettleSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid hand:settle payload');
+        return;
+      }
+      try {
+        // Banker-only; the use-case enforces authorization.
+        await deps.gateway.settle(
+          parsed.data.roomId,
+          userId,
+          parsed.data.declarations,
+        );
       } catch (error) {
         handleError(socket, error);
       }
