@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { chipColor, topDenomination } from './chip-denominations';
 
 /**
  * A semi-3D casino chip — the brand atom (vc-design). Pure CSS depth (layered
@@ -27,6 +28,63 @@ export function Chip({
           {label}
         </span>
       )}
+    </span>
+  );
+}
+
+/**
+ * A short physical stack of chips, tinted by the amount's top denomination
+ * (vc-design: stacks read as height via translateY offsets). Used for bets in
+ * front of a seat and for the pot; the whole stack is one transform target so
+ * Phase 5 can spring it to the pot / winner.
+ */
+export function ChipStack({
+  amount,
+  size = 18,
+  height = 3,
+  color,
+  className,
+}: {
+  amount: number;
+  /** Diameter of each chip disc. */
+  size?: number;
+  /** Number of discs to stack (visual height, not exact change). */
+  height?: number;
+  /** Override tint (e.g. gold for the pot); defaults to the top denomination. */
+  color?: string;
+  className?: string;
+}): React.ReactElement {
+  const tint = color ?? chipColor(topDenomination(amount));
+  const offset = Math.max(2, Math.round(size * 0.16));
+  const count = Math.max(1, height);
+
+  return (
+    <span
+      aria-hidden
+      className={`relative inline-block ${className ?? ''}`}
+      style={{ width: size, height: size + (count - 1) * offset }}
+    >
+      {Array.from({ length: count }, (_, i) => (
+        // Lowest disc at the bottom; each sits a little higher to read as height.
+        // Position/display are set inline so they beat the `.vc-chip` class
+        // (which sets position: relative and leaves the span display: inline,
+        // collapsing width/height to 0).
+        <span
+          key={i}
+          className="vc-chip"
+          style={
+            {
+              position: 'absolute',
+              left: 0,
+              bottom: i * offset,
+              display: 'block',
+              width: size,
+              height: size,
+              '--chip': tint,
+            } as CSSProperties
+          }
+        />
+      ))}
     </span>
   );
 }

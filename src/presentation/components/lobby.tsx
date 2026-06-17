@@ -47,6 +47,13 @@ export function Lobby(): React.ReactElement {
     };
     const onError = (err: SocketError): void => {
       cleanup();
+      // Already a member? You're not locked out — just take a seat at that
+      // table. (Membership persists, so re-entering a code is a normal way back
+      // in, not an error.)
+      if (err.code === 'ALREADY_IN_ROOM' && event.type === 'room:join') {
+        router.push(`/room/${event.payload.roomId}`);
+        return;
+      }
       setBusy(false);
       setError(friendlyError(err.code, err.message));
     };

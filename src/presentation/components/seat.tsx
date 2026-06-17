@@ -1,6 +1,6 @@
 'use client';
 
-import { Chip } from './chip';
+import { ChipStack } from './chip';
 import type { SeatSlot } from './seat-layout';
 import type {
   PublicHandPlayer,
@@ -59,18 +59,19 @@ export function Seat({
             }`}
           >
             {/* Bet chips sit on the felt between the seat and the pot; in Phase 5
-                they spring to the center. */}
+                the whole `.vc-bet` stack springs to the center. The stack is
+                tinted by the bet's top chip denomination. */}
             {bet > 0 && (
               <div
-                className="vc-bet absolute -top-1 left-1/2 flex -translate-x-1/2 -translate-y-full items-center gap-1"
+                className="vc-bet absolute -top-1 left-1/2 flex -translate-x-1/2 -translate-y-full items-center gap-1.5"
                 style={{
-                  transform: `translate(calc(-50% + ${slot.towardCenter.x * 26}px), ${
-                    slot.towardCenter.y * 26
+                  transform: `translate(calc(-50% + ${slot.towardCenter.x * 28}px), ${
+                    slot.towardCenter.y * 28
                   }px)`,
                 }}
               >
-                <Chip size={18} color="var(--vc-chip-25)" />
-                <span className="font-mono text-xs font-semibold tabular-nums text-vc-gold">
+                <ChipStack amount={bet} size={16} height={3} />
+                <span className="font-mono text-xs font-semibold tabular-nums text-vc-gold [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]">
                   {bet.toLocaleString()}
                 </span>
               </div>
