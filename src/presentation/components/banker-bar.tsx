@@ -5,6 +5,8 @@ import { motion } from 'framer-motion';
 export interface BankerBarProps {
   /** Whether a hand is currently in play (controls are limited until it ends). */
   readonly handInPlay: boolean;
+  /** True once a hand has been settled — the deal button reads "Start next hand". */
+  readonly resuming: boolean;
   /** True while a start request awaits the next hand state. */
   readonly pending: boolean;
   /** A friendly error to surface here (e.g. a failed deal), or null. */
@@ -20,6 +22,7 @@ export interface BankerBarProps {
  */
 export function BankerBar({
   handInPlay,
+  resuming,
   pending,
   error,
   onStartHand,
@@ -40,7 +43,7 @@ export function BankerBar({
             onClick={onStartHand}
             className="rounded-lg border border-vc-gold/50 bg-vc-gold/10 px-4 py-1.5 text-sm font-semibold text-vc-gold transition hover:bg-vc-gold/20 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Start hand
+            {resuming ? 'Start next hand' : 'Start hand'}
           </motion.button>
         )}
       </div>

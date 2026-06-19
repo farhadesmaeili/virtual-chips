@@ -154,6 +154,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
           {heroIsBanker && hand?.status !== 'awaiting_showdown' && (
             <BankerBar
               handInPlay={handInPlay}
+              resuming={hand?.status === 'settled'}
               pending={pending}
               error={actionError}
               onStartHand={startHand}
