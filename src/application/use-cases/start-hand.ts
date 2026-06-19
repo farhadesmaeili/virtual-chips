@@ -10,7 +10,11 @@ import {
   isBanker,
   type Hand,
 } from '@/domain/entities';
-import { firstActiveAfterButton } from '@/domain/engine';
+import {
+  firstActiveAfterButton,
+  firstButtonSeat,
+  nextButtonSeat,
+} from '@/domain/engine';
 import {
   HandInProgressError,
   NotBankerError,
@@ -25,8 +29,9 @@ export interface StartHandInput {
 
 /**
  * Starts a new hand. Only the banker may start one. Funded members (chips > 0)
- * are dealt in; the button is the lowest occupied seat (static rotation for
- * now) and the first actor is the seat to its left. No blinds are posted yet.
+ * are dealt in; the first actor is the seat to the button's left. The button is
+ * the lowest occupied seat for the first hand, then rotates clockwise to the
+ * next occupied seat after each settled hand. No blinds are posted yet.
  */
 export class StartHand {
   constructor(
@@ -53,7 +58,13 @@ export class StartHand {
     const players = funded.map((m) =>
       createPlayerInHand({ seat: m.seat, userId: m.userId, stack: m.chips }),
     );
-    const buttonSeat = Math.min(...funded.map((m) => m.seat));
+    const fundedSeats = funded.map((m) => m.seat);
+    // First hand: lowest seat. Subsequent hands rotate the button clockwise from
+    // the previous (settled) hand's button.
+    const buttonSeat =
+      existing === null
+        ? firstButtonSeat(fundedSeats)
+        : nextButtonSeat(fundedSeats, existing.buttonSeat);
     const minBet = room.settings.bigBlind;
 
     const base = createHand({

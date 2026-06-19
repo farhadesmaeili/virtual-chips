@@ -147,6 +147,32 @@ describe('StartHand', () => {
     ).rejects.toThrow(NotEnoughPlayersError);
   });
 
+  it('rotates the dealer button clockwise across settled hands', async () => {
+    rooms.seedRoom(room, [
+      member('banker', 0, 100),
+      member('bob', 1, 100),
+      member('carol', 2, 100),
+    ]);
+    const start = new StartHand(rooms, store, ids(), clock);
+
+    const h1 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    expect(h1.buttonSeat).toBe(0); // first hand: lowest seat
+
+    // Settle each hand so the next one may start, and check the button moves.
+    await store.save('r1', { ...h1, status: 'settled' });
+    const h2 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    expect(h2.buttonSeat).toBe(1);
+    expect(h2.actingSeat).toBe(2); // first active left of the new button
+
+    await store.save('r1', { ...h2, status: 'settled' });
+    const h3 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    expect(h3.buttonSeat).toBe(2);
+
+    await store.save('r1', { ...h3, status: 'settled' });
+    const h4 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    expect(h4.buttonSeat).toBe(0); // wraps back to the lowest seat
+  });
+
   it('rejects starting while a hand is in progress', async () => {
     rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
     const start = new StartHand(rooms, store, ids(), clock);
