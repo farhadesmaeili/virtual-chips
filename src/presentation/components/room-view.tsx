@@ -9,6 +9,7 @@ import { BankerBar } from './banker-bar';
 import { PokerTable } from './poker-table';
 import { ShowdownControls } from './showdown-controls';
 import { StreetControls } from './street-controls';
+import { TurnBanner } from './turn-banner';
 import { getSocket } from '@/presentation/lib/socket';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import type {
@@ -168,6 +169,8 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               onStartHand={startHand}
             />
           )}
+
+          <TurnBanner hand={hand} members={room.members} heroSeat={heroSeat} />
 
           <PokerTable room={room} hand={hand} />
 
