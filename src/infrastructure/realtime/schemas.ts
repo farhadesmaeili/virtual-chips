@@ -2,14 +2,26 @@ import { z } from 'zod';
 
 /** Zod schemas for socket payloads (docs/REALTIME-EVENTS.md). */
 
+/** Sane upper bound for a blind so a typo can't open an absurd table. */
+const MAX_BLIND = 1_000_000;
+
 export const roomSettingsSchema = z
   .object({
-    smallBlind: z.number().int().positive().optional(),
-    bigBlind: z.number().int().positive().optional(),
+    smallBlind: z.number().int().positive().max(MAX_BLIND).optional(),
+    bigBlind: z.number().int().positive().max(MAX_BLIND).optional(),
     actionTimeoutMs: z.number().int().min(1000).optional(),
     settlementMode: z.enum(['banker', 'showdown']).optional(),
   })
-  .strict();
+  .strict()
+  // Server is authoritative: when both blinds are given, the big blind must be
+  // strictly greater than the small blind (client validation is UX only).
+  .refine(
+    (s) =>
+      s.smallBlind === undefined ||
+      s.bigBlind === undefined ||
+      s.bigBlind > s.smallBlind,
+    { message: 'bigBlind must be greater than smallBlind', path: ['bigBlind'] },
+  );
 
 export const createRoomSchema = z
   .object({
