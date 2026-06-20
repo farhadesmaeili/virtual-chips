@@ -6,7 +6,7 @@ import type {
 } from '@/application/use-cases';
 import { toPublicHandState } from './hand-projection';
 import type { RateLimiter } from './rate-limiter';
-import { toPublicRoomState } from './room-projection';
+import { toPublicChipRequest, toPublicRoomState } from './room-projection';
 import {
   createRoomSchema,
   joinRoomSchema,
@@ -118,7 +118,7 @@ export function registerRoomHandlers(
         return;
       }
       try {
-        const { snapshot, hand } = await deps.resyncRoom.execute({
+        const { snapshot, hand, chipRequests } = await deps.resyncRoom.execute({
           userId,
           roomId: parsed.data.roomId,
         });
@@ -127,6 +127,9 @@ export function registerRoomHandlers(
         if (hand !== null) {
           socket.emit('hand:state', toPublicHandState(hand));
         }
+        socket.emit('chips:requests', {
+          requests: chipRequests.map(toPublicChipRequest),
+        });
       } catch (error) {
         handleError(socket, error);
       }

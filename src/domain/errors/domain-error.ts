@@ -24,7 +24,9 @@ export type DomainErrorCode =
   | 'INVALID_RAISE'
   | 'HAND_NOT_IN_BETTING'
   | 'NOT_BANKER'
-  | 'INVALID_SETTLEMENT';
+  | 'INVALID_SETTLEMENT'
+  | 'CHIP_REQUEST_NOT_FOUND'
+  | 'CHIP_REQUEST_PENDING';
 
 export abstract class DomainError extends Error {
   /** Stable, machine-readable error code (e.g. `INSUFFICIENT_CHIPS`). */
@@ -211,5 +213,25 @@ export class InvalidSettlementError extends DomainError {
 
   constructor(message: string) {
     super(`Invalid settlement: ${message}`);
+  }
+}
+
+// --- Chip requests / buy-ins ---
+
+/** Thrown when a chip request to approve/reject no longer exists. */
+export class ChipRequestNotFoundError extends DomainError {
+  readonly code = 'CHIP_REQUEST_NOT_FOUND';
+
+  constructor(readonly requestId?: string) {
+    super('That chip request no longer exists');
+  }
+}
+
+/** Thrown when a player already has a chip request awaiting the banker. */
+export class ChipRequestPendingError extends DomainError {
+  readonly code = 'CHIP_REQUEST_PENDING';
+
+  constructor() {
+    super('You already have a chip request waiting for the banker');
   }
 }

@@ -1,4 +1,9 @@
-import type { HandStore, RoomRepository } from '@/application/ports';
+import type {
+  ChipRequest,
+  ChipRequestStore,
+  HandStore,
+  RoomRepository,
+} from '@/application/ports';
 import type { Hand } from '@/domain/entities';
 import { NotRoomMemberError, RoomNotFoundError } from '@/domain/errors';
 import { toRoomSnapshot, type RoomSnapshot } from './room-snapshot';
@@ -12,17 +17,21 @@ export interface ResyncRoomResult {
   readonly snapshot: RoomSnapshot;
   /** The current live hand, or null when no hand is in progress. */
   readonly hand: Hand | null;
+  /** Pending chip requests, so a reconnecting banker still sees the queue. */
+  readonly chipRequests: ChipRequest[];
 }
 
 /**
- * Returns the current room snapshot and live hand for a reconnecting client.
- * Authorization: only a member of the room may resync to it. Read-only — it
- * never mutates state or the turn timer, so it cannot create a zombie timer.
+ * Returns the current room snapshot, live hand and pending chip requests for a
+ * reconnecting client. Authorization: only a member of the room may resync to
+ * it. Read-only — it never mutates state or the turn timer, so it cannot create
+ * a zombie timer.
  */
 export class ResyncRoom {
   constructor(
     private readonly rooms: RoomRepository,
     private readonly hands: HandStore,
+    private readonly chipRequests: ChipRequestStore,
   ) {}
 
   async execute({
@@ -38,6 +47,7 @@ export class ResyncRoom {
     }
 
     const hand = await this.hands.get(roomId);
-    return { snapshot: toRoomSnapshot(room, members), hand };
+    const chipRequests = await this.chipRequests.listByRoom(roomId);
+    return { snapshot: toRoomSnapshot(room, members), hand, chipRequests };
   }
 }

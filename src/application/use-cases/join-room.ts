@@ -5,7 +5,6 @@ import {
   RoomFullError,
   RoomNotFoundError,
 } from '@/domain/errors';
-import { DEFAULT_BUY_IN } from './funding';
 import { toRoomSnapshot, type RoomSnapshot } from './room-snapshot';
 
 export interface JoinRoomInput {
@@ -35,9 +34,10 @@ export class JoinRoom {
     await this.rooms.addMember(roomId, {
       userId,
       seat,
-      // Temporary default buy-in until task 4.6 adds banker-controlled buy-ins.
-      buyInTotal: DEFAULT_BUY_IN,
-      chips: DEFAULT_BUY_IN,
+      // Players sit with no chips; the banker funds them via chip requests
+      // (task 4.15). They can't be dealt in until funded.
+      buyInTotal: 0,
+      chips: 0,
     });
     const updated = await this.rooms.listMembers(roomId);
     return toRoomSnapshot(room, updated);

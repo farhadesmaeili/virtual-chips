@@ -12,7 +12,6 @@ import {
 } from '@/domain/errors';
 import { MAX_SEATS, type Room, type RoomStatus } from '@/domain/entities';
 import { CreateRoom } from './create-room';
-import { DEFAULT_BUY_IN } from './funding';
 import { JoinRoom } from './join-room';
 import { LeaveRoom } from './leave-room';
 
@@ -76,6 +75,22 @@ class FakeRoomRepository implements RoomRepository {
       list.map((m) => (m.userId === userId ? { ...m, chips } : m)),
     );
   }
+
+  async addMemberFunding(
+    roomId: string,
+    userId: string,
+    amount: number,
+  ): Promise<void> {
+    const list = this.members.get(roomId) ?? [];
+    this.members.set(
+      roomId,
+      list.map((m) =>
+        m.userId === userId
+          ? { ...m, chips: m.chips + amount, buyInTotal: m.buyInTotal + amount }
+          : m,
+      ),
+    );
+  }
 }
 
 const fakeIds = () => {
@@ -104,8 +119,8 @@ describe('CreateRoom', () => {
         userId: 'banker',
         username: 'bankerName',
         seat: 0,
-        chips: DEFAULT_BUY_IN,
-        buyInTotal: DEFAULT_BUY_IN,
+        chips: 0, // unfunded until the banker approves a chip request (4.15)
+        buyInTotal: 0,
       },
     ]);
   });
@@ -135,8 +150,8 @@ describe('JoinRoom', () => {
     expect(snap.members.map((m) => m.seat)).toEqual([0, 1]);
     const bob = snap.members.find((m) => m.userId === 'bob');
     expect(bob?.seat).toBe(1);
-    // Seating grants the temporary default buy-in so hands can be dealt.
-    expect(bob?.chips).toBe(DEFAULT_BUY_IN);
+    // Players sit unfunded; the banker funds them via chip requests (4.15).
+    expect(bob?.chips).toBe(0);
   });
 
   it('fills the lowest free seat (gaps first)', async () => {

@@ -2,10 +2,11 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActionPanel } from './action-panel';
 import { deriveActions, type ActionKind } from './action-availability';
 import { BankerBar } from './banker-bar';
+import { FundingControls } from './funding-controls';
 import { PokerTable } from './poker-table';
 import { ShowdownControls } from './showdown-controls';
 import { StreetControls } from './street-controls';
@@ -13,7 +14,9 @@ import { TurnBanner } from './turn-banner';
 import { getSocket } from '@/presentation/lib/socket';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import type {
+  ChipRequestList,
   HandSettled,
+  PublicChipRequest,
   PublicHandState,
   PublicRoomState,
   SocketError,
@@ -28,7 +31,13 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   const [hand, setHand] = useState<PublicHandState | null>(null);
   const [pending, setPending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [fundingError, setFundingError] = useState<string | null>(null);
   const [payouts, setPayouts] = useState<HandSettled['payouts'] | null>(null);
+  const [chipRequests, setChipRequests] = useState<
+    readonly PublicChipRequest[]
+  >([]);
+  // Which control owns the next error: a betting/hand action or a funding one.
+  const intent = useRef<'action' | 'funding'>('action');
 
   useEffect(() => {
     const socket = getSocket();
@@ -45,13 +54,21 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
       setPending(false);
       setPayouts(result.payouts);
     };
+    const onRequests = (list: ChipRequestList): void => {
+      setChipRequests(list.requests);
+      setPending(false);
+      setFundingError(null);
+    };
     const onError = (err: SocketError): void => {
       setPending(false);
-      setActionError(friendlyError(err.code, err.message));
+      const message = friendlyError(err.code, err.message);
+      if (intent.current === 'funding') setFundingError(message);
+      else setActionError(message);
     };
     socket.on('room:state', onState);
     socket.on('hand:state', onHand);
     socket.on('hand:settled', onSettled);
+    socket.on('chips:requests', onRequests);
     socket.on('error', onError);
 
     // Ask for the current snapshot (works on first load and on reconnect).
@@ -65,6 +82,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
       socket.off('room:state', onState);
       socket.off('hand:state', onHand);
       socket.off('hand:settled', onSettled);
+      socket.off('chips:requests', onRequests);
       socket.off('error', onError);
       socket.off('session:ready', resync);
     };
@@ -78,6 +96,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
 
   const act = useCallback(
     (action: ActionKind, amount?: number): void => {
+      intent.current = 'action';
       setPending(true);
       setActionError(null);
       getSocket().emit('player:act', { roomId, action, amount });
@@ -86,6 +105,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   );
 
   const startHand = useCallback((): void => {
+    intent.current = 'action';
     setPending(true);
     setActionError(null);
     getSocket().emit('hand:start', { roomId });
@@ -93,6 +113,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
 
   const settle = useCallback(
     (declarations: number[][]): void => {
+      intent.current = 'action';
       setPending(true);
       setActionError(null);
       getSocket().emit('hand:settle', { roomId, declarations });
@@ -101,16 +122,49 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   );
 
   const dealStreet = useCallback((): void => {
+    intent.current = 'action';
     setPending(true);
     setActionError(null);
     getSocket().emit('hand:advance-street', { roomId });
   }, [roomId]);
 
+  const requestChips = useCallback(
+    (amount: number): void => {
+      intent.current = 'funding';
+      setPending(true);
+      setFundingError(null);
+      getSocket().emit('chips:request', { roomId, amount });
+    },
+    [roomId],
+  );
+
+  const approveChips = useCallback(
+    (requestId: string): void => {
+      intent.current = 'funding';
+      setPending(true);
+      setFundingError(null);
+      getSocket().emit('chips:approve', { roomId, requestId });
+    },
+    [roomId],
+  );
+
+  const rejectChips = useCallback(
+    (requestId: string): void => {
+      intent.current = 'funding';
+      setPending(true);
+      setFundingError(null);
+      getSocket().emit('chips:reject', { roomId, requestId });
+    },
+    [roomId],
+  );
+
   // A live hand blocks dealing; treat a settled hand as no hand in play.
   const handInPlay = hand !== null && hand.status !== 'settled';
-  const heroIsBanker =
-    heroSeat !== null &&
-    (room?.members.find((m) => m.seat === heroSeat)?.isBanker ?? false);
+  const heroMember =
+    heroSeat === null
+      ? undefined
+      : room?.members.find((m) => m.seat === heroSeat);
+  const heroIsBanker = heroMember?.isBanker ?? false;
 
   const availability = deriveActions(
     hand,
@@ -225,6 +279,18 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               onAct={act}
             />
           )}
+
+          <FundingControls
+            requests={chipRequests}
+            heroSeat={heroSeat}
+            heroChips={heroMember?.chips ?? 0}
+            isBanker={heroIsBanker}
+            pending={pending}
+            error={fundingError}
+            onRequest={requestChips}
+            onApprove={approveChips}
+            onReject={rejectChips}
+          />
         </motion.div>
       )}
     </main>

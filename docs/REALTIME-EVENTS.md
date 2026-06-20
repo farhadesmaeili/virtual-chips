@@ -12,6 +12,9 @@
 | `banker:buyin`         | `{ roomId, targetUserId, amount }` | banker        | کنترل خرید ژتون           |
 | `hand:start`           | `{ roomId }`                       | banker        | شروع دست جدید             |
 | `hand:advance-street`  | `{ roomId }`                       | banker        | دیل مرحله‌ی بعد (4.7)     |
+| `chips:request`        | `{ roomId, amount }`               | member        | درخواست buy-in (4.15)     |
+| `chips:approve`        | `{ roomId, requestId }`            | banker        | تأیید درخواست chips       |
+| `chips:reject`         | `{ roomId, requestId }`            | banker        | رد درخواست chips          |
 | `player:act`           | `{ roomId, action, amount? }`      | acting player | اکشن بتینگ                |
 | `banker:declareWinner` | `{ roomId, potId, winnerSeats[] }` | banker        | تعیین برنده‌ی pot         |
 | `player:claim`         | `{ roomId, claim: 'win'            | 'muck' }`     | active player             | showdown mode |
@@ -27,6 +30,7 @@
 | `action:applied` | `{ seat, action, amount }`       | برای انیمیشن/لاگ                  |
 | `pot:updated`    | `{ pots }`                       | تغییر pot/side-pot                |
 | `hand:settled`   | `{ awards[] }`                   | نتیجه‌ی دست (برای انیمیشن برد)    |
+| `chips:requests` | `{ requests[] }`                 | صفِ درخواست‌های buy-in (4.15)     |
 | `game:ended`     | `{ settlement }`                 | net هر بازیکن                     |
 | `error`          | `{ code, message }`              | خطای دامنه‌ی map شده              |
 

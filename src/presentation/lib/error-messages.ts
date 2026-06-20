@@ -20,6 +20,10 @@ const MESSAGES: Readonly<Record<string, string>> = {
   HAND_IN_PROGRESS: 'A hand is already in play.',
   NOT_BANKER: 'Only the banker can do that.',
   INVALID_SETTLEMENT: 'Pick a winner for each contested pot first.',
+  // Chip requests / buy-ins (task 4.15)
+  INVALID_CHIPS_AMOUNT: 'Enter a whole number of chips above zero.',
+  CHIP_REQUEST_PENDING: 'You already have a request waiting for the banker.',
+  CHIP_REQUEST_NOT_FOUND: 'That request is no longer waiting.',
 };
 
 /** Returns a friendly message for an error code, falling back to a default. */
