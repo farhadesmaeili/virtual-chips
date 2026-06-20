@@ -52,6 +52,17 @@ describe('createRoom', () => {
     ).toThrow(InvalidRoomSettingsError);
   });
 
+  it('rejects bigBlind equal to smallBlind', () => {
+    expect(() =>
+      createRoom({
+        id: 'r',
+        name: 'n',
+        bankerId: 'b',
+        settings: { smallBlind: 5, bigBlind: 5 },
+      }),
+    ).toThrow(InvalidRoomSettingsError);
+  });
+
   it('rejects a too-small action timeout', () => {
     expect(() =>
       createRoom({

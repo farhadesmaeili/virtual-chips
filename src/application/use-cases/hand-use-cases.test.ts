@@ -137,9 +137,15 @@ describe('StartHand', () => {
     });
     expect(hand.status).toBe('betting');
     expect(hand.buttonSeat).toBe(0);
-    expect(hand.actingSeat).toBe(1); // first active left of button
+    // 3-handed: SB=seat1, BB=seat2, first actor=seat0 (left of the BB).
+    expect(hand.actingSeat).toBe(0);
     expect(hand.players.map((p) => p.seat)).toEqual([0, 1, 2]);
+    expect(hand.currentBet).toBe(10); // big blind posted
     expect(hand.lastRaiseSize).toBe(10); // minBet = bigBlind
+    expect(hand.players.find((p) => p.seat === 1)?.committedThisStreet).toBe(5);
+    expect(hand.players.find((p) => p.seat === 2)?.committedThisStreet).toBe(
+      10,
+    );
     // deadline = now + actionTimeoutMs (default 30000)
     expect(hand.actionDeadline).toBe(NOW + 30000);
   });
@@ -179,7 +185,8 @@ describe('StartHand', () => {
     await store.save('r1', { ...h1, status: 'settled' });
     const h2 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
     expect(h2.buttonSeat).toBe(1);
-    expect(h2.actingSeat).toBe(2); // first active left of the new button
+    // Button 1 → SB=seat2, BB=seat0, first actor=seat1 (left of the BB).
+    expect(h2.actingSeat).toBe(1);
 
     await store.save('r1', { ...h2, status: 'settled' });
     const h3 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
@@ -216,44 +223,45 @@ describe('PlayerAct', () => {
   it('applies an action and advances the turn clockwise', async () => {
     await startedHand();
     const act = new PlayerAct(rooms, store, clock);
-    // seat 1 acts first (left of button); check is allowed (currentBet 0).
+    // Preflop with blinds posted: seat 0 (button) acts first and owes the BB.
     const result = await act.execute({
       roomId: 'r1',
-      userId: 'bob',
-      action: { type: 'CHECK' },
+      userId: 'banker',
+      action: { type: 'CALL' },
     });
     expect(result.applied).toEqual({
-      seat: 1,
-      type: 'CHECK',
+      seat: 0,
+      type: 'CALL',
       amount: undefined,
     });
-    expect(result.hand.actingSeat).toBe(2); // turn moved to seat 2
+    expect(result.hand.actingSeat).toBe(1); // turn moved to the small blind
     expect(result.hand.actionDeadline).toBe(NOW + 30000); // deadline refreshed
   });
 
-  it('lets a bet then a call update the pot and move the turn', async () => {
+  it('lets a raise then a call update the bet and move the turn', async () => {
     await startedHand();
     const act = new PlayerAct(rooms, store, clock);
+    // Button (seat 0) raises to 20 over the big blind of 10.
     await act.execute({
       roomId: 'r1',
-      userId: 'bob',
-      action: { type: 'BET', amount: 20 },
+      userId: 'banker',
+      action: { type: 'RAISE', amount: 20 },
     });
     const afterCall = await act.execute({
       roomId: 'r1',
-      userId: 'carol',
+      userId: 'bob',
       action: { type: 'CALL' },
     });
     expect(afterCall.hand.currentBet).toBe(20);
-    const carol = afterCall.hand.players.find((p) => p.seat === 2);
-    expect(carol?.committedThisStreet).toBe(20);
-    expect(afterCall.hand.actingSeat).toBe(0); // back to the button player
+    const bob = afterCall.hand.players.find((p) => p.seat === 1);
+    expect(bob?.committedThisStreet).toBe(20);
+    expect(afterCall.hand.actingSeat).toBe(2); // turn to the big blind
   });
 
   it('rejects acting out of turn', async () => {
     await startedHand();
     const act = new PlayerAct(rooms, store, clock);
-    // seat 1 is to act; carol (seat 2) tries to act.
+    // seat 0 (button) is to act; carol (seat 2) tries to act.
     await expect(
       act.execute({ roomId: 'r1', userId: 'carol', action: { type: 'CHECK' } }),
     ).rejects.toThrow(NotYourTurnError);

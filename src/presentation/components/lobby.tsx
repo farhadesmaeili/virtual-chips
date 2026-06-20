@@ -13,7 +13,13 @@ import type {
 import { useConnectionStore } from '@/presentation/stores/connection-store';
 
 type RoomEvent =
-  | { type: 'room:create'; payload: { name: string } }
+  | {
+      type: 'room:create';
+      payload: {
+        name: string;
+        settings: { smallBlind: number; bigBlind: number };
+      };
+    }
   | { type: 'room:join'; payload: { roomId: string } };
 
 const fieldClass =
@@ -25,11 +31,20 @@ export function Lobby(): React.ReactElement {
   const { data: session } = useSession();
   const status = useConnectionStore((s) => s.status);
   const [name, setName] = useState('');
+  const [smallBlind, setSmallBlind] = useState('1');
+  const [bigBlind, setBigBlind] = useState('2');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const connected = status === 'connected';
+
+  const sb = Number(smallBlind);
+  const bb = Number(bigBlind);
+  // Client-side validation is UX only; the server (Zod + domain) is the
+  // authority on blind values.
+  const blindsValid =
+    Number.isInteger(sb) && Number.isInteger(bb) && sb > 0 && bb > sb;
 
   function run(event: RoomEvent): void {
     if (!connected || busy) return;
@@ -108,9 +123,52 @@ export function Lobby(): React.ReactElement {
           maxLength={60}
           className={fieldClass}
         />
+        <div className="flex gap-3">
+          <label className="flex flex-1 flex-col gap-1.5">
+            <span className="text-[11px] uppercase tracking-[0.08em] text-vc-ink-faint">
+              Small blind
+            </span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              value={smallBlind}
+              onChange={(e) => setSmallBlind(e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+          <label className="flex flex-1 flex-col gap-1.5">
+            <span className="text-[11px] uppercase tracking-[0.08em] text-vc-ink-faint">
+              Big blind
+            </span>
+            <input
+              type="number"
+              min={2}
+              step={1}
+              inputMode="numeric"
+              value={bigBlind}
+              onChange={(e) => setBigBlind(e.target.value)}
+              className={fieldClass}
+            />
+          </label>
+        </div>
+        {!blindsValid && (smallBlind !== '' || bigBlind !== '') && (
+          <p className="text-xs text-vc-ink-faint">
+            Blinds must be whole numbers with the big blind larger than the
+            small blind.
+          </p>
+        )}
         <button
-          onClick={() => run({ type: 'room:create', payload: { name } })}
-          disabled={!connected || busy || name.trim().length === 0}
+          onClick={() =>
+            run({
+              type: 'room:create',
+              payload: { name, settings: { smallBlind: sb, bigBlind: bb } },
+            })
+          }
+          disabled={
+            !connected || busy || name.trim().length === 0 || !blindsValid
+          }
           className="rounded-xl bg-vc-emerald px-4 py-3 font-semibold text-vc-felt-edge shadow-[0_8px_20px_-6px_rgb(52_211_153/0.5)] transition hover:bg-vc-emerald/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
           Deal me in

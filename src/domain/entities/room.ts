@@ -59,9 +59,9 @@ function validateSettings(s: RoomSettings): void {
   if (s.smallBlind < 1) {
     throw new InvalidRoomSettingsError('smallBlind must be at least 1');
   }
-  if (s.bigBlind < s.smallBlind) {
+  if (s.bigBlind <= s.smallBlind) {
     throw new InvalidRoomSettingsError(
-      'bigBlind must be greater than or equal to smallBlind',
+      'bigBlind must be greater than smallBlind',
     );
   }
   if (!Number.isInteger(s.actionTimeoutMs) || s.actionTimeoutMs < 1000) {
