@@ -30,6 +30,7 @@ const room: PublicRoomState = {
       chips: 3400,
       buyInTotal: 4000,
       isBanker: false,
+      sittingOut: false,
     },
     {
       seat: 1,
@@ -37,17 +38,19 @@ const room: PublicRoomState = {
       chips: 2120,
       buyInTotal: 2000,
       isBanker: true,
+      sittingOut: false,
     },
-    { seat: 2, username: 'Devon Park', chips: 980, buyInTotal: 2000, isBanker: false }, // prettier-ignore
+    { seat: 2, username: 'Devon Park', chips: 980, buyInTotal: 2000, isBanker: false, sittingOut: false }, // prettier-ignore
     {
       seat: 4,
       username: 'Ines',
       chips: 5600,
       buyInTotal: 4000,
       isBanker: false,
+      sittingOut: false,
     },
-    { seat: 5, username: 'Kofi', chips: 0, buyInTotal: 2000, isBanker: false },
-    { seat: 7, username: 'Lena R', chips: 1750, buyInTotal: 2000, isBanker: false }, // prettier-ignore
+    { seat: 5, username: 'Kofi', chips: 0, buyInTotal: 2000, isBanker: false, sittingOut: true }, // prettier-ignore
+    { seat: 7, username: 'Lena R', chips: 1750, buyInTotal: 2000, isBanker: false, sittingOut: false }, // prettier-ignore
   ],
 };
 

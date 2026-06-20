@@ -3,6 +3,8 @@ import type {
   JoinRoom,
   LeaveRoom,
   ResyncRoom,
+  SitIn,
+  SitOut,
 } from '@/application/use-cases';
 import { toPublicHandState } from './hand-projection';
 import type { RateLimiter } from './rate-limiter';
@@ -12,6 +14,8 @@ import {
   joinRoomSchema,
   leaveRoomSchema,
   resyncRoomSchema,
+  sitInSchema,
+  sitOutSchema,
 } from './schemas';
 import { emitError, handleError } from './socket-errors';
 import type { AppServer, AppSocket } from './socket-auth';
@@ -20,6 +24,8 @@ export interface RoomHandlerDeps {
   readonly createRoom: CreateRoom;
   readonly joinRoom: JoinRoom;
   readonly leaveRoom: LeaveRoom;
+  readonly sitOut: SitOut;
+  readonly sitIn: SitIn;
   readonly resyncRoom: ResyncRoom;
   /** Rate limiter for the expensive room:create action. */
   readonly createLimiter: RateLimiter;
@@ -92,7 +98,7 @@ export function registerRoomHandlers(
       }
       try {
         const snapshot = await deps.leaveRoom.execute({
-          userId,
+          requesterId: userId,
           roomId: parsed.data.roomId,
         });
         await socket.leave(parsed.data.roomId);
@@ -100,6 +106,46 @@ export function registerRoomHandlers(
         // Update the remaining members, and ack the leaver.
         io.to(snapshot.id).emit('room:state', state);
         socket.emit('room:state', state);
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  // Sit out / sit in: keep the seat, but skip new hands until back in. The
+  // acting user is the authenticated socket user (never the payload).
+  socket.on('room:sit-out', (payload: unknown) => {
+    void (async () => {
+      const parsed = sitOutSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid room:sit-out payload');
+        return;
+      }
+      try {
+        const snapshot = await deps.sitOut.execute({
+          requesterId: userId,
+          roomId: parsed.data.roomId,
+        });
+        io.to(snapshot.id).emit('room:state', toPublicRoomState(snapshot));
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  socket.on('room:sit-in', (payload: unknown) => {
+    void (async () => {
+      const parsed = sitInSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid room:sit-in payload');
+        return;
+      }
+      try {
+        const snapshot = await deps.sitIn.execute({
+          requesterId: userId,
+          roomId: parsed.data.roomId,
+        });
+        io.to(snapshot.id).emit('room:state', toPublicRoomState(snapshot));
       } catch (error) {
         handleError(socket, error);
       }

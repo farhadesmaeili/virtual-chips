@@ -2,12 +2,14 @@
 
 import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActionPanel } from './action-panel';
 import { deriveActions, type ActionKind } from './action-availability';
 import { BankerBar } from './banker-bar';
 import { FundingControls } from './funding-controls';
 import { PokerTable } from './poker-table';
+import { PresenceControls } from './presence-controls';
 import { ShowdownControls } from './showdown-controls';
 import { StreetControls } from './street-controls';
 import { TurnBanner } from './turn-banner';
@@ -25,6 +27,7 @@ import { useConnectionStore } from '@/presentation/stores/connection-store';
 
 export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   const reduce = useReducedMotion();
+  const router = useRouter();
   const status = useConnectionStore((s) => s.status);
   const user = useConnectionStore((s) => s.user);
   const [room, setRoom] = useState<PublicRoomState | null>(null);
@@ -38,10 +41,31 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   >([]);
   // Which control owns the next error: a betting/hand action or a funding one.
   const intent = useRef<'action' | 'funding'>('action');
+  // Set while a leave is in flight, so only the leaver returns to the lobby
+  // (other members just see the updated room state).
+  const leaving = useRef(false);
+  // Mirror router/user in refs so the socket effect can use them without
+  // re-binding its listeners whenever they change (it binds once per room).
+  const routerRef = useRef(router);
+  routerRef.current = router;
+  const userRef = useRef(user);
+  userRef.current = user;
 
   useEffect(() => {
     const socket = getSocket();
-    const onState = (state: PublicRoomState): void => setRoom(state);
+    const onState = (state: PublicRoomState): void => {
+      setRoom(state);
+      // If our own leave landed, the snapshot no longer lists us → go to lobby.
+      if (leaving.current) {
+        const me = userRef.current;
+        const stillSeated =
+          me !== null && state.members.some((m) => m.username === me.username);
+        if (!stillSeated) {
+          leaving.current = false;
+          routerRef.current.push('/');
+        }
+      }
+    };
     const onHand = (state: PublicHandState): void => {
       // A fresh hand state means our last action landed (or the turn moved on).
       setHand(state);
@@ -61,6 +85,8 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     };
     const onError = (err: SocketError): void => {
       setPending(false);
+      // A rejected leave (mid-hand / banker) keeps us in the room.
+      leaving.current = false;
       const message = friendlyError(err.code, err.message);
       if (intent.current === 'funding') setFundingError(message);
       else setActionError(message);
@@ -157,6 +183,30 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     },
     [roomId],
   );
+
+  // Seat presence (task 4.14). The acting user is the authenticated socket user;
+  // these payloads carry only the roomId.
+  const sitOut = useCallback((): void => {
+    intent.current = 'action';
+    setPending(true);
+    setActionError(null);
+    getSocket().emit('room:sit-out', { roomId });
+  }, [roomId]);
+
+  const sitIn = useCallback((): void => {
+    intent.current = 'action';
+    setPending(true);
+    setActionError(null);
+    getSocket().emit('room:sit-in', { roomId });
+  }, [roomId]);
+
+  const leave = useCallback((): void => {
+    intent.current = 'action';
+    leaving.current = true;
+    setPending(true);
+    setActionError(null);
+    getSocket().emit('room:leave', { roomId });
+  }, [roomId]);
 
   // A live hand blocks dealing; treat a settled hand as no hand in play.
   const handInPlay = hand !== null && hand.status !== 'settled';
@@ -279,6 +329,18 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               onAct={act}
             />
           )}
+
+          <PresenceControls
+            seated={heroSeat !== null}
+            sittingOut={heroMember?.sittingOut ?? false}
+            isBanker={heroIsBanker}
+            handInPlay={handInPlay}
+            gameInPlay={room.status === 'playing'}
+            pending={pending}
+            onSitOut={sitOut}
+            onSitIn={sitIn}
+            onLeave={leave}
+          />
 
           <FundingControls
             requests={chipRequests}

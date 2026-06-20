@@ -4,21 +4,23 @@
 
 ## Client → Server
 
-| Event                  | Payload                            | Authz         | توضیح                     |
-| ---------------------- | ---------------------------------- | ------------- | ------------------------- | ------------- |
-| `room:create`          | `{ name, settings }`               | user          | ساخت room، کاربر = banker |
-| `room:join`            | `{ roomId }`                       | user          | پیوستن (در صورت جا)       |
-| `room:leave`           | `{ roomId }`                       | member        | خروج                      |
-| `banker:buyin`         | `{ roomId, targetUserId, amount }` | banker        | کنترل خرید ژتون           |
-| `hand:start`           | `{ roomId }`                       | banker        | شروع دست جدید             |
-| `hand:advance-street`  | `{ roomId }`                       | banker        | دیل مرحله‌ی بعد (4.7)     |
-| `chips:request`        | `{ roomId, amount }`               | member        | درخواست buy-in (4.15)     |
-| `chips:approve`        | `{ roomId, requestId }`            | banker        | تأیید درخواست chips       |
-| `chips:reject`         | `{ roomId, requestId }`            | banker        | رد درخواست chips          |
-| `player:act`           | `{ roomId, action, amount? }`      | acting player | اکشن بتینگ                |
-| `banker:declareWinner` | `{ roomId, potId, winnerSeats[] }` | banker        | تعیین برنده‌ی pot         |
-| `player:claim`         | `{ roomId, claim: 'win'            | 'muck' }`     | active player             | showdown mode |
-| `banker:endGame`       | `{ roomId }`                       | banker        | پایان + تسویه             |
+| Event                  | Payload                            | Authz         | توضیح                                           |
+| ---------------------- | ---------------------------------- | ------------- | ----------------------------------------------- | ------------- |
+| `room:create`          | `{ name, settings }`               | user          | ساخت room، کاربر = banker                       |
+| `room:join`            | `{ roomId }`                       | user          | پیوستن (در صورت جا)                             |
+| `room:leave`           | `{ roomId }`                       | member        | خروج (نه وسطِ دست؛ بانکدار نه وسطِ بازی) (4.14) |
+| `room:sit-out`         | `{ roomId }`                       | member (self) | نشستن بیرون؛ از دستِ بعد deal نمی‌شود (4.14)    |
+| `room:sit-in`          | `{ roomId }`                       | member (self) | بازگشت؛ از دستِ بعد دوباره deal می‌شود (4.14)   |
+| `banker:buyin`         | `{ roomId, targetUserId, amount }` | banker        | کنترل خرید ژتون                                 |
+| `hand:start`           | `{ roomId }`                       | banker        | شروع دست جدید                                   |
+| `hand:advance-street`  | `{ roomId }`                       | banker        | دیل مرحله‌ی بعد (4.7)                           |
+| `chips:request`        | `{ roomId, amount }`               | member        | درخواست buy-in (4.15)                           |
+| `chips:approve`        | `{ roomId, requestId }`            | banker        | تأیید درخواست chips                             |
+| `chips:reject`         | `{ roomId, requestId }`            | banker        | رد درخواست chips                                |
+| `player:act`           | `{ roomId, action, amount? }`      | acting player | اکشن بتینگ                                      |
+| `banker:declareWinner` | `{ roomId, potId, winnerSeats[] }` | banker        | تعیین برنده‌ی pot                               |
+| `player:claim`         | `{ roomId, claim: 'win'            | 'muck' }`     | active player                                   | showdown mode |
+| `banker:endGame`       | `{ roomId }`                       | banker        | پایان + تسویه                                   |
 
 ## Server → Client (broadcast به room)
 
