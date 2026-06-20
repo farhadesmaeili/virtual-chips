@@ -124,7 +124,7 @@ export function Lobby(): React.ReactElement {
           className={fieldClass}
         />
         <div className="flex gap-3">
-          <label className="flex flex-1 flex-col gap-1.5">
+          <label className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-[11px] uppercase tracking-[0.08em] text-vc-ink-faint">
               Small blind
             </span>
@@ -135,10 +135,10 @@ export function Lobby(): React.ReactElement {
               inputMode="numeric"
               value={smallBlind}
               onChange={(e) => setSmallBlind(e.target.value)}
-              className={fieldClass}
+              className={`${fieldClass} w-full`}
             />
           </label>
-          <label className="flex flex-1 flex-col gap-1.5">
+          <label className="flex min-w-0 flex-1 flex-col gap-1.5">
             <span className="text-[11px] uppercase tracking-[0.08em] text-vc-ink-faint">
               Big blind
             </span>
@@ -149,7 +149,7 @@ export function Lobby(): React.ReactElement {
               inputMode="numeric"
               value={bigBlind}
               onChange={(e) => setBigBlind(e.target.value)}
-              className={fieldClass}
+              className={`${fieldClass} w-full`}
             />
           </label>
         </div>
