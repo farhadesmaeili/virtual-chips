@@ -25,7 +25,8 @@ export interface StartHandInput {
 
 /**
  * Starts a new hand. Only the banker may start one. Funded members (chips > 0)
- * are dealt in. The button is the lowest occupied seat for the first hand, then
+ * are dealt in (sitting-out members are skipped, task 4.14). The button is the
+ * lowest occupied seat for the first hand, then
  * rotates clockwise to the next occupied seat after each settled hand. The
  * small and big blinds are posted from the room settings and the first actor is
  * the seat left of the big blind (or the button itself, heads-up).
@@ -49,7 +50,9 @@ export class StartHand {
     }
 
     const members = await this.rooms.listMembers(roomId);
-    const funded = members.filter((m) => m.chips > 0);
+    // Deal in funded members who are sitting in; sitting-out members keep their
+    // seat and chips but are skipped until they sit back in (task 4.14).
+    const funded = members.filter((m) => m.chips > 0 && !m.sittingOut);
     if (funded.length < 2) throw new NotEnoughPlayersError(roomId);
 
     const players = funded.map((m) =>

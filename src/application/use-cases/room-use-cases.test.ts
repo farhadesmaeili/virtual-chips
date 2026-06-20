@@ -1,19 +1,30 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type {
   AddMemberInput,
+  HandStore,
   RoomMemberRecord,
   RoomRepository,
 } from '@/application/ports';
 import {
   AlreadyInRoomError,
+  BankerCannotLeaveError,
+  CannotLeaveMidHandError,
+  ForbiddenActionError,
   NotRoomMemberError,
   RoomFullError,
   RoomNotFoundError,
 } from '@/domain/errors';
-import { MAX_SEATS, type Room, type RoomStatus } from '@/domain/entities';
+import {
+  createHand,
+  MAX_SEATS,
+  type Hand,
+  type Room,
+  type RoomStatus,
+} from '@/domain/entities';
 import { CreateRoom } from './create-room';
 import { JoinRoom } from './join-room';
 import { LeaveRoom } from './leave-room';
+import { SitIn, SitOut } from './presence';
 
 class FakeRoomRepository implements RoomRepository {
   private readonly rooms = new Map<string, Room>();
@@ -45,6 +56,7 @@ class FakeRoomRepository implements RoomRepository {
       seat: member.seat,
       buyInTotal: member.buyInTotal,
       chips: member.chips,
+      sittingOut: false,
     };
     const list = this.members.get(roomId) ?? [];
     list.push(record);
@@ -91,6 +103,31 @@ class FakeRoomRepository implements RoomRepository {
       ),
     );
   }
+
+  async setMemberSittingOut(
+    roomId: string,
+    userId: string,
+    sittingOut: boolean,
+  ): Promise<void> {
+    const list = this.members.get(roomId) ?? [];
+    this.members.set(
+      roomId,
+      list.map((m) => (m.userId === userId ? { ...m, sittingOut } : m)),
+    );
+  }
+}
+
+/** A hand store stub for LeaveRoom: reports an active (or no) hand. */
+class FakeHandStore implements HandStore {
+  constructor(private hand: Hand | null = null) {}
+  setHand(hand: Hand | null): void {
+    this.hand = hand;
+  }
+  async get(): Promise<Hand | null> {
+    return this.hand;
+  }
+  async save(): Promise<void> {}
+  async clear(): Promise<void> {}
 }
 
 const fakeIds = () => {
@@ -121,6 +158,7 @@ describe('CreateRoom', () => {
         seat: 0,
         chips: 0, // unfunded until the banker approves a chip request (4.15)
         buyInTotal: 0,
+        sittingOut: false,
       },
     ]);
   });
@@ -197,34 +235,144 @@ describe('JoinRoom', () => {
   });
 });
 
+// A minimal live (unsettled) hand for the mid-hand leave guard.
+function liveHand(roomId: string): Hand {
+  return createHand({ id: 'h1', roomId, players: [], buttonSeat: 0 });
+}
+
 describe('LeaveRoom', () => {
-  it('removes the member and returns the remaining snapshot', async () => {
+  let hands: FakeHandStore;
+
+  beforeEach(() => {
+    hands = new FakeHandStore();
+  });
+
+  async function tableWithBob(): Promise<string> {
     const created = await new CreateRoom(repo, fakeIds()).execute({
       bankerId: 'banker',
       name: 'Table',
     });
     await new JoinRoom(repo).execute({ userId: 'bob', roomId: created.id });
+    return created.id;
+  }
 
-    const snap = await new LeaveRoom(repo).execute({
-      userId: 'bob',
-      roomId: created.id,
+  it('frees the seat when no hand is in progress', async () => {
+    const roomId = await tableWithBob();
+    const snap = await new LeaveRoom(repo, hands).execute({
+      requesterId: 'bob',
+      roomId,
     });
     expect(snap.members.map((m) => m.userId)).toEqual(['banker']);
   });
 
-  it('throws NotRoomMember when the user is not a member', async () => {
-    const created = await new CreateRoom(repo, fakeIds()).execute({
-      bankerId: 'banker',
-      name: 'Table',
-    });
+  it('rejects leaving mid-hand (a live hand exists)', async () => {
+    const roomId = await tableWithBob();
+    hands.setHand(liveHand(roomId));
     await expect(
-      new LeaveRoom(repo).execute({ userId: 'ghost', roomId: created.id }),
+      new LeaveRoom(repo, hands).execute({ requesterId: 'bob', roomId }),
+    ).rejects.toThrow(CannotLeaveMidHandError);
+    // The seat is untouched.
+    expect((await repo.listMembers(roomId)).map((m) => m.userId)).toContain(
+      'bob',
+    );
+  });
+
+  it('allows leaving once the hand is settled', async () => {
+    const roomId = await tableWithBob();
+    hands.setHand({ ...liveHand(roomId), status: 'settled' });
+    const snap = await new LeaveRoom(repo, hands).execute({
+      requesterId: 'bob',
+      roomId,
+    });
+    expect(snap.members.map((m) => m.userId)).toEqual(['banker']);
+  });
+
+  it('rejects the banker leaving mid-game (status playing)', async () => {
+    const roomId = await tableWithBob();
+    await repo.updateStatus(roomId, 'playing');
+    await expect(
+      new LeaveRoom(repo, hands).execute({ requesterId: 'banker', roomId }),
+    ).rejects.toThrow(BankerCannotLeaveError);
+  });
+
+  it('lets the banker leave when the game is not running', async () => {
+    const roomId = await tableWithBob();
+    // status stays 'waiting'; no hand in play.
+    const snap = await new LeaveRoom(repo, hands).execute({
+      requesterId: 'banker',
+      roomId,
+    });
+    expect(snap.members.map((m) => m.userId)).toEqual(['bob']);
+  });
+
+  it('rejects leaving on behalf of another user (IDOR)', async () => {
+    const roomId = await tableWithBob();
+    await expect(
+      new LeaveRoom(repo, hands).execute({
+        requesterId: 'bob',
+        targetUserId: 'banker',
+        roomId,
+      }),
+    ).rejects.toThrow(ForbiddenActionError);
+  });
+
+  it('throws NotRoomMember when the user is not a member', async () => {
+    const roomId = await tableWithBob();
+    await expect(
+      new LeaveRoom(repo, hands).execute({ requesterId: 'ghost', roomId }),
     ).rejects.toThrow(NotRoomMemberError);
   });
 
   it('throws RoomNotFound for an unknown room', async () => {
     await expect(
-      new LeaveRoom(repo).execute({ userId: 'bob', roomId: 'nope' }),
+      new LeaveRoom(repo, hands).execute({
+        requesterId: 'bob',
+        roomId: 'nope',
+      }),
     ).rejects.toThrow(RoomNotFoundError);
+  });
+});
+
+describe('SitOut / SitIn', () => {
+  async function tableWithBob(): Promise<string> {
+    const created = await new CreateRoom(repo, fakeIds()).execute({
+      bankerId: 'banker',
+      name: 'Table',
+    });
+    await new JoinRoom(repo).execute({ userId: 'bob', roomId: created.id });
+    return created.id;
+  }
+
+  it('flags the requester as sitting out, then sitting in', async () => {
+    const roomId = await tableWithBob();
+    let snap = await new SitOut(repo).execute({ requesterId: 'bob', roomId });
+    expect(snap.members.find((m) => m.userId === 'bob')?.sittingOut).toBe(true);
+    // The banker is unaffected.
+    expect(snap.members.find((m) => m.userId === 'banker')?.sittingOut).toBe(
+      false,
+    );
+
+    snap = await new SitIn(repo).execute({ requesterId: 'bob', roomId });
+    expect(snap.members.find((m) => m.userId === 'bob')?.sittingOut).toBe(
+      false,
+    );
+  });
+
+  it('rejects sitting out another user (IDOR)', async () => {
+    const roomId = await tableWithBob();
+    await expect(
+      new SitOut(repo).execute({
+        requesterId: 'bob',
+        targetUserId: 'banker',
+        roomId,
+      }),
+    ).rejects.toThrow(ForbiddenActionError);
+  });
+
+  it('throws NotRoomMember for a non-member', async () => {
+    const roomId = await tableWithBob();
+    await expect(
+      new SitOut(repo).execute({ requesterId: 'ghost', roomId }),
+    ).rejects.toThrow(NotRoomMemberError);
   });
 });

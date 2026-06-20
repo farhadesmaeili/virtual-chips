@@ -7,6 +7,7 @@ export interface RoomMemberSnapshot {
   readonly seat: number;
   readonly chips: number;
   readonly buyInTotal: number;
+  readonly sittingOut: boolean;
 }
 
 /** A server-side snapshot of a room and its members (use-case result). */
@@ -37,6 +38,7 @@ export function toRoomSnapshot(
         seat: m.seat,
         chips: m.chips,
         buyInTotal: m.buyInTotal,
+        sittingOut: m.sittingOut,
       })),
   };
 }

@@ -62,6 +62,7 @@ export class PrismaRoomRepository implements RoomRepository {
       seat: created.seat,
       buyInTotal: created.buyInTotal,
       chips: created.chips,
+      sittingOut: created.sittingOut,
     };
   }
 
@@ -96,6 +97,17 @@ export class PrismaRoomRepository implements RoomRepository {
     });
   }
 
+  async setMemberSittingOut(
+    roomId: string,
+    userId: string,
+    sittingOut: boolean,
+  ): Promise<void> {
+    await this.prisma.roomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: { sittingOut },
+    });
+  }
+
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     const members = await this.prisma.roomMember.findMany({
       where: { roomId },
@@ -108,6 +120,7 @@ export class PrismaRoomRepository implements RoomRepository {
       seat: m.seat,
       buyInTotal: m.buyInTotal,
       chips: m.chips,
+      sittingOut: m.sittingOut,
     }));
   }
 }

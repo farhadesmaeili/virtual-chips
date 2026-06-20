@@ -7,6 +7,12 @@ export interface RoomMemberRecord {
   readonly seat: number;
   readonly buyInTotal: number;
   readonly chips: number;
+  /**
+   * When true, the member keeps their seat and chips but is not dealt into new
+   * hands (task 4.14). Persisted at the membership level so it carries across
+   * hands; the in-hand PlayerInHand `'sitting_out'` state is separate.
+   */
+  readonly sittingOut: boolean;
 }
 
 export interface AddMemberInput {
@@ -41,5 +47,11 @@ export interface RoomRepository {
     roomId: string,
     userId: string,
     amount: number,
+  ): Promise<void>;
+  /** Sets a member's sitting-out flag (task 4.14 sit out / sit in). */
+  setMemberSittingOut(
+    roomId: string,
+    userId: string,
+    sittingOut: boolean,
   ): Promise<void>;
 }
