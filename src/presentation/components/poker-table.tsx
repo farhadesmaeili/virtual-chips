@@ -1,6 +1,7 @@
 'use client';
 
 import { streetName } from '@/domain/engine';
+import { BlindsReadout } from './blinds-readout';
 import { ChipStack } from './chip';
 import { Seat } from './seat';
 import { MAX_SEATS, seatSlots } from './seat-layout';
@@ -90,6 +91,15 @@ export function PokerTable({
                     </span>
                   )}
                 </div>
+              </div>
+
+              {/* Static blinds readout — always visible, sourced from the room
+                  settings (task 4.10). Tucked under the lit center zone. */}
+              <div className="absolute bottom-[14%] left-1/2 -translate-x-1/2">
+                <BlindsReadout
+                  smallBlind={room.settings.smallBlind}
+                  bigBlind={room.settings.bigBlind}
+                />
               </div>
             </div>
           </div>
