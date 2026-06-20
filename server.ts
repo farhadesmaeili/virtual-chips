@@ -7,6 +7,7 @@ import next from 'next';
 import { Server, type DefaultEventsMap } from 'socket.io';
 import type { Clock, IdGenerator } from './src/application/ports';
 import {
+  AdvanceStreet,
   CreateRoom,
   JoinRoom,
   LeaveRoom,
@@ -108,6 +109,7 @@ async function main(): Promise<void> {
     io,
     new StartHand(roomRepository, handStore, idGenerator, clock),
     new PlayerAct(roomRepository, handStore, clock),
+    new AdvanceStreet(roomRepository, handStore, clock),
     new SettleHand(roomRepository, handStore),
     handStore,
   );

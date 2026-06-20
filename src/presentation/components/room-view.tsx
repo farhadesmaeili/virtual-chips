@@ -8,6 +8,7 @@ import { deriveActions, type ActionKind } from './action-availability';
 import { BankerBar } from './banker-bar';
 import { PokerTable } from './poker-table';
 import { ShowdownControls } from './showdown-controls';
+import { StreetControls } from './street-controls';
 import { getSocket } from '@/presentation/lib/socket';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import type {
@@ -98,6 +99,12 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     [roomId],
   );
 
+  const dealStreet = useCallback((): void => {
+    setPending(true);
+    setActionError(null);
+    getSocket().emit('hand:advance-street', { roomId });
+  }, [roomId]);
+
   // A live hand blocks dealing; treat a settled hand as no hand in play.
   const handInPlay = hand !== null && hand.status !== 'settled';
   const heroIsBanker =
@@ -150,8 +157,9 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
             </p>
           </div>
 
-          {/* Banker deal control, except at showdown where settling takes over. */}
-          {heroIsBanker && hand?.status !== 'awaiting_showdown' && (
+          {/* Banker's deal control to start a hand — only when none is in play.
+              Mid-hand pacing (deal next street, settle) lives below the table. */}
+          {heroIsBanker && !handInPlay && (
             <BankerBar
               handInPlay={handInPlay}
               resuming={hand?.status === 'settled'}
@@ -192,6 +200,14 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               pending={pending}
               error={actionError}
               onSettle={settle}
+            />
+          ) : hand?.status === 'awaiting_street' ? (
+            <StreetControls
+              street={hand.street}
+              isBanker={heroIsBanker}
+              pending={pending}
+              error={actionError}
+              onDeal={dealStreet}
             />
           ) : (
             // Remounting on turn/bet change resets the local sizing controls.
