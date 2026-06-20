@@ -6,10 +6,12 @@ import {
 } from '../entities/player-in-hand';
 import {
   advanceHand,
+  dealNextStreet,
   firstActiveAfterButton,
   isHandUncontested,
   isStreetComplete,
   nextActiveSeat,
+  streetName,
 } from './street';
 
 const MIN_BET = 2;
@@ -204,7 +206,68 @@ describe('isStreetComplete', () => {
   });
 });
 
-describe('advanceHand — everyone calls (street complete, not last)', () => {
+describe('advanceHand — street complete, not last (manual pacing)', () => {
+  it('pauses for the banker (awaiting_street) without dealing the next street', () => {
+    const hand = mkHand(
+      [
+        mkPlayer({
+          seat: 0,
+          stack: 90,
+          committedThisStreet: 10,
+          committedTotal: 10,
+          hasActedThisStreet: true,
+        }),
+        mkPlayer({
+          seat: 1,
+          stack: 90,
+          committedThisStreet: 10,
+          committedTotal: 10,
+          hasActedThisStreet: true,
+        }),
+      ],
+      { currentBet: 10, lastRaiseSize: 10, street: 0, buttonSeat: 0 },
+    );
+    const next = advanceHand(hand, { minBet: MIN_BET });
+    expect(next.status).toBe('awaiting_street');
+    expect(next.street).toBe(0); // NOT advanced — the banker deals the next one
+    expect(next.actingSeat).toBeNull();
+    expect(next.actionDeadline).toBeNull();
+    // Per-street state is untouched until the banker deals.
+    expect(next.players[0]?.committedThisStreet).toBe(10);
+  });
+});
+
+describe('advanceHand — everyone folds but one', () => {
+  it('ends betting (awaiting_showdown)', () => {
+    const hand = mkHand([
+      mkPlayer({ seat: 0 }),
+      mkPlayer({ seat: 1, state: 'folded' }),
+      mkPlayer({ seat: 2, state: 'folded' }),
+    ]);
+    const next = advanceHand(hand, { minBet: MIN_BET });
+    expect(next.status).toBe('awaiting_showdown');
+    expect(next.actingSeat).toBeNull();
+    expect(next.actionDeadline).toBeNull();
+  });
+});
+
+describe('advanceHand — everyone all-in (not last street)', () => {
+  it('pauses so the banker paces the run-out, instead of skipping streets', () => {
+    const hand = mkHand(
+      [
+        mkPlayer({ seat: 0, state: 'all_in', committedTotal: 100 }),
+        mkPlayer({ seat: 1, state: 'all_in', committedTotal: 100 }),
+      ],
+      { street: 0, currentBet: 100 },
+    );
+    const next = advanceHand(hand, { minBet: MIN_BET });
+    expect(next.status).toBe('awaiting_street');
+    expect(next.street).toBe(0);
+    expect(next.actingSeat).toBeNull();
+  });
+});
+
+describe('dealNextStreet (banker confirms the next street)', () => {
   it('resets the street and sets the first actor left of the button', () => {
     const hand = mkHand(
       [
@@ -230,9 +293,9 @@ describe('advanceHand — everyone calls (street complete, not last)', () => {
           hasActedThisStreet: true,
         }),
       ],
-      { currentBet: 10, lastRaiseSize: 10, street: 0, buttonSeat: 0 },
+      { currentBet: 10, street: 0, buttonSeat: 0, status: 'awaiting_street' },
     );
-    const next = advanceHand(hand, { minBet: MIN_BET });
+    const next = dealNextStreet(hand, { minBet: MIN_BET });
     expect(next.status).toBe('betting');
     expect(next.street).toBe(1);
     expect(next.currentBet).toBe(0);
@@ -244,34 +307,38 @@ describe('advanceHand — everyone calls (street complete, not last)', () => {
       expect(p.committedTotal).toBe(10); // preserved across the street
     }
   });
-});
 
-describe('advanceHand — everyone folds but one', () => {
-  it('ends betting (awaiting_showdown)', () => {
-    const hand = mkHand([
-      mkPlayer({ seat: 0 }),
-      mkPlayer({ seat: 1, state: 'folded' }),
-      mkPlayer({ seat: 2, state: 'folded' }),
-    ]);
-    const next = advanceHand(hand, { minBet: MIN_BET });
-    expect(next.status).toBe('awaiting_showdown');
-    expect(next.actingSeat).toBeNull();
-    expect(next.actionDeadline).toBeNull();
-  });
-});
-
-describe('advanceHand — everyone all-in', () => {
-  it('runs out the remaining streets and ends at showdown', () => {
-    const hand = mkHand(
+  it('paces an all-in run-out one street at a time to the river, then showdown', () => {
+    let hand = mkHand(
       [
         mkPlayer({ seat: 0, state: 'all_in', committedTotal: 100 }),
         mkPlayer({ seat: 1, state: 'all_in', committedTotal: 100 }),
       ],
-      { street: 0, currentBet: 100 },
+      { street: 0, currentBet: 100, status: 'awaiting_street' },
     );
-    const next = advanceHand(hand, { minBet: MIN_BET });
-    expect(next.status).toBe('awaiting_showdown');
-    expect(next.actingSeat).toBeNull();
+    // Flop: still no one can act → pause again (street 1).
+    hand = dealNextStreet(hand, { minBet: MIN_BET });
+    expect(hand.status).toBe('awaiting_street');
+    expect(hand.street).toBe(1);
+    // Turn (street 2).
+    hand = dealNextStreet(hand, { minBet: MIN_BET });
+    expect(hand.status).toBe('awaiting_street');
+    expect(hand.street).toBe(2);
+    // River (street 3) is the last street → showdown.
+    hand = dealNextStreet(hand, { minBet: MIN_BET });
+    expect(hand.status).toBe('awaiting_showdown');
+    expect(hand.street).toBe(3);
+    expect(hand.actingSeat).toBeNull();
+  });
+});
+
+describe('streetName', () => {
+  it('names streets in poker order and falls back past the river', () => {
+    expect(streetName(0)).toBe('Preflop');
+    expect(streetName(1)).toBe('Flop');
+    expect(streetName(2)).toBe('Turn');
+    expect(streetName(3)).toBe('River');
+    expect(streetName(4)).toBe('Street 5');
   });
 });
 

@@ -1,5 +1,6 @@
 'use client';
 
+import { streetName } from '@/domain/engine';
 import { ChipStack } from './chip';
 import { Seat } from './seat';
 import { MAX_SEATS, seatSlots } from './seat-layout';
@@ -42,6 +43,12 @@ export function PokerTable({
               {/* Center tote board — the pot lives in the lit zone. */}
               <div className="absolute left-1/2 top-[42%] -translate-x-1/2 -translate-y-1/2">
                 <div className="vc-lift-pot flex flex-col items-center text-center">
+                  {/* Current stage name (preflop/flop/turn/river) — task 4.7. */}
+                  {inPlay && (
+                    <span className="mb-1 text-[10px] font-semibold uppercase tracking-[0.24em] text-vc-ink-muted">
+                      {streetName(hand.street)}
+                    </span>
+                  )}
                   {livePot > 0 ? (
                     <>
                       {/* The pot pile — gold (value), and the anchor chips

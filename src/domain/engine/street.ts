@@ -4,6 +4,14 @@ import { resetForNewStreet } from '../entities/player-in-hand';
 /** Default number of betting streets (preflop/flop/turn/river-style). */
 export const DEFAULT_STREET_COUNT = 4;
 
+/** Display names of the betting streets by index. */
+export const STREET_NAMES = ['Preflop', 'Flop', 'Turn', 'River'] as const;
+
+/** Human name of a street index; falls back to "Street N" past the river. */
+export function streetName(street: number): string {
+  return STREET_NAMES[street] ?? `Street ${street + 1}`;
+}
+
 export interface AdvanceOptions {
   /** Room minimum bet (big blind); the new street's lastRaiseSize. */
   readonly minBet: number;
@@ -84,6 +92,10 @@ function endBetting(hand: Hand): Hand {
   };
 }
 
+function isLastStreet(hand: Hand, streetCount: number): boolean {
+  return hand.street + 1 >= streetCount;
+}
+
 function startNextStreet(hand: Hand, minBet: number): Hand {
   const reset: Hand = {
     ...hand,
@@ -97,18 +109,34 @@ function startNextStreet(hand: Hand, minBet: number): Hand {
 }
 
 /**
+ * Pauses a hand whose current street's betting is settled. The banker paces the
+ * physical game (task 4.7): on any street but the last, the hand waits for the
+ * banker to deal the next street; on the final street it goes to showdown for
+ * settlement. No turn is pending either way.
+ */
+function pauseAfterStreet(hand: Hand, streetCount: number): Hand {
+  return {
+    ...hand,
+    status: isLastStreet(hand, streetCount)
+      ? 'awaiting_showdown'
+      : 'awaiting_street',
+    actingSeat: null,
+    actionDeadline: null,
+  };
+}
+
+/**
  * Progresses the hand after an action (docs/BETTING-ENGINE.md §3):
  *
  * - If the hand is uncontested (≤1 contender), betting ends → awaiting_showdown.
- * - If the current street is not complete, the action passes to the next
- *   active seat clockwise.
- * - If the street is complete, advance to the next street (resetting per-street
- *   state and setting the first actor left of the button). Streets where no one
- *   can act (everyone all-in) are skipped; once the last street is reached or
- *   no one can act, betting ends → awaiting_showdown.
+ * - If the current street is not complete, the action passes to the next active
+ *   seat clockwise.
+ * - If the street's betting is complete, the hand pauses: the banker must deal
+ *   the next street (`awaiting_street`), or — on the final street — it goes to
+ *   `awaiting_showdown`. It never auto-deals the next street (task 4.7).
  *
- * Pure: returns a new Hand. Pots are not recomputed here; side pots are
- * derived from committedTotal at settlement (task 1.5).
+ * Pure: returns a new Hand. Pots are not recomputed here; side pots are derived
+ * from committedTotal at settlement (task 1.5).
  */
 export function advanceHand(hand: Hand, options: AdvanceOptions): Hand {
   const streetCount = options.streetCount ?? DEFAULT_STREET_COUNT;
@@ -124,17 +152,30 @@ export function advanceHand(hand: Hand, options: AdvanceOptions): Hand {
     };
   }
 
-  // Street complete: roll forward through streets until someone can act or
-  // betting is over.
-  let next = hand;
-  while (isStreetComplete(next)) {
-    if (next.street + 1 >= streetCount) {
-      return endBetting(next);
-    }
-    next = startNextStreet(next, options.minBet);
-    if (isHandUncontested(next)) {
-      return endBetting(next);
-    }
+  return pauseAfterStreet(hand, streetCount);
+}
+
+/**
+ * Deals the next street at the banker's confirmation (task 4.7). The caller
+ * (the AdvanceStreet use-case) must have verified the hand is `awaiting_street`.
+ *
+ * Resets per-street state and sets the first actor left of the button. If the
+ * newly dealt street has no one who can act (everyone is all-in), it pauses
+ * again so the banker keeps pacing the run-out street by street to the river —
+ * streets are never auto-skipped.
+ *
+ * Pure: returns a new Hand.
+ */
+export function dealNextStreet(hand: Hand, options: AdvanceOptions): Hand {
+  const streetCount = options.streetCount ?? DEFAULT_STREET_COUNT;
+  const next = startNextStreet(hand, options.minBet);
+
+  if (isHandUncontested(next)) {
+    return endBetting(next);
   }
-  return next;
+  // No betting is possible on the new street (all-in run-out) → pause/settle.
+  if (isStreetComplete(next)) {
+    return pauseAfterStreet(next, streetCount);
+  }
+  return { ...next, status: 'betting' };
 }

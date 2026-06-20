@@ -1,5 +1,10 @@
 import type { HandStore } from '@/application/ports';
-import type { PlayerAct, SettleHand, StartHand } from '@/application/use-cases';
+import type {
+  AdvanceStreet,
+  PlayerAct,
+  SettleHand,
+  StartHand,
+} from '@/application/use-cases';
 import type { Hand } from '@/domain/entities';
 import { autoActionType, type ActionType } from '@/domain/engine';
 import type { PotDeclaration } from '@/domain/engine';
@@ -24,6 +29,7 @@ export class HandGateway {
     private readonly io: AppServer,
     private readonly startHand: StartHand,
     private readonly playerAct: PlayerAct,
+    private readonly advanceStreet: AdvanceStreet,
     private readonly settleHand: SettleHand,
     private readonly hands: HandStore,
   ) {}
@@ -61,6 +67,22 @@ export class HandGateway {
       actionDeadline: state.actionDeadline,
     });
     this.io.to(roomId).emit('pot:updated', { pots: state.pots });
+    this.scheduleTimer(roomId, hand);
+  }
+
+  async advanceStreetDeal(roomId: string, userId: string): Promise<void> {
+    const hand = await this.advanceStreet.execute({
+      roomId,
+      requesterId: userId,
+    });
+    const state = toPublicHandState(hand);
+    this.io.to(roomId).emit('hand:state', state);
+    this.io.to(roomId).emit('turn:changed', {
+      actingSeat: state.actingSeat,
+      actionDeadline: state.actionDeadline,
+    });
+    // Starts a timer only if the new street has someone to act; a paused
+    // all-in run-out (awaiting_street again) schedules nothing.
     this.scheduleTimer(roomId, hand);
   }
 

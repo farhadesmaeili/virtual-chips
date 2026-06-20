@@ -15,12 +15,14 @@ import {
 } from '@/domain/entities';
 import {
   HandInProgressError,
+  InvalidActionError,
   InvalidSettlementError,
   NoActiveHandError,
   NotBankerError,
   NotEnoughPlayersError,
   NotYourTurnError,
 } from '@/domain/errors';
+import { AdvanceStreet } from './advance-street';
 import { PlayerAct } from './player-act';
 import { SettleHand } from './settle-hand';
 import { StartHand } from './start-hand';
@@ -360,6 +362,104 @@ describe('SettleHand', () => {
         roomId: 'r1',
         requesterId: 'banker',
       }),
+    ).rejects.toThrow(NoActiveHandError);
+  });
+});
+
+describe('AdvanceStreet', () => {
+  function player(
+    seat: number,
+    userId: string,
+    state: PlayerInHand['state'] = 'active',
+  ): PlayerInHand {
+    return {
+      ...createPlayerInHand({ seat, userId, stack: 100 }),
+      committedThisStreet: 0,
+      committedTotal: 20,
+      state,
+      hasActedThisStreet: true,
+    };
+  }
+
+  function awaitingStreetHand(players: PlayerInHand[], street = 0): Hand {
+    const base = createHand({
+      id: 'h1',
+      roomId: 'r1',
+      buttonSeat: 0,
+      players,
+      street,
+    });
+    return { ...base, status: 'awaiting_street', actingSeat: null };
+  }
+
+  const advance = (): AdvanceStreet => new AdvanceStreet(rooms, store, clock);
+
+  it('deals the next street and sets the next actor (banker only)', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    await store.save(
+      'r1',
+      awaitingStreetHand([player(0, 'banker'), player(1, 'bob')]),
+    );
+
+    const hand = await advance().execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    expect(hand.status).toBe('betting');
+    expect(hand.street).toBe(1);
+    expect(hand.actingSeat).toBe(1); // first active left of the button (seat 0)
+    expect(hand.actionDeadline).toBe(NOW + 30000);
+  });
+
+  it('paces an all-in run-out — pauses again with no actor', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    await store.save(
+      'r1',
+      awaitingStreetHand([
+        player(0, 'banker', 'all_in'),
+        player(1, 'bob', 'all_in'),
+      ]),
+    );
+
+    const hand = await advance().execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    expect(hand.status).toBe('awaiting_street');
+    expect(hand.street).toBe(1);
+    expect(hand.actingSeat).toBeNull();
+    expect(hand.actionDeadline).toBeNull();
+  });
+
+  it('rejects a non-banker', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    await store.save(
+      'r1',
+      awaitingStreetHand([player(0, 'banker'), player(1, 'bob')]),
+    );
+    await expect(
+      advance().execute({ roomId: 'r1', requesterId: 'bob' }),
+    ).rejects.toThrow(NotBankerError);
+  });
+
+  it('rejects when the hand is not awaiting a street', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    const base = createHand({
+      id: 'h1',
+      roomId: 'r1',
+      buttonSeat: 0,
+      players: [player(0, 'banker'), player(1, 'bob')],
+    });
+    await store.save('r1', { ...base, status: 'betting', actingSeat: 1 });
+    await expect(
+      advance().execute({ roomId: 'r1', requesterId: 'banker' }),
+    ).rejects.toThrow(InvalidActionError);
+  });
+
+  it('rejects when there is no hand', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100)]);
+    await expect(
+      advance().execute({ roomId: 'r1', requesterId: 'banker' }),
     ).rejects.toThrow(NoActiveHandError);
   });
 });

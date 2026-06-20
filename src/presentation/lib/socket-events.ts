@@ -33,7 +33,13 @@ export interface PublicRoomState {
 // lands in later 4.x tasks), so components must treat `hand` as possibly null.
 
 export type PlayerState = 'active' | 'folded' | 'all_in' | 'sitting_out';
-export type HandStatus = 'betting' | 'awaiting_showdown' | 'settled';
+export type HandStatus =
+  | 'betting'
+  // Betting on the current street is done; waiting for the banker to deal the
+  // next street (task 4.7).
+  | 'awaiting_street'
+  | 'awaiting_showdown'
+  | 'settled';
 
 export interface PublicHandPlayer {
   readonly seat: number;

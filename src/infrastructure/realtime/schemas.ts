@@ -28,6 +28,10 @@ export const resyncRoomSchema = z
 
 export const handStartSchema = z.object({ roomId: z.string().min(1) }).strict();
 
+export const advanceStreetSchema = z
+  .object({ roomId: z.string().min(1) })
+  .strict();
+
 export const handSettleSchema = z
   .object({
     roomId: z.string().min(1),
@@ -51,5 +55,6 @@ export type JoinRoomPayload = z.infer<typeof joinRoomSchema>;
 export type LeaveRoomPayload = z.infer<typeof leaveRoomSchema>;
 export type ResyncRoomPayload = z.infer<typeof resyncRoomSchema>;
 export type HandStartPayload = z.infer<typeof handStartSchema>;
+export type AdvanceStreetPayload = z.infer<typeof advanceStreetSchema>;
 export type HandSettlePayload = z.infer<typeof handSettleSchema>;
 export type PlayerActPayload = z.infer<typeof playerActSchema>;

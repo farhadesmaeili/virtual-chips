@@ -2,7 +2,13 @@ import { Chips } from '../value-objects/chips';
 import type { PlayerInHand } from './player-in-hand';
 import type { Pot } from './pot';
 
-export type HandStatus = 'betting' | 'awaiting_showdown' | 'settled';
+export type HandStatus =
+  | 'betting'
+  // Betting on the current street is done and more streets remain; the hand
+  // waits for the banker to deal the next street (task 4.7 — manual pacing).
+  | 'awaiting_street'
+  | 'awaiting_showdown'
+  | 'settled';
 
 /**
  * The full state of one Hand. Immutable: helpers return a new Hand.

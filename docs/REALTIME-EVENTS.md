@@ -11,6 +11,7 @@
 | `room:leave`           | `{ roomId }`                       | member        | خروج                      |
 | `banker:buyin`         | `{ roomId, targetUserId, amount }` | banker        | کنترل خرید ژتون           |
 | `hand:start`           | `{ roomId }`                       | banker        | شروع دست جدید             |
+| `hand:advance-street`  | `{ roomId }`                       | banker        | دیل مرحله‌ی بعد (4.7)     |
 | `player:act`           | `{ roomId, action, amount? }`      | acting player | اکشن بتینگ                |
 | `banker:declareWinner` | `{ roomId, potId, winnerSeats[] }` | banker        | تعیین برنده‌ی pot         |
 | `player:claim`         | `{ roomId, claim: 'win'            | 'muck' }`     | active player             | showdown mode |
