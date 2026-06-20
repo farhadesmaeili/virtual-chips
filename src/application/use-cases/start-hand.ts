@@ -10,11 +10,7 @@ import {
   isBanker,
   type Hand,
 } from '@/domain/entities';
-import {
-  firstActiveAfterButton,
-  firstButtonSeat,
-  nextButtonSeat,
-} from '@/domain/engine';
+import { firstButtonSeat, nextButtonSeat, postBlinds } from '@/domain/engine';
 import {
   HandInProgressError,
   NotBankerError,
@@ -29,9 +25,10 @@ export interface StartHandInput {
 
 /**
  * Starts a new hand. Only the banker may start one. Funded members (chips > 0)
- * are dealt in; the first actor is the seat to the button's left. The button is
- * the lowest occupied seat for the first hand, then rotates clockwise to the
- * next occupied seat after each settled hand. No blinds are posted yet.
+ * are dealt in. The button is the lowest occupied seat for the first hand, then
+ * rotates clockwise to the next occupied seat after each settled hand. The
+ * small and big blinds are posted from the room settings and the first actor is
+ * the seat left of the big blind (or the button itself, heads-up).
  */
 export class StartHand {
   constructor(
@@ -74,10 +71,16 @@ export class StartHand {
       buttonSeat,
       lastRaiseSize: minBet,
     });
-    const actingSeat = firstActiveAfterButton(base);
+    // Post the mandatory blinds; this also sets currentBet, lastRaiseSize and
+    // the first preflop actor.
+    const withBlinds = postBlinds(
+      base,
+      room.settings.smallBlind,
+      room.settings.bigBlind,
+    );
+    const { actingSeat } = withBlinds;
     const hand: Hand = {
-      ...base,
-      actingSeat,
+      ...withBlinds,
       actionDeadline:
         actingSeat === null
           ? null
