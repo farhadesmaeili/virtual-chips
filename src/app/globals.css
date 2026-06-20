@@ -217,6 +217,17 @@ body::before {
   outline-offset: 2px;
 }
 
+/* Turn countdown ring (task 4.9): the emerald stroke empties over the turn.
+   Driven by an inline animation-duration = the remaining time. */
+@keyframes vc-ring-deplete {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: 289;
+  }
+}
+
 /* Respect users who prefer less motion (CLAUDE.md animation rules). */
 @media (prefers-reduced-motion: reduce) {
   *,

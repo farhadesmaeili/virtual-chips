@@ -105,6 +105,7 @@ export function PokerTable({
                 handPlayer={playerBySeat.get(slot.seat)}
                 isActing={hand?.actingSeat === slot.seat}
                 isButton={hand?.buttonSeat === slot.seat}
+                actionDeadline={hand?.actionDeadline ?? null}
               />
             ))}
           </div>

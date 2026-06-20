@@ -1,5 +1,7 @@
 'use client';
 
+import { useReducedMotion } from 'framer-motion';
+import { useMemo } from 'react';
 import { ChipStack } from './chip';
 import type { SeatSlot } from './seat-layout';
 import type {
@@ -23,6 +25,8 @@ export interface SeatProps {
   readonly handPlayer?: PublicHandPlayer;
   readonly isActing: boolean;
   readonly isButton: boolean;
+  /** Absolute turn deadline (epoch ms) for the acting seat; drives the ring. */
+  readonly actionDeadline?: number | null;
 }
 
 /**
@@ -37,6 +41,7 @@ export function Seat({
   handPlayer,
   isActing,
   isButton,
+  actionDeadline = null,
 }: SeatProps): React.ReactElement {
   const folded = handPlayer?.state === 'folded';
   const allIn = handPlayer?.state === 'all_in';
@@ -79,7 +84,7 @@ export function Seat({
 
             {/* Avatar + countdown ring. */}
             <div className="relative grid h-12 w-12 place-items-center sm:h-14 sm:w-14">
-              {isActing && <CountdownRing />}
+              {isActing && <CountdownRing deadline={actionDeadline} />}
               <div
                 className={`grid h-11 w-11 place-items-center rounded-full font-display text-sm font-bold sm:h-[3.25rem] sm:w-[3.25rem] ${
                   isActing
@@ -140,17 +145,37 @@ function EmptySeat({ seat }: { seat: number }): React.ReactElement {
   );
 }
 
+// Circumference of the r=46 ring (2·π·46 ≈ 289), used as the dash length so the
+// stroke can deplete from full to empty.
+const RING_CIRCUMFERENCE = 289;
+
 /**
- * The active player's countdown ring. Rendered as a full emerald ring now; in
- * Phase 5 the stroke is driven by the absolute `actionDeadline` (animating a
- * transform on the stroke, not per-tick React state).
+ * The active player's countdown ring (task 4.9). The emerald stroke depletes
+ * from full to empty over the time left until `deadline`, via a single CSS
+ * animation (no per-tick React state). Under reduced motion — or with no
+ * deadline — it stays a full ring so the acting seat is still clearly marked.
  */
-function CountdownRing(): React.ReactElement {
+function CountdownRing({
+  deadline,
+}: {
+  deadline: number | null;
+}): React.ReactElement {
+  const reduce = useReducedMotion();
+  // Captured once per deadline so unrelated re-renders mid-turn don't restart
+  // the depletion animation. Recomputed on remount (e.g. resync) for accuracy.
+  const remainingMs = useMemo(
+    () => (deadline === null ? 0 : Math.max(0, deadline - Date.now())),
+    [deadline],
+  );
+  const animate = deadline !== null && !reduce && remainingMs > 0;
+
   return (
     <svg
       aria-hidden
       viewBox="0 0 100 100"
       className="pointer-events-none absolute inset-0 h-full w-full -rotate-90"
+      // Remount when the deadline changes so the animation restarts each turn.
+      key={deadline ?? 'static'}
     >
       <circle
         cx="50"
@@ -160,9 +185,14 @@ function CountdownRing(): React.ReactElement {
         stroke="var(--vc-emerald)"
         strokeWidth="4"
         strokeLinecap="round"
-        strokeDasharray="289"
-        strokeDashoffset="0"
+        strokeDasharray={RING_CIRCUMFERENCE}
+        strokeDashoffset={0}
         opacity="0.9"
+        style={
+          animate
+            ? { animation: `vc-ring-deplete ${remainingMs}ms linear forwards` }
+            : undefined
+        }
       />
     </svg>
   );
