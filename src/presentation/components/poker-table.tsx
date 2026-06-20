@@ -90,16 +90,18 @@ export function PokerTable({
                         : 'No pot yet'}
                     </span>
                   )}
-                </div>
-              </div>
 
-              {/* Static blinds readout — always visible, sourced from the room
-                  settings (task 4.10). Tucked under the lit center zone. */}
-              <div className="absolute bottom-[14%] left-1/2 -translate-x-1/2">
-                <BlindsReadout
-                  smallBlind={room.settings.smallBlind}
-                  bigBlind={room.settings.bigBlind}
-                />
+                  {/* Static blinds readout — always visible, sourced from the
+                      room settings (task 4.10). Kept inside the center tote
+                      board (the only seat-free zone in every seat-count layout)
+                      so it reads as table info and never overlaps an avatar. */}
+                  <div className="mt-2.5 border-t border-white/5 pt-2">
+                    <BlindsReadout
+                      smallBlind={room.settings.smallBlind}
+                      bigBlind={room.settings.bigBlind}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
