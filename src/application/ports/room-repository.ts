@@ -33,4 +33,13 @@ export interface RoomRepository {
     userId: string,
     chips: number,
   ): Promise<void>;
+  /**
+   * Adds an approved buy-in: increases both the member's stack and their
+   * cumulative `buyInTotal` (the latter feeds end-of-game net settlement).
+   */
+  addMemberFunding(
+    roomId: string,
+    userId: string,
+    amount: number,
+  ): Promise<void>;
 }

@@ -67,6 +67,21 @@ class FakeRoomRepository implements RoomRepository {
       members.map((m) => (m.userId === userId ? { ...m, chips } : m)),
     );
   }
+  async addMemberFunding(
+    roomId: string,
+    userId: string,
+    amount: number,
+  ): Promise<void> {
+    const members = this.membersByRoom.get(roomId) ?? [];
+    this.membersByRoom.set(
+      roomId,
+      members.map((m) =>
+        m.userId === userId
+          ? { ...m, chips: m.chips + amount, buyInTotal: m.buyInTotal + amount }
+          : m,
+      ),
+    );
+  }
 }
 
 class FakeHandStore implements HandStore {

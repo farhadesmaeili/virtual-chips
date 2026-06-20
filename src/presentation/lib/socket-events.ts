@@ -28,6 +28,18 @@ export interface PublicRoomState {
   readonly members: readonly PublicRoomMember[];
 }
 
+/** A pending buy-in request, broadcast on `chips:requests` (task 4.15). */
+export interface PublicChipRequest {
+  readonly id: string;
+  readonly seat: number;
+  readonly username: string;
+  readonly amount: number;
+}
+
+export interface ChipRequestList {
+  readonly requests: readonly PublicChipRequest[];
+}
+
 // --- Hand state (broadcast on `hand:state`) -------------------------------
 // The table renders from these; in 4.2 the wiring is partial (full socket sync
 // lands in later 4.x tasks), so components must treat `hand` as possibly null.

@@ -66,3 +66,9 @@ export const PLAYER_ACT_LIMIT: RateLimitConfig = {
   capacity: 10,
   refillPerSecond: 5,
 };
+
+/** Chip requests are infrequent; keep them anti-spam without being annoying. */
+export const CHIP_REQUEST_LIMIT: RateLimitConfig = {
+  capacity: 5,
+  refillPerSecond: 0.5,
+};

@@ -82,6 +82,20 @@ export class PrismaRoomRepository implements RoomRepository {
     });
   }
 
+  async addMemberFunding(
+    roomId: string,
+    userId: string,
+    amount: number,
+  ): Promise<void> {
+    await this.prisma.roomMember.update({
+      where: { roomId_userId: { roomId, userId } },
+      data: {
+        chips: { increment: amount },
+        buyInTotal: { increment: amount },
+      },
+    });
+  }
+
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     const members = await this.prisma.roomMember.findMany({
       where: { roomId },

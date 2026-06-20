@@ -8,20 +8,26 @@ import { Server, type DefaultEventsMap } from 'socket.io';
 import type { Clock, IdGenerator } from './src/application/ports';
 import {
   AdvanceStreet,
+  ApproveChipRequest,
   CreateRoom,
   JoinRoom,
   LeaveRoom,
   PlayerAct,
+  RejectChipRequest,
+  RequestChips,
   ResyncRoom,
   SettleHand,
   StartHand,
 } from './src/application/use-cases';
+import { InMemoryChipRequestStore } from './src/infrastructure/persistence/in-memory-chip-request-store';
 import { InMemoryHandStore } from './src/infrastructure/persistence/in-memory-hand-store';
 import { prisma } from './src/infrastructure/persistence/prisma';
 import { PrismaRoomRepository } from './src/infrastructure/persistence/prisma-room-repository';
+import { registerFundingHandlers } from './src/infrastructure/realtime/funding-handlers';
 import { HandGateway } from './src/infrastructure/realtime/hand-gateway';
 import { registerHandHandlers } from './src/infrastructure/realtime/hand-handlers';
 import {
+  CHIP_REQUEST_LIMIT,
   PLAYER_ACT_LIMIT,
   ROOM_CREATE_LIMIT,
   TokenBucketRateLimiter,
@@ -94,16 +100,35 @@ async function main(): Promise<void> {
   // Compose the use-cases over the repositories (composition root).
   const roomRepository = new PrismaRoomRepository(prisma);
   const handStore = new InMemoryHandStore();
+  const chipRequestStore = new InMemoryChipRequestStore();
   const idGenerator: IdGenerator = { generate: () => randomUUID() };
   const clock: Clock = { now: () => Date.now() };
   const createLimiter = new TokenBucketRateLimiter(ROOM_CREATE_LIMIT, clock);
   const actLimiter = new TokenBucketRateLimiter(PLAYER_ACT_LIMIT, clock);
+  const chipRequestLimiter = new TokenBucketRateLimiter(
+    CHIP_REQUEST_LIMIT,
+    clock,
+  );
   const roomHandlerDeps = {
     createRoom: new CreateRoom(roomRepository, idGenerator),
     joinRoom: new JoinRoom(roomRepository),
     leaveRoom: new LeaveRoom(roomRepository),
-    resyncRoom: new ResyncRoom(roomRepository, handStore),
+    resyncRoom: new ResyncRoom(roomRepository, handStore, chipRequestStore),
     createLimiter,
+  };
+  const fundingHandlerDeps = {
+    requestChips: new RequestChips(
+      roomRepository,
+      chipRequestStore,
+      idGenerator,
+      clock,
+    ),
+    approveChipRequest: new ApproveChipRequest(
+      roomRepository,
+      chipRequestStore,
+    ),
+    rejectChipRequest: new RejectChipRequest(roomRepository, chipRequestStore),
+    requestLimiter: chipRequestLimiter,
   };
   const handGateway = new HandGateway(
     io,
@@ -124,6 +149,7 @@ async function main(): Promise<void> {
 
     registerRoomHandlers(io, socket, roomHandlerDeps);
     registerHandHandlers(socket, { gateway: handGateway, actLimiter });
+    registerFundingHandlers(io, socket, fundingHandlerDeps);
 
     // Clear a room's turn timer when its last member disconnects (no zombies).
     socket.on('disconnecting', () => {

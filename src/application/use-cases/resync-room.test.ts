@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type {
   AddMemberInput,
+  ChipRequestStore,
   HandStore,
   RoomMemberRecord,
   RoomRepository,
@@ -41,6 +42,7 @@ class FakeRoomRepository implements RoomRepository {
     return [...(this.members.get(roomId) ?? [])];
   }
   async updateMemberChips(): Promise<void> {}
+  async addMemberFunding(): Promise<void> {}
 }
 
 class FakeHandStore implements HandStore {
@@ -51,6 +53,14 @@ class FakeHandStore implements HandStore {
   async save(): Promise<void> {}
   async clear(): Promise<void> {}
 }
+
+const emptyChipRequests: ChipRequestStore = {
+  add: async () => {},
+  get: async () => null,
+  remove: async () => {},
+  listByRoom: async () => [],
+  hasPending: async () => false,
+};
 
 const room = createRoom({ id: 'r1', name: 'Table', bankerId: 'alice' });
 const members: RoomMemberRecord[] = [
@@ -78,6 +88,7 @@ describe('ResyncRoom', () => {
     const result = await new ResyncRoom(
       rooms,
       new FakeHandStore(liveHand()),
+      emptyChipRequests,
     ).execute({ userId: 'bob', roomId: 'r1' });
     expect(result.snapshot.members.map((m) => m.userId)).toEqual([
       'alice',
@@ -90,12 +101,14 @@ describe('ResyncRoom', () => {
   it('returns a null hand when no hand is in progress', async () => {
     const rooms = new FakeRoomRepository();
     rooms.seed(room, members);
-    const result = await new ResyncRoom(rooms, new FakeHandStore(null)).execute(
-      {
-        userId: 'alice',
-        roomId: 'r1',
-      },
-    );
+    const result = await new ResyncRoom(
+      rooms,
+      new FakeHandStore(null),
+      emptyChipRequests,
+    ).execute({
+      userId: 'alice',
+      roomId: 'r1',
+    });
     expect(result.hand).toBeNull();
   });
 
@@ -103,20 +116,24 @@ describe('ResyncRoom', () => {
     const rooms = new FakeRoomRepository();
     rooms.seed(room, members);
     await expect(
-      new ResyncRoom(rooms, new FakeHandStore(null)).execute({
-        userId: 'ghost',
-        roomId: 'r1',
-      }),
+      new ResyncRoom(rooms, new FakeHandStore(null), emptyChipRequests).execute(
+        {
+          userId: 'ghost',
+          roomId: 'r1',
+        },
+      ),
     ).rejects.toThrow(NotRoomMemberError);
   });
 
   it('rejects an unknown room', async () => {
     const rooms = new FakeRoomRepository();
     await expect(
-      new ResyncRoom(rooms, new FakeHandStore(null)).execute({
-        userId: 'alice',
-        roomId: 'nope',
-      }),
+      new ResyncRoom(rooms, new FakeHandStore(null), emptyChipRequests).execute(
+        {
+          userId: 'alice',
+          roomId: 'nope',
+        },
+      ),
     ).rejects.toThrow(RoomNotFoundError);
   });
 });

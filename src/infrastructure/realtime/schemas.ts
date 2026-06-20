@@ -41,6 +41,22 @@ export const handSettleSchema = z
   })
   .strict();
 
+export const chipsRequestSchema = z
+  .object({
+    roomId: z.string().min(1),
+    // A sane upper bound so a typo can't request an absurd buy-in.
+    amount: z.number().int().positive().max(1_000_000),
+  })
+  .strict();
+
+export const chipsApproveSchema = z
+  .object({ roomId: z.string().min(1), requestId: z.string().min(1) })
+  .strict();
+
+export const chipsRejectSchema = z
+  .object({ roomId: z.string().min(1), requestId: z.string().min(1) })
+  .strict();
+
 export const playerActSchema = z
   .object({
     roomId: z.string().min(1),
@@ -56,5 +72,8 @@ export type LeaveRoomPayload = z.infer<typeof leaveRoomSchema>;
 export type ResyncRoomPayload = z.infer<typeof resyncRoomSchema>;
 export type HandStartPayload = z.infer<typeof handStartSchema>;
 export type AdvanceStreetPayload = z.infer<typeof advanceStreetSchema>;
+export type ChipsRequestPayload = z.infer<typeof chipsRequestSchema>;
+export type ChipsApprovePayload = z.infer<typeof chipsApproveSchema>;
+export type ChipsRejectPayload = z.infer<typeof chipsRejectSchema>;
 export type HandSettlePayload = z.infer<typeof handSettleSchema>;
 export type PlayerActPayload = z.infer<typeof playerActSchema>;

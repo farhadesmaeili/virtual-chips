@@ -1,5 +1,23 @@
+import type { ChipRequest } from '@/application/ports';
 import type { RoomSnapshot } from '@/application/use-cases';
 import type { RoomSettings, RoomStatus } from '@/domain/entities';
+
+/** A pending chip request as shown to clients — no raw userId. */
+export interface PublicChipRequest {
+  readonly id: string;
+  readonly seat: number;
+  readonly username: string;
+  readonly amount: number;
+}
+
+export function toPublicChipRequest(request: ChipRequest): PublicChipRequest {
+  return {
+    id: request.id,
+    seat: request.seat,
+    username: request.username,
+    amount: request.amount,
+  };
+}
 
 /** A member as broadcast to clients — no raw userId or other internal data. */
 export interface PublicRoomMember {
