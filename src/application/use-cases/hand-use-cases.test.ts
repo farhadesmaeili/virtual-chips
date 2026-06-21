@@ -229,17 +229,21 @@ describe('StartHand', () => {
     ).rejects.toThrow(HandInProgressError);
   });
 
-  it('does not deal in a sitting-out member (task 4.14)', async () => {
+  it('does not deal in a sitting-out member, nor make them act (4.14, bug-1 case b)', async () => {
     rooms.seedRoom(room, [
       member('banker', 0, 100),
-      member('bob', 1, 100, true), // sitting out
+      member('bob', 1, 100, true), // sitting out before the hand
       member('carol', 2, 100),
     ]);
     const hand = await new StartHand(rooms, store, ids(), clock).execute({
       roomId: 'r1',
       requesterId: 'banker',
     });
+    // bob (seat 1) is excluded from the hand entirely…
     expect(hand.players.map((p) => p.seat)).toEqual([0, 2]); // bob skipped
+    expect(hand.players.some((p) => p.seat === 1)).toBe(false);
+    // …and is never assigned the action.
+    expect(hand.actingSeat).not.toBe(1);
   });
 
   it('deals a member back in after they sit in (task 4.14)', async () => {
@@ -348,6 +352,27 @@ describe('PlayerAct', () => {
         action: { type: 'CHECK' },
       }),
     ).rejects.toThrow(NoActiveHandError);
+  });
+
+  it('rejects player:act from a sitting-out member not in the hand (4.14, bug-1 case b)', async () => {
+    rooms.seedRoom(room, [
+      member('banker', 0, 100),
+      member('bob', 1, 100, true), // sat out before the hand → excluded
+      member('carol', 2, 100),
+    ]);
+    await new StartHand(rooms, store, ids(), clock).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    // bob is not part of the active hand, so the server rejects the action with
+    // a typed error (not a turn-order error — they are not in the hand at all).
+    await expect(
+      new PlayerAct(rooms, store, clock).execute({
+        roomId: 'r1',
+        userId: 'bob',
+        action: { type: 'CHECK' },
+      }),
+    ).rejects.toThrow(InvalidActionError);
   });
 });
 
