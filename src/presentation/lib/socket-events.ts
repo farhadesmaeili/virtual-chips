@@ -18,6 +18,7 @@ export interface PublicRoomMember {
   readonly chips: number;
   readonly buyInTotal: number;
   readonly isBanker: boolean;
+  readonly sittingOut: boolean;
 }
 
 export interface PublicRoomState {

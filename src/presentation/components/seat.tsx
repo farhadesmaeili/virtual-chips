@@ -45,6 +45,7 @@ export function Seat({
 }: SeatProps): React.ReactElement {
   const folded = handPlayer?.state === 'folded';
   const allIn = handPlayer?.state === 'all_in';
+  const sittingOut = member?.sittingOut ?? false;
   const stack = handPlayer?.stack ?? member?.chips ?? 0;
   const bet = handPlayer?.committedThisStreet ?? 0;
 
@@ -59,8 +60,9 @@ export function Seat({
         ) : (
           <div
             data-acting={isActing || undefined}
+            data-sitting-out={sittingOut || undefined}
             className={`flex flex-col items-center transition-opacity duration-300 ${
-              folded ? 'opacity-40' : 'opacity-100'
+              folded || sittingOut ? 'opacity-40' : 'opacity-100'
             }`}
           >
             {/* Bet chips sit on the felt between the seat and the pot; in Phase 5
@@ -126,6 +128,11 @@ export function Seat({
               <div className="font-mono text-sm font-semibold tabular-nums text-vc-gold">
                 {allIn ? 'All in' : stack.toLocaleString()}
               </div>
+              {sittingOut && (
+                <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-vc-ink-muted">
+                  Sitting out
+                </div>
+              )}
             </div>
           </div>
         )}

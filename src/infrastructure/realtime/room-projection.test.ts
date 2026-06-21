@@ -20,6 +20,7 @@ const snapshot: RoomSnapshot = {
       seat: 0,
       chips: 100,
       buyInTotal: 100,
+      sittingOut: false,
     },
     {
       userId: 'other-user-id',
@@ -27,6 +28,7 @@ const snapshot: RoomSnapshot = {
       seat: 1,
       chips: 50,
       buyInTotal: 50,
+      sittingOut: true,
     },
   ],
 };
@@ -41,8 +43,16 @@ describe('toPublicRoomState', () => {
         chips: 100,
         buyInTotal: 100,
         isBanker: true,
+        sittingOut: false,
       },
-      { seat: 1, username: 'bob', chips: 50, buyInTotal: 50, isBanker: false },
+      {
+        seat: 1,
+        username: 'bob',
+        chips: 50,
+        buyInTotal: 50,
+        isBanker: false,
+        sittingOut: true,
+      },
     ]);
   });
 

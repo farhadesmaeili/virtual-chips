@@ -26,6 +26,7 @@ export interface PublicRoomMember {
   readonly chips: number;
   readonly buyInTotal: number;
   readonly isBanker: boolean;
+  readonly sittingOut: boolean;
 }
 
 /** Display-only room state broadcast on `room:state`. */
@@ -54,6 +55,7 @@ export function toPublicRoomState(snapshot: RoomSnapshot): PublicRoomState {
       chips: m.chips,
       buyInTotal: m.buyInTotal,
       isBanker: m.userId === snapshot.bankerId,
+      sittingOut: m.sittingOut,
     })),
   };
 }

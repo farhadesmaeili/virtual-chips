@@ -24,6 +24,10 @@ const MESSAGES: Readonly<Record<string, string>> = {
   INVALID_CHIPS_AMOUNT: 'Enter a whole number of chips above zero.',
   CHIP_REQUEST_PENDING: 'You already have a request waiting for the banker.',
   CHIP_REQUEST_NOT_FOUND: 'That request is no longer waiting.',
+  // Sit out / leave (task 4.14)
+  FORBIDDEN: 'You can only do that for yourself.',
+  CANNOT_LEAVE_MID_HAND: 'Finish the hand before leaving the table.',
+  BANKER_CANNOT_LEAVE: 'End the game before leaving — you are the banker.',
 };
 
 /** Returns a friendly message for an error code, falling back to a default. */

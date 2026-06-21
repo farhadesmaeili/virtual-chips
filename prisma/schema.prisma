@@ -54,6 +54,9 @@ model RoomMember {
   seat       Int
   buyInTotal Int      @default(0)
   chips      Int      @default(0)
+  // Sit-out keeps the seat and chips but skips new hands until the player sits
+  // back in (task 4.14). Persisted so it carries across hands.
+  sittingOut Boolean  @default(false)
   joinedAt   DateTime @default(now())
   updatedAt  DateTime @updatedAt
 

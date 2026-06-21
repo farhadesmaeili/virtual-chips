@@ -34,6 +34,12 @@ export const joinRoomSchema = z.object({ roomId: z.string().min(1) }).strict();
 
 export const leaveRoomSchema = z.object({ roomId: z.string().min(1) }).strict();
 
+// Sit out / sit in carry only the roomId; the acting user is always the
+// authenticated session user, never taken from the payload (task 4.14 / IDOR).
+export const sitOutSchema = z.object({ roomId: z.string().min(1) }).strict();
+
+export const sitInSchema = z.object({ roomId: z.string().min(1) }).strict();
+
 export const resyncRoomSchema = z
   .object({ roomId: z.string().min(1) })
   .strict();
@@ -81,6 +87,8 @@ export const playerActSchema = z
 export type CreateRoomPayload = z.infer<typeof createRoomSchema>;
 export type JoinRoomPayload = z.infer<typeof joinRoomSchema>;
 export type LeaveRoomPayload = z.infer<typeof leaveRoomSchema>;
+export type SitOutPayload = z.infer<typeof sitOutSchema>;
+export type SitInPayload = z.infer<typeof sitInSchema>;
 export type ResyncRoomPayload = z.infer<typeof resyncRoomSchema>;
 export type HandStartPayload = z.infer<typeof handStartSchema>;
 export type AdvanceStreetPayload = z.infer<typeof advanceStreetSchema>;

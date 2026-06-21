@@ -17,6 +17,8 @@ import {
   RequestChips,
   ResyncRoom,
   SettleHand,
+  SitIn,
+  SitOut,
   StartHand,
 } from './src/application/use-cases';
 import { InMemoryChipRequestStore } from './src/infrastructure/persistence/in-memory-chip-request-store';
@@ -112,7 +114,9 @@ async function main(): Promise<void> {
   const roomHandlerDeps = {
     createRoom: new CreateRoom(roomRepository, idGenerator),
     joinRoom: new JoinRoom(roomRepository),
-    leaveRoom: new LeaveRoom(roomRepository),
+    leaveRoom: new LeaveRoom(roomRepository, handStore),
+    sitOut: new SitOut(roomRepository),
+    sitIn: new SitIn(roomRepository),
     resyncRoom: new ResyncRoom(roomRepository, handStore, chipRequestStore),
     createLimiter,
   };
@@ -137,6 +141,7 @@ async function main(): Promise<void> {
     new AdvanceStreet(roomRepository, handStore, clock),
     new SettleHand(roomRepository, handStore),
     handStore,
+    roomRepository,
   );
 
   io.on('connection', (socket: AppSocket) => {

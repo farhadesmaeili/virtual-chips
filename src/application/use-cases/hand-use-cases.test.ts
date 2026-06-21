@@ -82,6 +82,17 @@ class FakeRoomRepository implements RoomRepository {
       ),
     );
   }
+  async setMemberSittingOut(
+    roomId: string,
+    userId: string,
+    sittingOut: boolean,
+  ): Promise<void> {
+    const members = this.membersByRoom.get(roomId) ?? [];
+    this.membersByRoom.set(
+      roomId,
+      members.map((m) => (m.userId === userId ? { ...m, sittingOut } : m)),
+    );
+  }
 }
 
 class FakeHandStore implements HandStore {
@@ -105,8 +116,20 @@ const ids = () => {
 const NOW = 1000;
 const clock = { now: () => NOW };
 
-function member(userId: string, seat: number, chips: number): RoomMemberRecord {
-  return { userId, username: userId, seat, chips, buyInTotal: chips };
+function member(
+  userId: string,
+  seat: number,
+  chips: number,
+  sittingOut = false,
+): RoomMemberRecord {
+  return {
+    userId,
+    username: userId,
+    seat,
+    chips,
+    buyInTotal: chips,
+    sittingOut,
+  };
 }
 
 let rooms: FakeRoomRepository;
@@ -205,6 +228,59 @@ describe('StartHand', () => {
       start.execute({ roomId: 'r1', requesterId: 'banker' }),
     ).rejects.toThrow(HandInProgressError);
   });
+
+  it('does not deal in a sitting-out member, nor make them act (4.14, bug-1 case b)', async () => {
+    rooms.seedRoom(room, [
+      member('banker', 0, 100),
+      member('bob', 1, 100, true), // sitting out before the hand
+      member('carol', 2, 100),
+    ]);
+    const hand = await new StartHand(rooms, store, ids(), clock).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    // bob (seat 1) is excluded from the hand entirely…
+    expect(hand.players.map((p) => p.seat)).toEqual([0, 2]); // bob skipped
+    expect(hand.players.some((p) => p.seat === 1)).toBe(false);
+    // …and is never assigned the action.
+    expect(hand.actingSeat).not.toBe(1);
+  });
+
+  it('deals a member back in after they sit in (task 4.14)', async () => {
+    rooms.seedRoom(room, [
+      member('banker', 0, 100),
+      member('bob', 1, 100, true),
+      member('carol', 2, 100),
+    ]);
+    // bob returns before the deal.
+    await rooms.setMemberSittingOut('r1', 'bob', false);
+    const hand = await new StartHand(rooms, store, ids(), clock).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    expect(hand.players.map((p) => p.seat)).toEqual([0, 1, 2]);
+  });
+
+  it('keeps a mid-hand sit-out in the current hand but skips the next (4.14)', async () => {
+    rooms.seedRoom(room, [
+      member('banker', 0, 100),
+      member('bob', 1, 100),
+      member('carol', 2, 100),
+    ]);
+    const start = new StartHand(rooms, store, ids(), clock);
+    const h1 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    // bob is dealt into the current hand.
+    expect(h1.players.map((p) => p.seat)).toContain(1);
+
+    // bob sits out mid-hand; the live hand is unchanged.
+    await rooms.setMemberSittingOut('r1', 'bob', true);
+    expect(h1.players.map((p) => p.seat)).toContain(1);
+
+    // Next hand skips bob.
+    await store.save('r1', { ...h1, status: 'settled' });
+    const h2 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    expect(h2.players.map((p) => p.seat)).toEqual([0, 2]);
+  });
 });
 
 describe('PlayerAct', () => {
@@ -276,6 +352,27 @@ describe('PlayerAct', () => {
         action: { type: 'CHECK' },
       }),
     ).rejects.toThrow(NoActiveHandError);
+  });
+
+  it('rejects player:act from a sitting-out member not in the hand (4.14, bug-1 case b)', async () => {
+    rooms.seedRoom(room, [
+      member('banker', 0, 100),
+      member('bob', 1, 100, true), // sat out before the hand → excluded
+      member('carol', 2, 100),
+    ]);
+    await new StartHand(rooms, store, ids(), clock).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    // bob is not part of the active hand, so the server rejects the action with
+    // a typed error (not a turn-order error — they are not in the hand at all).
+    await expect(
+      new PlayerAct(rooms, store, clock).execute({
+        roomId: 'r1',
+        userId: 'bob',
+        action: { type: 'CHECK' },
+      }),
+    ).rejects.toThrow(InvalidActionError);
   });
 });
 

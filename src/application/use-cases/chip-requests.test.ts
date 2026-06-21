@@ -54,6 +54,7 @@ class FakeRoomRepository implements RoomRepository {
       ),
     );
   }
+  async setMemberSittingOut(): Promise<void> {}
 }
 
 const ids = () => {
@@ -63,7 +64,14 @@ const ids = () => {
 const clock = { now: () => 1000 };
 
 function member(userId: string, seat: number): RoomMemberRecord {
-  return { userId, username: userId, seat, chips: 0, buyInTotal: 0 };
+  return {
+    userId,
+    username: userId,
+    seat,
+    chips: 0,
+    buyInTotal: 0,
+    sittingOut: false,
+  };
 }
 
 const room = createRoom({ id: 'r1', name: 'Table', bankerId: 'banker' });

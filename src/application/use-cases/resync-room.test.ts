@@ -43,6 +43,7 @@ class FakeRoomRepository implements RoomRepository {
   }
   async updateMemberChips(): Promise<void> {}
   async addMemberFunding(): Promise<void> {}
+  async setMemberSittingOut(): Promise<void> {}
 }
 
 class FakeHandStore implements HandStore {
@@ -64,8 +65,8 @@ const emptyChipRequests: ChipRequestStore = {
 
 const room = createRoom({ id: 'r1', name: 'Table', bankerId: 'alice' });
 const members: RoomMemberRecord[] = [
-  { userId: 'alice', username: 'alice', seat: 0, chips: 100, buyInTotal: 100 },
-  { userId: 'bob', username: 'bob', seat: 1, chips: 100, buyInTotal: 100 },
+  { userId: 'alice', username: 'alice', seat: 0, chips: 100, buyInTotal: 100, sittingOut: false }, // prettier-ignore
+  { userId: 'bob', username: 'bob', seat: 1, chips: 100, buyInTotal: 100, sittingOut: false }, // prettier-ignore
 ];
 
 function liveHand(): Hand {

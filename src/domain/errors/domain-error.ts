@@ -26,7 +26,10 @@ export type DomainErrorCode =
   | 'NOT_BANKER'
   | 'INVALID_SETTLEMENT'
   | 'CHIP_REQUEST_NOT_FOUND'
-  | 'CHIP_REQUEST_PENDING';
+  | 'CHIP_REQUEST_PENDING'
+  | 'FORBIDDEN'
+  | 'CANNOT_LEAVE_MID_HAND'
+  | 'BANKER_CANNOT_LEAVE';
 
 export abstract class DomainError extends Error {
   /** Stable, machine-readable error code (e.g. `INSUFFICIENT_CHIPS`). */
@@ -233,5 +236,44 @@ export class ChipRequestPendingError extends DomainError {
 
   constructor() {
     super('You already have a chip request waiting for the banker');
+  }
+}
+
+// --- Presence (sit out / leave, task 4.14) ---
+
+/**
+ * Thrown when a user tries to act on someone other than themselves (IDOR
+ * guard). The acting user is always the authenticated session user; a payload
+ * may never target a different user.
+ */
+export class ForbiddenActionError extends DomainError {
+  readonly code = 'FORBIDDEN';
+
+  constructor(message = 'You can only perform this action on yourself') {
+    super(message);
+  }
+}
+
+/**
+ * Thrown when a player tries to leave the table while a hand is in progress.
+ * They may fold and stay seated; the seat is only freed between hands.
+ */
+export class CannotLeaveMidHandError extends DomainError {
+  readonly code = 'CANNOT_LEAVE_MID_HAND';
+
+  constructor(readonly roomId: string) {
+    super('You cannot leave the table during a hand');
+  }
+}
+
+/**
+ * Thrown when the banker tries to leave mid-game. Transferring the banker role
+ * is a later task (roadmap 7.3); for now the banker must end the game first.
+ */
+export class BankerCannotLeaveError extends DomainError {
+  readonly code = 'BANKER_CANNOT_LEAVE';
+
+  constructor(readonly roomId: string) {
+    super('The banker cannot leave mid-game');
   }
 }
