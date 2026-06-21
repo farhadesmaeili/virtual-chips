@@ -55,6 +55,11 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     const socket = getSocket();
     const onState = (state: PublicRoomState): void => {
       setRoom(state);
+      // room:state is the success response for presence actions (sit out / sit
+      // in / leave), which have no hand:state to follow. Clear the in-flight
+      // flag here too, or the controls stay disabled until the next hand —
+      // which never comes when everyone has sat out (task 4.14 bug-2).
+      setPending(false);
       // If our own leave landed, the snapshot no longer lists us → go to lobby.
       if (leaving.current) {
         const me = userRef.current;
