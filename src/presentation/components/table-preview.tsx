@@ -65,12 +65,12 @@ const hand: PublicHandState = {
   actionDeadline: Date.now() + 22_000,
   status: 'betting',
   players: [
-    { seat: 0, stack: 3400, committedThisStreet: 20, committedTotal: 20, state: 'active', hasActedThisStreet: false }, // prettier-ignore
-    { seat: 1, stack: 2120, committedThisStreet: 40, committedTotal: 40, state: 'active', hasActedThisStreet: true }, // prettier-ignore
-    { seat: 2, stack: 980, committedThisStreet: 0, committedTotal: 0, state: 'folded', hasActedThisStreet: true }, // prettier-ignore
-    { seat: 4, stack: 0, committedThisStreet: 200, committedTotal: 200, state: 'all_in', hasActedThisStreet: true }, // prettier-ignore
-    { seat: 5, stack: 0, committedThisStreet: 0, committedTotal: 0, state: 'sitting_out', hasActedThisStreet: false }, // prettier-ignore
-    { seat: 7, stack: 1750, committedThisStreet: 40, committedTotal: 40, state: 'active', hasActedThisStreet: true }, // prettier-ignore
+    { seat: 0, stack: 3400, committedThisStreet: 20, committedTotal: 20, state: 'active', hasActedThisStreet: false, timeExtensionsRemaining: 2 }, // prettier-ignore
+    { seat: 1, stack: 2120, committedThisStreet: 40, committedTotal: 40, state: 'active', hasActedThisStreet: true, timeExtensionsRemaining: 2 }, // prettier-ignore
+    { seat: 2, stack: 980, committedThisStreet: 0, committedTotal: 0, state: 'folded', hasActedThisStreet: true, timeExtensionsRemaining: 2 }, // prettier-ignore
+    { seat: 4, stack: 0, committedThisStreet: 200, committedTotal: 200, state: 'all_in', hasActedThisStreet: true, timeExtensionsRemaining: 2 }, // prettier-ignore
+    { seat: 5, stack: 0, committedThisStreet: 0, committedTotal: 0, state: 'sitting_out', hasActedThisStreet: false, timeExtensionsRemaining: 2 }, // prettier-ignore
+    { seat: 7, stack: 1750, committedThisStreet: 40, committedTotal: 40, state: 'active', hasActedThisStreet: true, timeExtensionsRemaining: 2 }, // prettier-ignore
   ],
   pots: [{ amount: 300, eligibleSeats: [0, 1, 4, 7] }],
   totalPot: 300,

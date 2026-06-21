@@ -5,3 +5,4 @@ export * from './button';
 export * from './settlement';
 export * from './side-pot';
 export * from './street';
+export * from './time-bank';

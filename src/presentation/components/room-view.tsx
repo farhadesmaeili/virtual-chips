@@ -159,6 +159,14 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     getSocket().emit('hand:advance-street', { roomId });
   }, [roomId]);
 
+  // Time bank (task 4.12). Doesn't set `pending`: the player keeps their turn
+  // and may still act; the broadcast hand:state refreshes the deadline + budget.
+  const requestTime = useCallback((): void => {
+    intent.current = 'action';
+    setActionError(null);
+    getSocket().emit('turn:request-time', { roomId });
+  }, [roomId]);
+
   const requestChips = useCallback(
     (amount: number): void => {
       intent.current = 'funding';
@@ -333,6 +341,12 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               error={actionError}
               actingName={actingName}
               onAct={act}
+              actionDeadline={hand?.actionDeadline ?? null}
+              timeExtensionsRemaining={
+                hand?.players.find((p) => p.seat === heroSeat)
+                  ?.timeExtensionsRemaining ?? 0
+              }
+              onAddTime={requestTime}
             />
           )}
 

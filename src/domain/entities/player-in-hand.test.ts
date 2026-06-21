@@ -4,6 +4,7 @@ import {
   canAct,
   commit,
   createPlayerInHand,
+  DEFAULT_TIME_EXTENSIONS,
   fold,
   isActive,
   markActed,
@@ -31,6 +32,11 @@ describe('createPlayerInHand', () => {
       state: 'active',
       hasActedThisStreet: false,
     });
+  });
+
+  it('starts with the default time-bank extensions (task 4.12)', () => {
+    const p = createPlayerInHand({ seat: 0, userId: 'u', stack: 100 });
+    expect(p.timeExtensionsRemaining).toBe(DEFAULT_TIME_EXTENSIONS);
   });
 
   it('validates the starting stack', () => {

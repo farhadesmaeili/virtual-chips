@@ -5,6 +5,7 @@ import {
   handSettleSchema,
   handStartSchema,
   playerActSchema,
+  turnRequestTimeSchema,
 } from './schemas';
 import { emitError, handleError } from './socket-errors';
 import type { AppSocket } from './socket-auth';
@@ -99,6 +100,32 @@ export function registerHandHandlers(
           type: parsed.data.action,
           amount: parsed.data.amount,
         });
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  // Time bank (task 4.12): the acting player asks for more time. The budget
+  // already bounds this, but the limiter still stops a tight failing loop. The
+  // gateway/use-case enforce turn + budget authorization server-side.
+  socket.on('turn:request-time', (payload: unknown) => {
+    void (async () => {
+      const parsed = turnRequestTimeSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(
+          socket,
+          'INVALID_PAYLOAD',
+          'Invalid turn:request-time payload',
+        );
+        return;
+      }
+      if (!deps.actLimiter.tryAcquire(userId)) {
+        emitError(socket, 'RATE_LIMITED', 'Too many actions; slow down');
+        return;
+      }
+      try {
+        await deps.gateway.requestTime(parsed.data.roomId, userId);
       } catch (error) {
         handleError(socket, error);
       }

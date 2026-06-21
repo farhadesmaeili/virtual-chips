@@ -55,6 +55,12 @@ export const advanceStreetSchema = z
   .object({ roomId: z.string().min(1) })
   .strict();
 
+// Time bank (task 4.12): carries only the roomId; the acting player is the
+// authenticated session user, never the payload (no userId/seat).
+export const turnRequestTimeSchema = z
+  .object({ roomId: z.string().min(1) })
+  .strict();
+
 export const handSettleSchema = z
   .object({
     roomId: z.string().min(1),
@@ -98,6 +104,7 @@ export type ResyncRoomPayload = z.infer<typeof resyncRoomSchema>;
 export type RoomsMinePayload = z.infer<typeof roomsMineSchema>;
 export type HandStartPayload = z.infer<typeof handStartSchema>;
 export type AdvanceStreetPayload = z.infer<typeof advanceStreetSchema>;
+export type TurnRequestTimePayload = z.infer<typeof turnRequestTimeSchema>;
 export type ChipsRequestPayload = z.infer<typeof chipsRequestSchema>;
 export type ChipsApprovePayload = z.infer<typeof chipsApproveSchema>;
 export type ChipsRejectPayload = z.infer<typeof chipsRejectSchema>;

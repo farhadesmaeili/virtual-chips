@@ -2,6 +2,7 @@ import type { HandStore, RoomRepository } from '@/application/ports';
 import type {
   AdvanceStreet,
   PlayerAct,
+  RequestTimeExtension,
   SettleHand,
   StartHand,
 } from '@/application/use-cases';
@@ -36,6 +37,7 @@ export class HandGateway {
     private readonly playerAct: PlayerAct,
     private readonly advanceStreet: AdvanceStreet,
     private readonly settleHand: SettleHand,
+    private readonly requestTimeExtension: RequestTimeExtension,
     private readonly hands: HandStore,
     private readonly rooms: RoomRepository,
   ) {}
@@ -74,6 +76,23 @@ export class HandGateway {
     });
     this.io.to(roomId).emit('pot:updated', { pots: state.pots });
     await this.resolveTurn(roomId, hand);
+  }
+
+  /**
+   * Grants the acting player a time-bank extension (task 4.12): pushes their
+   * deadline out and re-arms the turn timer for the new, later deadline.
+   * `scheduleTimer` clears the existing timer before arming the new one, so the
+   * prior auto-action can never still fire against the old deadline (no race).
+   */
+  async requestTime(roomId: string, userId: string): Promise<void> {
+    const hand = await this.requestTimeExtension.execute({ roomId, userId });
+    this.scheduleTimer(roomId, hand);
+    const state = toPublicHandState(hand);
+    this.io.to(roomId).emit('hand:state', state);
+    this.io.to(roomId).emit('turn:changed', {
+      actingSeat: state.actingSeat,
+      actionDeadline: state.actionDeadline,
+    });
   }
 
   async advanceStreetDeal(roomId: string, userId: string): Promise<void> {

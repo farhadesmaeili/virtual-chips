@@ -15,6 +15,8 @@ const MESSAGES: Readonly<Record<string, string>> = {
   INVALID_ACTION: 'You can not do that right now.',
   HAND_NOT_IN_BETTING: 'Betting is closed for this hand.',
   NO_ACTIVE_HAND: 'No hand is in play yet.',
+  // Time bank (task 4.12)
+  NO_TIME_BANK: 'You have used all your extra time this hand.',
   // Banker / hand lifecycle (task 4.6; minimal start in 4.3)
   NOT_ENOUGH_PLAYERS: 'You need at least two funded players to deal.',
   HAND_IN_PROGRESS: 'A hand is already in play.',

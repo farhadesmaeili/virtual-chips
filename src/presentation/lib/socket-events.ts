@@ -61,6 +61,8 @@ export interface PublicHandPlayer {
   readonly committedTotal: number;
   readonly state: PlayerState;
   readonly hasActedThisStreet: boolean;
+  /** Time-bank extensions left this hand (task 4.12). */
+  readonly timeExtensionsRemaining: number;
 }
 
 export interface PublicPot {

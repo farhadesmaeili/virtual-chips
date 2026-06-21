@@ -16,6 +16,7 @@ import {
   PlayerAct,
   RejectChipRequest,
   RequestChips,
+  RequestTimeExtension,
   ResyncRoom,
   SettleHand,
   SitIn,
@@ -142,6 +143,7 @@ async function main(): Promise<void> {
     new PlayerAct(roomRepository, handStore, clock),
     new AdvanceStreet(roomRepository, handStore, clock),
     new SettleHand(roomRepository, handStore),
+    new RequestTimeExtension(handStore, clock),
     handStore,
     roomRepository,
   );
