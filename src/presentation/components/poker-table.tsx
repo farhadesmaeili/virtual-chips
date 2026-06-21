@@ -118,6 +118,7 @@ export function PokerTable({
                 isActing={hand?.actingSeat === slot.seat}
                 isButton={hand?.buttonSeat === slot.seat}
                 actionDeadline={hand?.actionDeadline ?? null}
+                actionTimeoutMs={room.settings.actionTimeoutMs}
               />
             ))}
           </div>
