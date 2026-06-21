@@ -1,4 +1,4 @@
-import type { ChipRequest } from '@/application/ports';
+import type { ChipRequest, UserRoomMembership } from '@/application/ports';
 import type { RoomSnapshot } from '@/application/use-cases';
 import type { RoomSettings, RoomStatus } from '@/domain/entities';
 
@@ -17,6 +17,17 @@ export function toPublicChipRequest(request: ChipRequest): PublicChipRequest {
     username: request.username,
     amount: request.amount,
   };
+}
+
+/** A room the user belongs to, for the lobby's "Your table" card (task 4.13). */
+export interface PublicUserRoom {
+  readonly roomId: string;
+  readonly name: string;
+  readonly status: RoomStatus;
+}
+
+export function toPublicUserRoom(room: UserRoomMembership): PublicUserRoom {
+  return { roomId: room.roomId, name: room.name, status: room.status };
 }
 
 /** A member as broadcast to clients — no raw userId or other internal data. */

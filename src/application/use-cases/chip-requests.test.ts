@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type { RoomMemberRecord, RoomRepository } from '@/application/ports';
+import type {
+  RoomMemberRecord,
+  RoomRepository,
+  UserRoomMembership,
+} from '@/application/ports';
 import { createRoom, type Room } from '@/domain/entities';
 import {
   ChipRequestNotFoundError,
@@ -37,6 +41,9 @@ class FakeRoomRepository implements RoomRepository {
   async removeMember(): Promise<void> {}
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     return [...(this.members.get(roomId) ?? [])];
+  }
+  async listRoomsForUser(): Promise<UserRoomMembership[]> {
+    return [];
   }
   async updateMemberChips(): Promise<void> {}
   async addMemberFunding(

@@ -44,6 +44,11 @@ export const resyncRoomSchema = z
   .object({ roomId: z.string().min(1) })
   .strict();
 
+// The lobby's "Your table" query (task 4.13) needs no input: the user is taken
+// from the authenticated session, never the payload. An empty .strict() object
+// rejects any field — so a client cannot smuggle a userId to read others' rooms.
+export const roomsMineSchema = z.object({}).strict();
+
 export const handStartSchema = z.object({ roomId: z.string().min(1) }).strict();
 
 export const advanceStreetSchema = z
@@ -90,6 +95,7 @@ export type LeaveRoomPayload = z.infer<typeof leaveRoomSchema>;
 export type SitOutPayload = z.infer<typeof sitOutSchema>;
 export type SitInPayload = z.infer<typeof sitInSchema>;
 export type ResyncRoomPayload = z.infer<typeof resyncRoomSchema>;
+export type RoomsMinePayload = z.infer<typeof roomsMineSchema>;
 export type HandStartPayload = z.infer<typeof handStartSchema>;
 export type AdvanceStreetPayload = z.infer<typeof advanceStreetSchema>;
 export type ChipsRequestPayload = z.infer<typeof chipsRequestSchema>;

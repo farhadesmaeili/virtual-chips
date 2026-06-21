@@ -23,6 +23,16 @@ export interface AddMemberInput {
 }
 
 /**
+ * A room the user is a member of, for the lobby's "Your table" card (task 4.13).
+ * Carries only room identity + status — the card needs no member detail.
+ */
+export interface UserRoomMembership {
+  readonly roomId: string;
+  readonly name: string;
+  readonly status: RoomStatus;
+}
+
+/**
  * Persistence port for rooms. Works in terms of the domain `Room` entity; the
  * implementation maps to/from the database representation.
  */
@@ -33,6 +43,12 @@ export interface RoomRepository {
   addMember(roomId: string, member: AddMemberInput): Promise<RoomMemberRecord>;
   removeMember(roomId: string, userId: string): Promise<void>;
   listMembers(roomId: string): Promise<RoomMemberRecord[]>;
+  /**
+   * Lists the rooms the given user is a member of, most-recently-joined first
+   * (task 4.13). Returns an array — a user is in at most one table today, but
+   * the boundary stays forward-compatible with future multi-table play.
+   */
+  listRoomsForUser(userId: string): Promise<UserRoomMembership[]>;
   /** Sets a member's current chip stack (e.g. persisting settlement results). */
   updateMemberChips(
     roomId: string,

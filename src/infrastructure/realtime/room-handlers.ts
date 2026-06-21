@@ -2,18 +2,24 @@ import type {
   CreateRoom,
   JoinRoom,
   LeaveRoom,
+  ListUserRooms,
   ResyncRoom,
   SitIn,
   SitOut,
 } from '@/application/use-cases';
 import { toPublicHandState } from './hand-projection';
 import type { RateLimiter } from './rate-limiter';
-import { toPublicChipRequest, toPublicRoomState } from './room-projection';
+import {
+  toPublicChipRequest,
+  toPublicRoomState,
+  toPublicUserRoom,
+} from './room-projection';
 import {
   createRoomSchema,
   joinRoomSchema,
   leaveRoomSchema,
   resyncRoomSchema,
+  roomsMineSchema,
   sitInSchema,
   sitOutSchema,
 } from './schemas';
@@ -27,6 +33,7 @@ export interface RoomHandlerDeps {
   readonly sitOut: SitOut;
   readonly sitIn: SitIn;
   readonly resyncRoom: ResyncRoom;
+  readonly listUserRooms: ListUserRooms;
   /** Rate limiter for the expensive room:create action. */
   readonly createLimiter: RateLimiter;
 }
@@ -176,6 +183,25 @@ export function registerRoomHandlers(
         socket.emit('chips:requests', {
           requests: chipRequests.map(toPublicChipRequest),
         });
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  // Lobby "Your table" card (task 4.13): the rooms this user belongs to. The
+  // user is the authenticated socket user — never the payload (which carries no
+  // userId), so this can only ever return the caller's own memberships.
+  socket.on('rooms:mine', (payload: unknown) => {
+    void (async () => {
+      const parsed = roomsMineSchema.safeParse(payload ?? {});
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid rooms:mine payload');
+        return;
+      }
+      try {
+        const rooms = await deps.listUserRooms.execute({ userId });
+        socket.emit('rooms:mine', { rooms: rooms.map(toPublicUserRoom) });
       } catch (error) {
         handleError(socket, error);
       }
