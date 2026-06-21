@@ -141,6 +141,7 @@ async function main(): Promise<void> {
     new AdvanceStreet(roomRepository, handStore, clock),
     new SettleHand(roomRepository, handStore),
     handStore,
+    roomRepository,
   );
 
   io.on('connection', (socket: AppSocket) => {

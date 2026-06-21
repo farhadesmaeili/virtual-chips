@@ -1,4 +1,4 @@
-import type { HandStore } from '@/application/ports';
+import type { HandStore, RoomRepository } from '@/application/ports';
 import type {
   AdvanceStreet,
   PlayerAct,
@@ -21,6 +21,11 @@ import type { AppServer } from './socket-auth';
  * PlayerAct path (CHECK if nothing is owed, otherwise FOLD — §6). The timer is
  * reset on every turn change and cleared when betting ends or a room empties,
  * so no zombie timers linger.
+ *
+ * When the turn lands on a player who is sitting out (task 4.14), that same
+ * auto-action is applied immediately rather than after the full timeout, so the
+ * table never stalls on a seat whose owner has stepped away. `sittingOut` stays
+ * set, so they are excluded from the next hand's deal.
  */
 export class HandGateway {
   private readonly timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -32,6 +37,7 @@ export class HandGateway {
     private readonly advanceStreet: AdvanceStreet,
     private readonly settleHand: SettleHand,
     private readonly hands: HandStore,
+    private readonly rooms: RoomRepository,
   ) {}
 
   async start(roomId: string, requesterId: string): Promise<void> {
@@ -42,7 +48,7 @@ export class HandGateway {
       actingSeat: state.actingSeat,
       actionDeadline: state.actionDeadline,
     });
-    this.scheduleTimer(roomId, hand);
+    await this.resolveTurn(roomId, hand);
   }
 
   async act(
@@ -67,7 +73,7 @@ export class HandGateway {
       actionDeadline: state.actionDeadline,
     });
     this.io.to(roomId).emit('pot:updated', { pots: state.pots });
-    this.scheduleTimer(roomId, hand);
+    await this.resolveTurn(roomId, hand);
   }
 
   async advanceStreetDeal(roomId: string, userId: string): Promise<void> {
@@ -83,7 +89,7 @@ export class HandGateway {
     });
     // Starts a timer only if the new street has someone to act; a paused
     // all-in run-out (awaiting_street again) schedules nothing.
-    this.scheduleTimer(roomId, hand);
+    await this.resolveTurn(roomId, hand);
   }
 
   async settle(
@@ -115,6 +121,34 @@ export class HandGateway {
     }
   }
 
+  /**
+   * Decides what happens once it is the acting seat's turn: if that player is
+   * sitting out, resolve their turn immediately with the timeout auto-action
+   * (so the table never waits on them); otherwise arm the normal turn timer.
+   * The auto-action re-enters `act`, which calls back here — so a run of
+   * consecutive sitting-out seats is resolved in one pass.
+   */
+  private async resolveTurn(roomId: string, hand: Hand): Promise<void> {
+    if (
+      hand.status === 'betting' &&
+      hand.actingSeat !== null &&
+      (await this.isSeatSittingOut(roomId, hand.actingSeat))
+    ) {
+      await this.applyAutoAction(roomId, hand);
+      return;
+    }
+    this.scheduleTimer(roomId, hand);
+  }
+
+  /** True when the member occupying `seat` has sat out (task 4.14). */
+  private async isSeatSittingOut(
+    roomId: string,
+    seat: number,
+  ): Promise<boolean> {
+    const members = await this.rooms.listMembers(roomId);
+    return members.find((m) => m.seat === seat)?.sittingOut ?? false;
+  }
+
   private scheduleTimer(roomId: string, hand: Hand): void {
     this.clear(roomId);
     if (
@@ -137,15 +171,24 @@ export class HandGateway {
     this.timers.delete(roomId);
     const hand = await this.hands.get(roomId);
     if (hand === null) return;
+    await this.applyAutoAction(roomId, hand);
+  }
+
+  /**
+   * Applies the standard auto-action for the acting seat (CHECK when nothing is
+   * owed, otherwise FOLD — docs/BETTING-ENGINE.md §6) through the same
+   * server-authoritative `act` path used by real and timed-out actions. Used
+   * both on timeout and to resolve a sitting-out player's turn immediately.
+   */
+  private async applyAutoAction(roomId: string, hand: Hand): Promise<void> {
     const type = autoActionType(hand);
     if (type === null) return;
     const player = hand.players.find((p) => p.seat === hand.actingSeat);
     if (player === undefined) return;
     try {
-      // Auto-action goes through the same server-authoritative path.
       await this.act(roomId, player.userId, { type });
     } catch {
-      // The state changed underneath the timer; ignore.
+      // The state changed underneath us (e.g. the hand was settled); ignore.
     }
   }
 }
