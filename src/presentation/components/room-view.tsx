@@ -4,12 +4,11 @@ import { motion, useReducedMotion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ActionMenu } from './action-menu';
 import { ActionPanel } from './action-panel';
 import { deriveActions, type ActionKind } from './action-availability';
-import { BankerBar } from './banker-bar';
-import { FundingControls } from './funding-controls';
+import { deriveMenuItems } from './menu-availability';
 import { PokerTable } from './poker-table';
-import { PresenceControls } from './presence-controls';
 import { ShowdownControls } from './showdown-controls';
 import { StreetControls } from './street-controls';
 import { TurnBanner } from './turn-banner';
@@ -227,6 +226,19 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     room?.settings.bigBlind ?? 0,
   );
 
+  // The unified action menu (task 4.16): which scattered controls to show.
+  const menuModel = deriveMenuItems({
+    seated: heroSeat !== null,
+    sittingOut: heroMember?.sittingOut ?? false,
+    isBanker: heroIsBanker,
+    handInPlay,
+    gameInPlay: room?.status === 'playing',
+    handSettled: hand?.status === 'settled',
+    hasOwnRequest: chipRequests.some((r) => r.seat === heroSeat),
+    requestCount: chipRequests.length,
+    pending,
+  });
+
   // Whose turn it is, for the panel's waiting state.
   const actingName =
     hand?.actingSeat != null
@@ -266,18 +278,6 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               {room.members.length} seated · {room.status}
             </p>
           </div>
-
-          {/* Banker's deal control to start a hand — only when none is in play.
-              Mid-hand pacing (deal next street, settle) lives below the table. */}
-          {heroIsBanker && !handInPlay && (
-            <BankerBar
-              handInPlay={handInPlay}
-              resuming={hand?.status === 'settled'}
-              pending={pending}
-              error={actionError}
-              onStartHand={startHand}
-            />
-          )}
 
           <TurnBanner hand={hand} members={room.members} heroSeat={heroSeat} />
 
@@ -335,28 +335,20 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
             />
           )}
 
-          <PresenceControls
-            seated={heroSeat !== null}
-            sittingOut={heroMember?.sittingOut ?? false}
-            isBanker={heroIsBanker}
-            handInPlay={handInPlay}
-            gameInPlay={room.status === 'playing'}
+          <ActionMenu
+            model={menuModel}
+            requests={chipRequests}
+            heroChips={heroMember?.chips ?? 0}
             pending={pending}
+            actionError={actionError}
+            fundingError={fundingError}
             onSitOut={sitOut}
             onSitIn={sitIn}
             onLeave={leave}
-          />
-
-          <FundingControls
-            requests={chipRequests}
-            heroSeat={heroSeat}
-            heroChips={heroMember?.chips ?? 0}
-            isBanker={heroIsBanker}
-            pending={pending}
-            error={fundingError}
-            onRequest={requestChips}
-            onApprove={approveChips}
-            onReject={rejectChips}
+            onRequestChips={requestChips}
+            onStartHand={startHand}
+            onApproveChips={approveChips}
+            onRejectChips={rejectChips}
           />
         </motion.div>
       )}
