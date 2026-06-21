@@ -9,6 +9,7 @@ import { ActionPanel } from './action-panel';
 import { deriveActions, type ActionKind } from './action-availability';
 import { deriveMenuItems } from './menu-availability';
 import { PokerTable } from './poker-table';
+import { RoomIdBadge } from './room-id-badge';
 import { ShowdownControls } from './showdown-controls';
 import { StreetControls } from './street-controls';
 import { TurnBanner } from './turn-banner';
@@ -254,7 +255,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
         >
           ← Lobby
         </Link>
-        <span className="font-mono text-xs text-vc-ink-faint">{roomId}</span>
+        <RoomIdBadge roomId={roomId} />
       </div>
 
       {room === null ? (
