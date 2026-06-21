@@ -7,6 +7,7 @@ export * from './resync-room';
 export * from './list-user-rooms';
 export * from './start-hand';
 export * from './player-act';
+export * from './request-time-extension';
 export * from './advance-street';
 export * from './settle-hand';
 export * from './chip-requests';

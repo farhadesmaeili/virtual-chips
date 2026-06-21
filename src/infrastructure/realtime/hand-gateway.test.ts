@@ -8,6 +8,7 @@ import type {
 import {
   AdvanceStreet,
   PlayerAct,
+  RequestTimeExtension,
   SettleHand,
   StartHand,
 } from '@/application/use-cases';
@@ -17,6 +18,7 @@ import {
   type Room,
   type RoomStatus,
 } from '@/domain/entities';
+import { TIME_EXTENSION_MS } from '@/domain/engine';
 import { HandGateway } from './hand-gateway';
 import type { AppServer } from './socket-auth';
 
@@ -140,6 +142,7 @@ beforeEach(() => {
     new PlayerAct(rooms, store, clock),
     new AdvanceStreet(rooms, store, clock),
     new SettleHand(rooms, store),
+    new RequestTimeExtension(store, clock),
     store,
     rooms,
   );
@@ -226,5 +229,46 @@ describe('HandGateway — sitting-out turns (task 4.14 mid-hand refinement)', ()
     // No turn left stranded on a sitting-out seat.
     expect(hand?.actingSeat).toBeNull();
     expect(hand?.status).toBe('awaiting_street');
+  });
+});
+
+describe('HandGateway — time bank (task 4.12)', () => {
+  it('reschedules the auto-action to the new deadline; the old timer never fires', async () => {
+    await startThreeHanded();
+    const before = await store.get('r1');
+    const d0 = before?.actionDeadline ?? 0;
+    expect(before?.actingSeat).toBe(0); // alice to act
+
+    await gateway.requestTime('r1', 'alice');
+
+    const extended = await store.get('r1');
+    expect(extended?.actionDeadline).toBe(d0 + TIME_EXTENSION_MS);
+    expect(
+      extended?.players.find((p) => p.seat === 0)?.timeExtensionsRemaining,
+    ).toBe(1);
+    expect(extended?.actingSeat).toBe(0); // still alice's turn
+
+    // Advance to the ORIGINAL deadline: the old timer was cleared on reschedule,
+    // so nothing fires — alice is still up. This is the race-condition guard.
+    await vi.advanceTimersByTimeAsync(d0 - Date.now());
+    let hand = await store.get('r1');
+    expect(hand?.actingSeat).toBe(0);
+    expect(hand?.status).toBe('betting');
+
+    // Past the NEW deadline: the rescheduled auto-action fires and the turn moves.
+    await vi.advanceTimersByTimeAsync(TIME_EXTENSION_MS);
+    hand = await store.get('r1');
+    expect(hand?.players.find((p) => p.seat === 0)?.state).toBe('folded'); // alice owed the BB
+    expect(hand?.actingSeat).not.toBe(0);
+  });
+
+  it('rejects a non-acting player (only the acting seat can extend)', async () => {
+    await startThreeHanded(); // alice (seat 0) is acting
+    await expect(gateway.requestTime('r1', 'bob')).rejects.toThrow();
+    // bob's request changed nothing.
+    const hand = await store.get('r1');
+    expect(
+      hand?.players.find((p) => p.seat === 1)?.timeExtensionsRemaining,
+    ).toBe(2);
   });
 });

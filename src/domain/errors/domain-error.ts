@@ -23,6 +23,7 @@ export type DomainErrorCode =
   | 'INVALID_ACTION'
   | 'INVALID_RAISE'
   | 'HAND_NOT_IN_BETTING'
+  | 'NO_TIME_BANK'
   | 'NOT_BANKER'
   | 'INVALID_SETTLEMENT'
   | 'CHIP_REQUEST_NOT_FOUND'
@@ -189,6 +190,15 @@ export class HandNotInBettingError extends DomainError {
 
   constructor(readonly status: string) {
     super(`Hand is not in the betting phase (status: ${status})`);
+  }
+}
+
+/** Thrown when a player asks for more time but their time bank is empty (4.12). */
+export class NoTimeBankError extends DomainError {
+  readonly code = 'NO_TIME_BANK';
+
+  constructor(readonly seat: number) {
+    super(`No time bank remaining for seat ${seat}`);
   }
 }
 

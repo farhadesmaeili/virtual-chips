@@ -34,6 +34,7 @@ describe('toPublicHandState', () => {
         committedTotal: 20,
         state: 'active',
         hasActedThisStreet: false,
+        timeExtensionsRemaining: 2,
       },
       {
         seat: 1,
@@ -42,6 +43,7 @@ describe('toPublicHandState', () => {
         committedTotal: 20,
         state: 'active',
         hasActedThisStreet: false,
+        timeExtensionsRemaining: 2,
       },
     ]);
     expect(state.pots).toEqual([{ amount: 40, eligibleSeats: [0, 1] }]);

@@ -9,6 +9,8 @@ export interface PublicHandPlayer {
   readonly committedTotal: number;
   readonly state: PlayerState;
   readonly hasActedThisStreet: boolean;
+  /** Time-bank extensions left this hand (task 4.12); drives the hero's button. */
+  readonly timeExtensionsRemaining: number;
 }
 
 export interface PublicPot {
@@ -57,6 +59,7 @@ export function toPublicHandState(hand: Hand): PublicHandState {
       committedTotal: p.committedTotal,
       state: p.state,
       hasActedThisStreet: p.hasActedThisStreet,
+      timeExtensionsRemaining: p.timeExtensionsRemaining,
     })),
     pots: pots.map((pot) => ({
       amount: pot.amount,

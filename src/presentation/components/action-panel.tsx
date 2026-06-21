@@ -3,6 +3,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import { useState } from 'react';
 import type { ActionAvailability, ActionKind } from './action-availability';
+import { AddTimeButton } from './add-time-button';
 
 export interface ActionPanelProps {
   readonly availability: ActionAvailability;
@@ -17,6 +18,12 @@ export interface ActionPanelProps {
   /** Name of the player to act, shown while it is not the hero's turn. */
   readonly actingName?: string;
   readonly onAct: (action: ActionKind, amount?: number) => void;
+  /** The hero's action deadline (epoch ms), for the time-bank control (4.12). */
+  readonly actionDeadline?: number | null;
+  /** The hero's remaining time-bank extensions this hand (4.12). */
+  readonly timeExtensionsRemaining?: number;
+  /** Request a time-bank extension; omit to hide the control (4.12). */
+  readonly onAddTime?: () => void;
 }
 
 const clamp = (v: number, lo: number, hi: number): number =>
@@ -35,6 +42,9 @@ export function ActionPanel({
   error,
   actingName,
   onAct,
+  actionDeadline,
+  timeExtensionsRemaining,
+  onAddTime,
 }: ActionPanelProps): React.ReactElement {
   const reduce = useReducedMotion();
   const { isHeroTurn } = availability;
@@ -58,6 +68,9 @@ export function ActionPanel({
               pending={pending}
               error={error}
               onAct={onAct}
+              actionDeadline={actionDeadline}
+              timeExtensionsRemaining={timeExtensionsRemaining}
+              onAddTime={onAddTime}
             />
           </motion.div>
         ) : (
@@ -90,6 +103,9 @@ function TurnControls({
   pending,
   error,
   onAct,
+  actionDeadline,
+  timeExtensionsRemaining,
+  onAddTime,
 }: Omit<ActionPanelProps, 'isHeroTurn' | 'actingName'>): React.ReactElement {
   const { toCall, canFold, canCheck, canCall, sizing, canAllIn, allInTo } =
     availability;
@@ -106,14 +122,23 @@ function TurnControls({
           <span className="h-2 w-2 rounded-full bg-vc-emerald shadow-[0_0_8px_rgb(52_211_153/0.8)]" />
           Your turn
         </span>
-        {toCall > 0 && (
-          <span className="text-vc-ink-muted">
-            To call{' '}
-            <span className="font-mono font-semibold tabular-nums text-vc-ink">
-              {toCall.toLocaleString()}
+        <span className="flex items-center gap-3">
+          {toCall > 0 && (
+            <span className="text-vc-ink-muted">
+              To call{' '}
+              <span className="font-mono font-semibold tabular-nums text-vc-ink">
+                {toCall.toLocaleString()}
+              </span>
             </span>
-          </span>
-        )}
+          )}
+          {onAddTime !== undefined && (
+            <AddTimeButton
+              deadline={actionDeadline ?? null}
+              extensionsRemaining={timeExtensionsRemaining ?? 0}
+              onAddTime={onAddTime}
+            />
+          )}
+        </span>
       </div>
 
       {error !== null && (

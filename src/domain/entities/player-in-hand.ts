@@ -3,6 +3,14 @@ import { Chips } from '../value-objects/chips';
 export type PlayerState = 'active' | 'folded' | 'all_in' | 'sitting_out';
 
 /**
+ * Time-bank extensions each player starts a hand with (task 4.12). The budget
+ * lives per-hand on PlayerInHand, so it refreshes automatically every hand (the
+ * player is rebuilt at hand start). Defined here, next to the field it seeds, so
+ * the entities layer never has to depend on the engine.
+ */
+export const DEFAULT_TIME_EXTENSIONS = 2;
+
+/**
  * A player's state within a single Hand. Immutable: every transition returns
  * a new PlayerInHand. Chip fields are plain numbers so the whole Hand state
  * stays JSON-serializable; arithmetic is validated through the Chips VO.
@@ -18,6 +26,8 @@ export interface PlayerInHand {
   readonly committedTotal: number;
   readonly state: PlayerState;
   readonly hasActedThisStreet: boolean;
+  /** Remaining time-bank extensions this hand (task 4.12). */
+  readonly timeExtensionsRemaining: number;
 }
 
 export interface CreatePlayerInHandInput {
@@ -40,6 +50,7 @@ export function createPlayerInHand(
     committedTotal: 0,
     state: input.state ?? 'active',
     hasActedThisStreet: false,
+    timeExtensionsRemaining: DEFAULT_TIME_EXTENSIONS,
   };
 }
 
