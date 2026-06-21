@@ -3,11 +3,13 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import { getSocket } from '@/presentation/lib/socket';
 import type {
   PublicRoomState,
+  PublicUserRoom,
+  RoomsMine,
   SocketError,
 } from '@/presentation/lib/socket-events';
 import { useConnectionStore } from '@/presentation/stores/connection-store';
@@ -36,8 +38,30 @@ export function Lobby(): React.ReactElement {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [myRooms, setMyRooms] = useState<readonly PublicUserRoom[]>([]);
 
   const connected = status === 'connected';
+
+  // One-time fetch of the rooms this user belongs to, for the "Your table" card
+  // (task 4.13). The lobby re-mounts on the normal way back (e.g. after leaving
+  // a table), so this re-runs and stays fresh without a live subscription.
+  useEffect(() => {
+    const socket = getSocket();
+    const onRooms = (data: RoomsMine): void => setMyRooms(data.rooms);
+    const fetchMine = (): void => {
+      socket.emit('rooms:mine');
+    };
+    socket.on('rooms:mine', onRooms);
+    socket.on('session:ready', fetchMine);
+    if (socket.connected) fetchMine();
+    return () => {
+      socket.off('rooms:mine', onRooms);
+      socket.off('session:ready', fetchMine);
+    };
+  }, []);
+
+  // The lobby assumes a single active table for now (task 4.13).
+  const activeTable = myRooms[0] ?? null;
 
   const sb = Number(smallBlind);
   const bb = Number(bigBlind);
@@ -110,6 +134,30 @@ export function Lobby(): React.ReactElement {
         <p className="rounded-xl border border-vc-danger/30 bg-vc-danger/10 px-4 py-2.5 text-sm text-vc-danger">
           {error}
         </p>
+      )}
+
+      {activeTable !== null && (
+        <section className="flex flex-col gap-3 rounded-xl border border-white/[0.06] bg-black/20 p-4">
+          <h2 className="text-xs font-semibold uppercase tracking-[0.08em] text-vc-ink-muted">
+            Your table
+          </h2>
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="truncate font-medium text-vc-ink">
+                {activeTable.name}
+              </p>
+              {activeTable.status === 'playing' && (
+                <p className="text-xs text-vc-ink-faint">In progress</p>
+              )}
+            </div>
+            <button
+              onClick={() => router.push(`/room/${activeTable.roomId}`)}
+              className="shrink-0 rounded-xl bg-vc-emerald px-4 py-2.5 font-semibold text-vc-felt-edge shadow-[0_8px_20px_-6px_rgb(52_211_153/0.5)] transition hover:bg-vc-emerald/90 active:scale-[0.99]"
+            >
+              Rejoin
+            </button>
+          </div>
+        </section>
       )}
 
       <section className="flex flex-col gap-3">

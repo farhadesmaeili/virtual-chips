@@ -4,6 +4,7 @@ import type {
   HandStore,
   RoomMemberRecord,
   RoomRepository,
+  UserRoomMembership,
 } from '@/application/ports';
 import {
   AlreadyInRoomError,
@@ -24,6 +25,7 @@ import {
 import { CreateRoom } from './create-room';
 import { JoinRoom } from './join-room';
 import { LeaveRoom } from './leave-room';
+import { ListUserRooms } from './list-user-rooms';
 import { SitIn, SitOut } from './presence';
 
 class FakeRoomRepository implements RoomRepository {
@@ -74,6 +76,17 @@ class FakeRoomRepository implements RoomRepository {
 
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     return [...(this.members.get(roomId) ?? [])];
+  }
+
+  async listRoomsForUser(userId: string): Promise<UserRoomMembership[]> {
+    const out: UserRoomMembership[] = [];
+    for (const [roomId, members] of this.members) {
+      if (!members.some((m) => m.userId === userId)) continue;
+      const room = this.rooms.get(roomId);
+      if (room === undefined) continue;
+      out.push({ roomId, name: room.name, status: room.status });
+    }
+    return out;
   }
 
   async updateMemberChips(
@@ -374,5 +387,51 @@ describe('SitOut / SitIn', () => {
     await expect(
       new SitOut(repo).execute({ requesterId: 'ghost', roomId }),
     ).rejects.toThrow(NotRoomMemberError);
+  });
+});
+
+describe('ListUserRooms', () => {
+  it('returns the room a user belongs to', async () => {
+    const created = await new CreateRoom(repo, fakeIds()).execute({
+      bankerId: 'banker',
+      name: 'Friday game',
+    });
+    const rooms = await new ListUserRooms(repo).execute({ userId: 'banker' });
+    expect(rooms).toEqual([
+      { roomId: created.id, name: 'Friday game', status: 'waiting' },
+    ]);
+  });
+
+  it('returns an empty array when the user is in no room', async () => {
+    await new CreateRoom(repo, fakeIds()).execute({
+      bankerId: 'banker',
+      name: 'Friday game',
+    });
+    const rooms = await new ListUserRooms(repo).execute({ userId: 'nobody' });
+    expect(rooms).toEqual([]);
+  });
+
+  it("returns only the requester's own rooms, never another user's (IDOR)", async () => {
+    // banker owns table A; bob owns table B. Each must see only their own —
+    // a user must never read a room they are not a member of. One shared id
+    // generator so the two rooms get distinct ids (id-1, id-2).
+    const ids = fakeIds();
+    const a = await new CreateRoom(repo, ids).execute({
+      bankerId: 'banker',
+      name: 'A table',
+    });
+    const b = await new CreateRoom(repo, ids).execute({
+      bankerId: 'bob',
+      name: 'B table',
+    });
+
+    const bankerRooms = await new ListUserRooms(repo).execute({
+      userId: 'banker',
+    });
+    const bobRooms = await new ListUserRooms(repo).execute({ userId: 'bob' });
+
+    expect(bankerRooms.map((r) => r.roomId)).toEqual([a.id]);
+    expect(bankerRooms.map((r) => r.roomId)).not.toContain(b.id);
+    expect(bobRooms.map((r) => r.roomId)).toEqual([b.id]);
   });
 });

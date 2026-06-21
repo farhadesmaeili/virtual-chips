@@ -3,6 +3,7 @@ import type {
   HandStore,
   RoomMemberRecord,
   RoomRepository,
+  UserRoomMembership,
 } from '@/application/ports';
 import {
   createHand,
@@ -55,6 +56,9 @@ class FakeRoomRepository implements RoomRepository {
   }
   async listMembers(roomId: string): Promise<RoomMemberRecord[]> {
     return [...(this.membersByRoom.get(roomId) ?? [])];
+  }
+  async listRoomsForUser(): Promise<UserRoomMembership[]> {
+    return [];
   }
   async updateMemberChips(
     roomId: string,

@@ -12,6 +12,7 @@ import {
   CreateRoom,
   JoinRoom,
   LeaveRoom,
+  ListUserRooms,
   PlayerAct,
   RejectChipRequest,
   RequestChips,
@@ -118,6 +119,7 @@ async function main(): Promise<void> {
     sitOut: new SitOut(roomRepository),
     sitIn: new SitIn(roomRepository),
     resyncRoom: new ResyncRoom(roomRepository, handStore, chipRequestStore),
+    listUserRooms: new ListUserRooms(roomRepository),
     createLimiter,
   };
   const fundingHandlerDeps = {

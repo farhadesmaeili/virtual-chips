@@ -3,10 +3,12 @@ import type {
   AddMemberInput,
   RoomMemberRecord,
   RoomRepository,
+  UserRoomMembership,
 } from '@/application/ports';
 import type { Room, RoomStatus } from '@/domain/entities';
 import {
   toDomainRoom,
+  toDomainRoomStatus,
   toPrismaRoomStatus,
   toPrismaSettlementMode,
 } from './mappers';
@@ -121,6 +123,19 @@ export class PrismaRoomRepository implements RoomRepository {
       buyInTotal: m.buyInTotal,
       chips: m.chips,
       sittingOut: m.sittingOut,
+    }));
+  }
+
+  async listRoomsForUser(userId: string): Promise<UserRoomMembership[]> {
+    const memberships = await this.prisma.roomMember.findMany({
+      where: { userId },
+      orderBy: { joinedAt: 'desc' },
+      include: { room: { select: { id: true, name: true, status: true } } },
+    });
+    return memberships.map((m) => ({
+      roomId: m.room.id,
+      name: m.room.name,
+      status: toDomainRoomStatus(m.room.status),
     }));
   }
 }

@@ -100,3 +100,15 @@ export interface SocketError {
 export interface SessionReady {
   readonly user: { readonly id: string; readonly username: string };
 }
+
+/** A room the user belongs to, for the lobby's "Your table" card (task 4.13). */
+export interface PublicUserRoom {
+  readonly roomId: string;
+  readonly name: string;
+  readonly status: RoomStatus;
+}
+
+/** Response to `rooms:mine` — the rooms the authenticated user is a member of. */
+export interface RoomsMine {
+  readonly rooms: readonly PublicUserRoom[];
+}

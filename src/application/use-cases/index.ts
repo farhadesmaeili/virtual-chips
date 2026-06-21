@@ -4,6 +4,7 @@ export * from './join-room';
 export * from './leave-room';
 export * from './presence';
 export * from './resync-room';
+export * from './list-user-rooms';
 export * from './start-hand';
 export * from './player-act';
 export * from './advance-street';
