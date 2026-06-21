@@ -28,14 +28,17 @@ const fillFull: Variants = {
   }),
 };
 
-// Reduced motion: hold a calm static ring at the current remaining fraction —
-// no depleting motion.
+// Reduced motion: a static arc at the current remaining fraction. `animate`
+// holds the same offset as `initial` AND forces `duration: 0`, so the
+// snapshot-duration depletion tween is fully bypassed — no motion at all, not
+// just the pulse.
 const fillReduced: Variants = {
   initial: (c: RingFillCustom): TargetAndTransition => ({
     strokeDashoffset: c.fromOffset,
   }),
   animate: (c: RingFillCustom): TargetAndTransition => ({
     strokeDashoffset: c.fromOffset,
+    transition: { duration: 0 },
   }),
 };
 

@@ -5,9 +5,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMotionVariants } from '@/presentation/animations';
 import {
   isWarning,
-  remainingMs as computeRemaining,
-  ringFillFraction,
+  ringSnapshot,
   warningThresholdMs,
+  type RingSnapshot,
 } from '@/presentation/lib/timer-ring';
 import {
   ringFill,
@@ -38,36 +38,37 @@ export function CountdownRing({
   deadline,
   totalMs,
 }: CountdownRingProps): React.ReactElement | null {
-  // Snapshot remaining time once per turn (per deadline). Mid-turn re-renders
-  // must not restart the depletion — Framer drives the smooth fill over this
-  // duration rather than us writing state every frame.
-  const remaining = useMemo(
-    () => (deadline === null ? 0 : computeRemaining(deadline, Date.now())),
-    [deadline],
+  // Snapshot the ring once per turn (per deadline) from the live deadline, so a
+  // mid-turn mount/resync starts from the real time left rather than a fresh
+  // full turn. Mid-turn re-renders must not restart the depletion — Framer
+  // drives the smooth fill over this duration, not per-frame state.
+  const snapshot = useMemo<RingSnapshot>(
+    () => ringSnapshot(deadline ?? 0, Date.now(), totalMs),
+    [deadline, totalMs],
   );
 
   // A single timer flips to the warning look when remaining crosses the
   // threshold — one state change per turn, never per frame.
-  const startsInWarning = isWarning(remaining, totalMs);
+  const startsInWarning = isWarning(snapshot.remainingMs, totalMs);
   const [warning, setWarning] = useState(startsInWarning);
   useEffect(() => {
     setWarning(startsInWarning);
     if (deadline === null || startsInWarning) return;
-    const msUntilWarning = remaining - warningThresholdMs(totalMs);
+    const msUntilWarning = snapshot.remainingMs - warningThresholdMs(totalMs);
     const id = setTimeout(() => setWarning(true), msUntilWarning);
     return () => clearTimeout(id);
-  }, [deadline, remaining, totalMs, startsInWarning]);
+  }, [deadline, snapshot.remainingMs, totalMs, startsInWarning]);
 
   // Stable per-turn custom so the warning flip (a re-render) never restarts the
-  // fill animation.
-  const fillCustom = useMemo<RingFillCustom>(() => {
-    const fraction = ringFillFraction(remaining, totalMs);
-    return {
-      fromOffset: RING_CIRCUMFERENCE * (1 - fraction),
+  // fill animation. fromOffset reflects the time already elapsed at mount.
+  const fillCustom = useMemo<RingFillCustom>(
+    () => ({
+      fromOffset: RING_CIRCUMFERENCE * (1 - snapshot.fraction),
       toOffset: RING_CIRCUMFERENCE,
-      remainingSec: remaining / 1000,
-    };
-  }, [remaining, totalMs]);
+      remainingSec: snapshot.remainingSec,
+    }),
+    [snapshot],
+  );
 
   const fillVariants = useMotionVariants(ringFill);
   const pulseVariants = useMotionVariants(ringPulse);

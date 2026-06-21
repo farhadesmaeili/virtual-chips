@@ -5,6 +5,7 @@ import {
   isWarning,
   remainingMs,
   ringFillFraction,
+  ringSnapshot,
   warningThresholdMs,
 } from './timer-ring';
 
@@ -84,5 +85,34 @@ describe('isWarning', () => {
 
   it('is true when expired (zero remaining)', () => {
     expect(isWarning(0, total)).toBe(true);
+  });
+});
+
+describe('ringSnapshot (mid-turn mount / resync faithfulness)', () => {
+  const total = 30_000;
+  const now = 1_000_000;
+
+  it('starts from the real remaining time when mounting mid-turn', () => {
+    // Reconnecting with 7s left on a 30s timer: fill ≈ 7/30, tween over 7s —
+    // NOT a fresh full turn.
+    const snap = ringSnapshot(now + 7_000, now, total);
+    expect(snap.remainingMs).toBe(7_000);
+    expect(snap.remainingSec).toBe(7);
+    expect(snap.fraction).toBeCloseTo(7 / 30, 10);
+    expect(snap.fraction).not.toBe(1);
+  });
+
+  it('is a full ring tweening over the whole turn at the very start', () => {
+    const snap = ringSnapshot(now + total, now, total);
+    expect(snap.remainingMs).toBe(total);
+    expect(snap.fraction).toBe(1);
+    expect(snap.remainingSec).toBe(30);
+  });
+
+  it('is an empty, zero-duration ring when the turn has already expired', () => {
+    const snap = ringSnapshot(now - 2_000, now, total);
+    expect(snap.remainingMs).toBe(0);
+    expect(snap.fraction).toBe(0);
+    expect(snap.remainingSec).toBe(0);
   });
 });
