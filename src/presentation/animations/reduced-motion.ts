@@ -22,7 +22,14 @@ export function selectVariants(
  * retrofitted per component.
  */
 export function useMotionVariants(set: MotionVariantSet): Variants {
-  // `useReducedMotion()` returns `boolean | null` (null before it resolves).
+  // `useReducedMotion()` returns `boolean | null` — at framer-motion 11.18.2 it
+  // is `null` while the preference is still unresolved (server render and the
+  // first client render before the media-query listener initializes).
+  //
+  // Fail SAFE for accessibility: when the preference is unknown we degrade
+  // (treat as reduced-motion ON) rather than briefly showing full motion to a
+  // user who may have asked for none. Guessing "no motion" wrongly is merely
+  // cosmetic; guessing "full motion" wrongly violates the user's request.
   const reduced = useReducedMotion();
-  return selectVariants(set, reduced ?? false);
+  return selectVariants(set, reduced ?? true);
 }

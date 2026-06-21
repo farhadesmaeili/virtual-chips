@@ -53,8 +53,10 @@ describe('useMotionVariants', () => {
     });
   }
 
-  it('treats an unresolved (null) reduced-motion value as off', () => {
+  it('fails safe: an unresolved (null) preference degrades to the reduced variant', () => {
+    // framer-motion returns null during SSR / before the listener resolves.
+    // We must not show full motion to a user who may have asked for none.
     useReducedMotion.mockReturnValue(null);
-    expect(useMotionVariants(chipFly)).toBe(chipFly.full);
+    expect(useMotionVariants(chipFly)).toBe(chipFly.reduced);
   });
 });
