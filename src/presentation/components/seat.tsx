@@ -1,5 +1,13 @@
 'use client';
 
+import { motion } from 'framer-motion';
+import {
+  playerEnter,
+  seatHighlight,
+  springSoft,
+  useMotionVariants,
+  useReducedMotionPreference,
+} from '@/presentation/animations';
 import { ChipStack } from './chip';
 import { CountdownRing } from './countdown-ring';
 import type { SeatSlot } from './seat-layout';
@@ -7,6 +15,9 @@ import type {
   PublicHandPlayer,
   PublicRoomMember,
 } from '@/presentation/lib/socket-events';
+
+/** Shared-layout id for the single turn highlight that slides between seats. */
+const ACTIVE_HIGHLIGHT_LAYOUT_ID = 'active-seat-highlight';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -51,10 +62,24 @@ export function Seat({
   const stack = handPlayer?.stack ?? member?.chips ?? 0;
   const bet = handPlayer?.committedThisStreet ?? 0;
 
+  // Enter/exit (join/leave/swap) — scale + fade under reduced-motion (fade only).
+  // `x`/`y` keep the seat centered on its slot point while Framer composes the
+  // entrance scale into the same transform (no top/left thrash).
+  const presenceVariants = useMotionVariants(playerEnter);
+
   return (
-    <div
-      className="absolute -translate-x-1/2 -translate-y-1/2"
-      style={{ left: `${slot.xPct}%`, top: `${slot.yPct}%` }}
+    <motion.div
+      className="absolute"
+      style={{
+        left: `${slot.xPct}%`,
+        top: `${slot.yPct}%`,
+        x: '-50%',
+        y: '-50%',
+      }}
+      variants={presenceVariants}
+      initial="initial"
+      animate="animate"
+      exit="exit"
     >
       <div className="vc-seat-stand">
         {member === undefined ? (
@@ -86,18 +111,24 @@ export function Seat({
               </div>
             )}
 
-            {/* Avatar + countdown ring. */}
+            {/* Avatar + concentric layers: turn highlight (z-0, slides between
+                seats), avatar (z-10), countdown ring (z-20, depleting stroke on
+                top), dealer button (z-30). The ring keeps no layoutId so its
+                stroke tween never fights the highlight's shared-layout slide. */}
             <div className="relative grid h-12 w-12 place-items-center sm:h-14 sm:w-14">
+              {isActing && <SeatHighlight />}
               {isActing && (
-                <CountdownRing
-                  deadline={actionDeadline}
-                  totalMs={actionTimeoutMs}
-                />
+                <div className="absolute inset-0 z-20">
+                  <CountdownRing
+                    deadline={actionDeadline}
+                    totalMs={actionTimeoutMs}
+                  />
+                </div>
               )}
               <div
-                className={`grid h-11 w-11 place-items-center rounded-full font-display text-sm font-bold sm:h-[3.25rem] sm:w-[3.25rem] ${
+                className={`relative z-10 grid h-11 w-11 place-items-center rounded-full font-display text-sm font-bold sm:h-[3.25rem] sm:w-[3.25rem] ${
                   isActing
-                    ? 'bg-vc-felt-lamp text-vc-emerald shadow-[0_0_22px_-2px_rgb(52_211_153/0.7)] ring-2 ring-vc-emerald'
+                    ? 'bg-vc-felt-lamp text-vc-emerald'
                     : 'bg-vc-felt-deep text-vc-ink ring-1 ring-white/10'
                 }`}
                 style={{
@@ -111,7 +142,7 @@ export function Seat({
 
               {/* Dealer button rides just off the avatar; Phase 5 glides it. */}
               {isButton && (
-                <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-vc-gold font-mono text-[10px] font-bold text-vc-felt-edge shadow-[0_2px_5px_rgb(0_0_0/0.5)]">
+                <span className="absolute -bottom-1 -right-1 z-30 grid h-5 w-5 place-items-center rounded-full bg-vc-gold font-mono text-[10px] font-bold text-vc-felt-edge shadow-[0_2px_5px_rgb(0_0_0/0.5)]">
                   D
                 </span>
               )}
@@ -144,7 +175,30 @@ export function Seat({
           </div>
         )}
       </div>
-    </div>
+    </motion.div>
+  );
+}
+
+/**
+ * The single turn highlight — an emerald glow/border behind the active avatar.
+ * It carries the shared `layoutId`, so when only one is mounted at a time it
+ * slides from the previous active seat to the new one as `actingSeat` changes.
+ * The slide is a Framer layout animation (transform, not top/left); under
+ * reduced-motion it repositions instantly and only fades, via the 5.0 helpers.
+ */
+function SeatHighlight(): React.ReactElement {
+  const variants = useMotionVariants(seatHighlight);
+  const reduced = useReducedMotionPreference();
+  return (
+    <motion.div
+      layoutId={ACTIVE_HIGHLIGHT_LAYOUT_ID}
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-0 rounded-full bg-[rgb(52_211_153/0.10)] shadow-[0_0_22px_-2px_rgb(52_211_153/0.7),0_0_0_2px_rgb(52_211_153/0.35)]"
+      variants={variants}
+      initial="inactive"
+      animate="active"
+      transition={{ layout: reduced ? { duration: 0 } : springSoft }}
+    />
   );
 }
 

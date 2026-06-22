@@ -8,7 +8,11 @@ const { useReducedMotion } = vi.hoisted(() => ({
 }));
 vi.mock('framer-motion', () => ({ useReducedMotion }));
 
-import { selectVariants, useMotionVariants } from './reduced-motion';
+import {
+  selectVariants,
+  useMotionVariants,
+  useReducedMotionPreference,
+} from './reduced-motion';
 import {
   chipFly,
   playerEnter,
@@ -58,5 +62,26 @@ describe('useMotionVariants', () => {
     // We must not show full motion to a user who may have asked for none.
     useReducedMotion.mockReturnValue(null);
     expect(useMotionVariants(chipFly)).toBe(chipFly.reduced);
+  });
+});
+
+describe('useReducedMotionPreference', () => {
+  beforeEach(() => {
+    useReducedMotion.mockReset();
+  });
+
+  it('is false when reduced-motion is off', () => {
+    useReducedMotion.mockReturnValue(false);
+    expect(useReducedMotionPreference()).toBe(false);
+  });
+
+  it('is true when reduced-motion is on', () => {
+    useReducedMotion.mockReturnValue(true);
+    expect(useReducedMotionPreference()).toBe(true);
+  });
+
+  it('fails safe to true when the preference is unresolved (null)', () => {
+    useReducedMotion.mockReturnValue(null);
+    expect(useReducedMotionPreference()).toBe(true);
   });
 });

@@ -16,4 +16,8 @@ export {
   winPulse,
   type MotionVariantSet,
 } from './variants';
-export { selectVariants, useMotionVariants } from './reduced-motion';
+export {
+  selectVariants,
+  useMotionVariants,
+  useReducedMotionPreference,
+} from './reduced-motion';
