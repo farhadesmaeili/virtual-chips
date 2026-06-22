@@ -22,11 +22,16 @@ export function highlightSeat(
 }
 
 /**
- * Stable `AnimatePresence` key for a seat slot. Encodes the occupant
- * (`PublicRoomMember` has no id, so `username` is the identity) so that:
+ * Stable `AnimatePresence` key for a seat slot. Encodes the occupant so that:
  * - an open seat and an occupied seat differ → join/leave cross-fades,
  * - a different player taking the seat differs → swap (exit + enter),
  * - a seated player who only sits out keeps the same key → no exit (just dims).
+ *
+ * Invariant: `username` is safe as the occupant identity because it is globally
+ * unique (`User.username @unique`) and immutable (the user repository has no
+ * update path — set once at registration), so it never collides or renames. The
+ * projection deliberately hides the raw `userId`, so username is the right
+ * public-safe identifier here.
  */
 export function seatPresenceKey(
   seat: number,
