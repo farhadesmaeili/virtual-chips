@@ -118,7 +118,7 @@ function ChipFlightView({
             variants={chipVariants}
             className={i === 0 ? '' : '-ml-2'}
           >
-            <Chip size={16} color="var(--vc-chip-1000)" />
+            <Chip size={16} color={flight.color} />
           </motion.span>
         ))}
       </motion.div>

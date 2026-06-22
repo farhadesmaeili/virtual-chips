@@ -60,6 +60,10 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   routerRef.current = router;
   const userRef = useRef(user);
   userRef.current = user;
+  // Current pot, mirrored so the once-bound socket effect can read it as the
+  // tint fallback for a commit whose amount is unknown (call/all-in).
+  const potRef = useRef(0);
+  potRef.current = hand?.totalPot ?? 0;
 
   useEffect(() => {
     const socket = getSocket();
@@ -69,7 +73,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
       if (motion === null) return;
       setFlights((prev) => [
         ...prev,
-        ...flightsFor(motion).map((spec) => ({
+        ...flightsFor(motion, potRef.current).map((spec) => ({
           ...spec,
           id: `flight-${(flightId.current += 1)}`,
         })),
