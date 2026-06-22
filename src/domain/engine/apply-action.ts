@@ -3,6 +3,7 @@ import {
   fold,
   markActed,
   toCall,
+  type ActionVerb,
   type PlayerInHand,
 } from '../entities/player-in-hand';
 import { getPlayer, updatePlayer, type Hand } from '../entities/hand';
@@ -14,7 +15,8 @@ import {
   NotYourTurnError,
 } from '../errors';
 
-export type ActionType = 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'ALL_IN';
+/** A betting action's verb. Aliases the entity {@link ActionVerb} (one source). */
+export type ActionType = ActionVerb;
 
 export interface PlayerAction {
   readonly seat: number;
@@ -60,37 +62,48 @@ export function applyAction(
 
   const owed = toCall(player, hand.currentBet);
 
-  switch (action.type) {
-    case 'FOLD':
-      return updatePlayer(hand, player.seat, fold);
+  // Apply the validated action, then stamp the player's `lastAction` with the
+  // verb the engine just validated (no amount stored — the chips in front of the
+  // seat already show that). The verb persists across streets until they act
+  // again, and is null until then (set at hand start by `createPlayerInHand`).
+  const applied = ((): Hand => {
+    switch (action.type) {
+      case 'FOLD':
+        return updatePlayer(hand, player.seat, fold);
 
-    case 'CHECK': {
-      if (owed !== 0) {
-        throw new InvalidActionError('cannot check while facing a bet');
+      case 'CHECK': {
+        if (owed !== 0) {
+          throw new InvalidActionError('cannot check while facing a bet');
+        }
+        return updatePlayer(hand, player.seat, markActed);
       }
-      return updatePlayer(hand, player.seat, markActed);
+
+      case 'CALL': {
+        if (owed <= 0) {
+          throw new InvalidActionError('nothing to call');
+        }
+        if (player.stack < owed) {
+          // Not enough chips to call in full — the player must go all-in.
+          throw new InsufficientChipsError(player.stack, owed);
+        }
+        return updatePlayer(hand, player.seat, (p) => commit(p, owed));
+      }
+
+      case 'BET':
+        return applyBet(hand, player, action.amount, minBet);
+
+      case 'RAISE':
+        return applyRaise(hand, player, action.amount);
+
+      case 'ALL_IN':
+        return applyAllIn(hand, player);
     }
+  })();
 
-    case 'CALL': {
-      if (owed <= 0) {
-        throw new InvalidActionError('nothing to call');
-      }
-      if (player.stack < owed) {
-        // Not enough chips to call in full — the player must go all-in.
-        throw new InsufficientChipsError(player.stack, owed);
-      }
-      return updatePlayer(hand, player.seat, (p) => commit(p, owed));
-    }
-
-    case 'BET':
-      return applyBet(hand, player, action.amount, minBet);
-
-    case 'RAISE':
-      return applyRaise(hand, player, action.amount);
-
-    case 'ALL_IN':
-      return applyAllIn(hand, player);
-  }
+  return updatePlayer(applied, player.seat, (p) => ({
+    ...p,
+    lastAction: action.type,
+  }));
 }
 
 function applyBet(

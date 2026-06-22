@@ -7,6 +7,7 @@ import {
 } from '../entities/hand';
 import {
   createPlayerInHand,
+  resetForNewStreet,
   type PlayerInHand,
 } from '../entities/player-in-hand';
 import {
@@ -356,5 +357,70 @@ describe('ALL_IN', () => {
     expect(() => act(hand, { seat: 0, type: 'ALL_IN' })).toThrow(
       InvalidActionError,
     );
+  });
+});
+
+describe('lastAction (verb stamping)', () => {
+  const lastActionAfter = (
+    hand: Hand,
+    action: Parameters<typeof applyAction>[1],
+  ): PlayerInHand['lastAction'] =>
+    getPlayer(act(hand, action), action.seat)!.lastAction;
+
+  it('stamps the validated verb for each action type', () => {
+    expect(
+      lastActionAfter(mkHand({ currentBet: 0 }), { seat: 0, type: 'CHECK' }),
+    ).toBe('CHECK');
+    expect(lastActionAfter(mkHand(), { seat: 0, type: 'FOLD' })).toBe('FOLD');
+    expect(
+      lastActionAfter(mkHand({ currentBet: 30 }), { seat: 0, type: 'CALL' }),
+    ).toBe('CALL');
+    expect(
+      lastActionAfter(mkHand({ currentBet: 0 }), {
+        seat: 0,
+        type: 'BET',
+        amount: 10,
+      }),
+    ).toBe('BET');
+    expect(
+      lastActionAfter(mkHand({ currentBet: 10, lastRaiseSize: 10 }), {
+        seat: 0,
+        type: 'RAISE',
+        amount: 30,
+      }),
+    ).toBe('RAISE');
+    const allInHand = mkHand({
+      currentBet: 10,
+      lastRaiseSize: 10,
+      players: [
+        mkPlayer({ seat: 0, stack: 30 }),
+        mkPlayer({ seat: 1 }),
+        mkPlayer({ seat: 2 }),
+      ],
+    });
+    expect(lastActionAfter(allInHand, { seat: 0, type: 'ALL_IN' })).toBe(
+      'ALL_IN',
+    );
+  });
+
+  it('stores only the verb — no amount on the player record', () => {
+    const p = getPlayer(
+      act(mkHand({ currentBet: 0 }), { seat: 0, type: 'BET', amount: 10 }),
+      0,
+    )!;
+    expect(p.lastAction).toBe('BET');
+    expect(Object.keys(p)).not.toContain('amount');
+    expect(Object.keys(p)).not.toContain('lastAmount');
+  });
+
+  it('is cleared by a street reset (betting restarts each street)', () => {
+    const next = act(mkHand({ currentBet: 30 }), { seat: 0, type: 'CALL' });
+    expect(resetForNewStreet(getPlayer(next, 0)!).lastAction).toBeNull();
+  });
+
+  it('leaves non-acting players null', () => {
+    const next = act(mkHand({ currentBet: 0 }), { seat: 0, type: 'CHECK' });
+    expect(getPlayer(next, 1)!.lastAction).toBeNull();
+    expect(getPlayer(next, 2)!.lastAction).toBeNull();
   });
 });

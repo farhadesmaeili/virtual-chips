@@ -13,6 +13,7 @@ function player(p: Partial<PublicHandPlayer> = {}): PublicHandPlayer {
     committedTotal: 0,
     state: 'active',
     hasActedThisStreet: false,
+    lastAction: null,
     timeExtensionsRemaining: 2,
     ...p,
   };

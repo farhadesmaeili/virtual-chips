@@ -61,6 +61,12 @@ export interface PublicHandPlayer {
   readonly committedTotal: number;
   readonly state: PlayerState;
   readonly hasActedThisStreet: boolean;
+  /**
+   * The player's last action this hand (verb only, no amount), or null before
+   * they act. Mirrors the server projection; consumed by the seat label (Phase
+   * 2). Survives reconnect/resync since it rides the hand state.
+   */
+  readonly lastAction: AppliedActionType | null;
   /** Time-bank extensions left this hand (task 4.12). */
   readonly timeExtensionsRemaining: number;
 }

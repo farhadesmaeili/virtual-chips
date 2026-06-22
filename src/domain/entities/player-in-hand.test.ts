@@ -39,6 +39,11 @@ describe('createPlayerInHand', () => {
     expect(p.timeExtensionsRemaining).toBe(DEFAULT_TIME_EXTENSIONS);
   });
 
+  it('starts with no last action (cleared at hand start)', () => {
+    const p = createPlayerInHand({ seat: 0, userId: 'u', stack: 100 });
+    expect(p.lastAction).toBeNull();
+  });
+
   it('validates the starting stack', () => {
     expect(() =>
       createPlayerInHand({ seat: 0, userId: 'u', stack: -5 }),
@@ -128,5 +133,10 @@ describe('resetForNewStreet', () => {
     expect(p.hasActedThisStreet).toBe(false);
     expect(p.committedTotal).toBe(90);
     expect(p.state).toBe('all_in');
+  });
+
+  it('clears lastAction on street reset (betting restarts each street)', () => {
+    const p = resetForNewStreet(player({ lastAction: 'RAISE' }));
+    expect(p.lastAction).toBeNull();
   });
 });
