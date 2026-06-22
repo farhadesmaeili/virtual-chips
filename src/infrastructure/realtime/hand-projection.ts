@@ -1,4 +1,9 @@
-import type { Hand, HandStatus, PlayerState } from '@/domain/entities';
+import type {
+  ActionVerb,
+  Hand,
+  HandStatus,
+  PlayerState,
+} from '@/domain/entities';
 import { calculateSidePotsForPlayers } from '@/domain/engine';
 
 /** A player as broadcast in the hand state — seat-based, no raw userId. */
@@ -9,6 +14,11 @@ export interface PublicHandPlayer {
   readonly committedTotal: number;
   readonly state: PlayerState;
   readonly hasActedThisStreet: boolean;
+  /**
+   * The player's last action this hand (verb only, no amount), or null before
+   * they act. Survives reconnect/resync since it lives in the hand state.
+   */
+  readonly lastAction: ActionVerb | null;
   /** Time-bank extensions left this hand (task 4.12); drives the hero's button. */
   readonly timeExtensionsRemaining: number;
 }
@@ -59,6 +69,7 @@ export function toPublicHandState(hand: Hand): PublicHandState {
       committedTotal: p.committedTotal,
       state: p.state,
       hasActedThisStreet: p.hasActedThisStreet,
+      lastAction: p.lastAction,
       timeExtensionsRemaining: p.timeExtensionsRemaining,
     })),
     pots: pots.map((pot) => ({

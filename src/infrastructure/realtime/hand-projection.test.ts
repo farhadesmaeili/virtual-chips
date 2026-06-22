@@ -34,6 +34,7 @@ describe('toPublicHandState', () => {
         committedTotal: 20,
         state: 'active',
         hasActedThisStreet: false,
+        lastAction: null,
         timeExtensionsRemaining: 2,
       },
       {
@@ -43,6 +44,7 @@ describe('toPublicHandState', () => {
         committedTotal: 20,
         state: 'active',
         hasActedThisStreet: false,
+        lastAction: null,
         timeExtensionsRemaining: 2,
       },
     ]);
@@ -51,6 +53,20 @@ describe('toPublicHandState', () => {
     expect(state.currentBet).toBe(20);
     expect(state.lastRaiseSize).toBe(0);
     expect(state.actingSeat).toBe(0);
+  });
+
+  it('passes each player lastAction through (verb only)', () => {
+    const base = handWith();
+    const hand: Hand = {
+      ...base,
+      players: [
+        { ...base.players[0]!, lastAction: 'RAISE' },
+        { ...base.players[1]!, lastAction: null },
+      ],
+    };
+    const state = toPublicHandState(hand);
+    expect(state.players[0]?.lastAction).toBe('RAISE');
+    expect(state.players[1]?.lastAction).toBeNull();
   });
 
   it('never leaks raw userId', () => {

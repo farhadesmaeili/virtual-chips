@@ -3,6 +3,13 @@ import { Chips } from '../value-objects/chips';
 export type PlayerState = 'active' | 'folded' | 'all_in' | 'sitting_out';
 
 /**
+ * A chosen betting action's verb (no amount). Lives in the entities layer so
+ * `PlayerInHand` can record a player's last move without depending on the engine
+ * (the engine's `ActionType` aliases this).
+ */
+export type ActionVerb = 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'ALL_IN';
+
+/**
  * Time-bank extensions each player starts a hand with (task 4.12). The budget
  * lives per-hand on PlayerInHand, so it refreshes automatically every hand (the
  * player is rebuilt at hand start). Defined here, next to the field it seeds, so
@@ -26,6 +33,13 @@ export interface PlayerInHand {
   readonly committedTotal: number;
   readonly state: PlayerState;
   readonly hasActedThisStreet: boolean;
+  /**
+   * The player's last chosen action this hand (verb only, no amount), or null
+   * before they act. Cleared at hand start (a fresh player each hand) and
+   * persists across streets until the player acts again. Forced blinds are NOT
+   * a chosen action, so blind posters keep this null. Set by the engine.
+   */
+  readonly lastAction: ActionVerb | null;
   /** Remaining time-bank extensions this hand (task 4.12). */
   readonly timeExtensionsRemaining: number;
 }
@@ -50,6 +64,7 @@ export function createPlayerInHand(
     committedTotal: 0,
     state: input.state ?? 'active',
     hasActedThisStreet: false,
+    lastAction: null,
     timeExtensionsRemaining: DEFAULT_TIME_EXTENSIONS,
   };
 }
