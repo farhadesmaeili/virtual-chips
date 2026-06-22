@@ -4,8 +4,10 @@ import type {
   AppliedActionType,
   HandSettled,
 } from '@/presentation/lib/socket-events';
+import { chipColor, topDenomination } from './chip-denominations';
 import {
   TABLE_CENTER,
+  chipTint,
   commitsChips,
   flightsFor,
   planChipMotion,
@@ -21,8 +23,8 @@ function action(
   return { seat, action: act, amount };
 }
 
-function settled(seats: number[]): HandSettled {
-  return { payouts: seats.map((seat) => ({ seat, amount: 100 })) };
+function settled(awards: { seat: number; amount: number }[]): HandSettled {
+  return { payouts: awards };
 }
 
 describe('commitsChips', () => {
@@ -39,25 +41,19 @@ describe('commitsChips', () => {
 });
 
 describe('planChipMotion — live vs hydration', () => {
-  it('flies a committing live action to the pot', () => {
+  it('flies a committing live action to the pot, carrying its amount', () => {
     expect(
-      planChipMotion({ type: 'action', event: action('RAISE', 5) }),
-    ).toEqual({
-      kind: 'to-pot',
-      fromSeat: 5,
-    });
+      planChipMotion({ type: 'action', event: action('RAISE', 5, 500) }),
+    ).toEqual({ kind: 'to-pot', fromSeat: 5, amount: 500 });
   });
 
   it('animates call and all-in (amount may be null) too', () => {
     expect(
       planChipMotion({ type: 'action', event: action('CALL', 1) }),
-    ).toEqual({
-      kind: 'to-pot',
-      fromSeat: 1,
-    });
+    ).toEqual({ kind: 'to-pot', fromSeat: 1, amount: null });
     expect(
       planChipMotion({ type: 'action', event: action('ALL_IN', 3) }),
-    ).toEqual({ kind: 'to-pot', fromSeat: 3 });
+    ).toEqual({ kind: 'to-pot', fromSeat: 3, amount: null });
   });
 
   it('does not animate fold or check (no chips committed)', () => {
@@ -69,17 +65,31 @@ describe('planChipMotion — live vs hydration', () => {
     ).toBeNull();
   });
 
-  it('flies the pot to a single winner', () => {
-    expect(planChipMotion({ type: 'settled', event: settled([4]) })).toEqual({
-      kind: 'to-winners',
-      toSeats: [4],
-    });
+  it('flies the pot to a single winner with its amount', () => {
+    expect(
+      planChipMotion({
+        type: 'settled',
+        event: settled([{ seat: 4, amount: 300 }]),
+      }),
+    ).toEqual({ kind: 'to-winners', awards: [{ seat: 4, amount: 300 }] });
   });
 
   it('fans the pot to every winner on a split', () => {
-    expect(planChipMotion({ type: 'settled', event: settled([2, 6]) })).toEqual(
-      { kind: 'to-winners', toSeats: [2, 6] },
-    );
+    expect(
+      planChipMotion({
+        type: 'settled',
+        event: settled([
+          { seat: 2, amount: 50 },
+          { seat: 6, amount: 50 },
+        ]),
+      }),
+    ).toEqual({
+      kind: 'to-winners',
+      awards: [
+        { seat: 2, amount: 50 },
+        { seat: 6, amount: 50 },
+      ],
+    });
   });
 
   it('does not animate an empty settlement', () => {
@@ -88,6 +98,15 @@ describe('planChipMotion — live vs hydration', () => {
 
   it('never animates a snapshot/hydration (no ghost chips on resync)', () => {
     expect(planChipMotion({ type: 'snapshot' })).toBeNull();
+  });
+});
+
+describe('chipTint', () => {
+  it('derives color from the amount via the denomination source', () => {
+    expect(chipTint(1000)).toBe(chipColor(topDenomination(1000)));
+    expect(chipTint(25)).toBe(chipColor(topDenomination(25)));
+    // Different denominations yield different colors (not always one tint).
+    expect(chipTint(25)).not.toBe(chipTint(1000));
   });
 });
 
@@ -104,18 +123,41 @@ describe('seatPoint', () => {
 });
 
 describe('flightsFor', () => {
-  it('makes one seat→center flight for a commit', () => {
-    const specs = flightsFor({ kind: 'to-pot', fromSeat: 0 });
+  it('makes one seat→center flight for a commit, tinted by its amount', () => {
+    const specs = flightsFor({ kind: 'to-pot', fromSeat: 0, amount: 500 }, 0);
     expect(specs).toHaveLength(1);
     expect(specs[0]?.from).toEqual(seatPoint(0));
     expect(specs[0]?.to).toEqual(TABLE_CENTER);
+    expect(specs[0]?.color).toBe(chipTint(500));
   });
 
-  it('makes one center→seat flight per winner', () => {
-    const motion: ChipMotion = { kind: 'to-winners', toSeats: [1, 3] };
-    const specs = flightsFor(motion);
+  it('tints a null-amount commit (call/all-in) by the pot fallback', () => {
+    const specs = flightsFor(
+      { kind: 'to-pot', fromSeat: 0, amount: null },
+      1000,
+    );
+    expect(specs[0]?.color).toBe(chipTint(1000));
+  });
+
+  it('makes one center→seat flight per winner, tinted by each award', () => {
+    const motion: ChipMotion = {
+      kind: 'to-winners',
+      awards: [
+        { seat: 1, amount: 25 },
+        { seat: 3, amount: 1000 },
+      ],
+    };
+    const specs = flightsFor(motion, 0);
     expect(specs).toHaveLength(2);
-    expect(specs[0]).toEqual({ from: TABLE_CENTER, to: seatPoint(1) });
-    expect(specs[1]).toEqual({ from: TABLE_CENTER, to: seatPoint(3) });
+    expect(specs[0]).toEqual({
+      from: TABLE_CENTER,
+      to: seatPoint(1),
+      color: chipTint(25),
+    });
+    expect(specs[1]).toEqual({
+      from: TABLE_CENTER,
+      to: seatPoint(3),
+      color: chipTint(1000),
+    });
   });
 });

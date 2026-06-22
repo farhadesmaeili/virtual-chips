@@ -2,6 +2,7 @@
 // LIVE event into a chip animation and derive endpoints from the shared seat
 // geometry, so the wiring stays a thin, testable shell.
 
+import { chipColor, topDenomination } from './chip-denominations';
 import { MAX_SEATS, seatSlots } from './seat-layout';
 import type {
   ActionApplied,
@@ -43,8 +44,19 @@ export function commitsChips(action: AppliedActionType): boolean {
 }
 
 export type ChipMotion =
-  | { readonly kind: 'to-pot'; readonly fromSeat: number }
-  | { readonly kind: 'to-winners'; readonly toSeats: readonly number[] };
+  | {
+      readonly kind: 'to-pot';
+      readonly fromSeat: number;
+      /** Chips committed; null for call/all-in (the client sends no amount). */
+      readonly amount: number | null;
+    }
+  | {
+      readonly kind: 'to-winners';
+      readonly awards: readonly {
+        readonly seat: number;
+        readonly amount: number;
+      }[];
+    };
 
 /**
  * A table update classified for animation. Only LIVE transient events
@@ -62,34 +74,59 @@ export function planChipMotion(signal: TableSignal): ChipMotion | null {
   switch (signal.type) {
     case 'action':
       return commitsChips(signal.event.action)
-        ? { kind: 'to-pot', fromSeat: signal.event.seat }
+        ? {
+            kind: 'to-pot',
+            fromSeat: signal.event.seat,
+            amount: signal.event.amount,
+          }
         : null;
     case 'settled': {
-      const toSeats = signal.event.payouts.map((p) => p.seat);
-      return toSeats.length > 0 ? { kind: 'to-winners', toSeats } : null;
+      const awards = signal.event.payouts;
+      return awards.length > 0 ? { kind: 'to-winners', awards } : null;
     }
     case 'snapshot':
       return null;
   }
 }
 
-/** Source→target endpoints for a single chip flight. */
+/** Source→target endpoints + denomination tint for a single chip flight. */
 export interface FlightSpec {
   readonly from: Point;
   readonly to: Point;
+  /** Chip color, derived from the flight's value (the single chip-color source). */
+  readonly color: string;
+}
+
+/** Denomination color for an amount — the one chip-color source of truth. */
+export function chipTint(amount: number): string {
+  return chipColor(topDenomination(amount));
 }
 
 /**
  * Expands a chip motion into concrete flights using `seatSlots` geometry: one
  * seat→center flight for a commit, one center→seat flight per winner (so a split
- * pot fans out to every winning seat).
+ * pot fans out to every winning seat). Each flight is tinted by its value so
+ * flying chips match the pot/bet chips (vc-design: color encodes value).
+ *
+ * `fallbackAmount` (the current pot) tints a commit whose amount is unknown
+ * (call/all-in send no amount), so those chips still read as the table's scale.
  */
-export function flightsFor(motion: ChipMotion): FlightSpec[] {
+export function flightsFor(
+  motion: ChipMotion,
+  fallbackAmount: number,
+): FlightSpec[] {
   if (motion.kind === 'to-pot') {
-    return [{ from: seatPoint(motion.fromSeat), to: TABLE_CENTER }];
+    return [
+      {
+        from: seatPoint(motion.fromSeat),
+        to: TABLE_CENTER,
+        color: chipTint(motion.amount ?? fallbackAmount),
+      },
+    ];
   }
-  return motion.toSeats.map((seat) => ({
+  return motion.awards.map((award) => ({
     from: TABLE_CENTER,
-    to: seatPoint(seat),
+    to: seatPoint(award.seat),
+    color: chipTint(award.amount),
   }));
 }
