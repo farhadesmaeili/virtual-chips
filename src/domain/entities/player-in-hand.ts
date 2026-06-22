@@ -127,9 +127,17 @@ export function fold(p: PlayerInHand): PlayerInHand {
 
 /**
  * Resets per-street fields when a new street begins: clears
- * `committedThisStreet` and `hasActedThisStreet`. `committedTotal` and the
- * player's lifecycle `state` (folded / all_in) are preserved.
+ * `committedThisStreet`, `hasActedThisStreet`, and `lastAction`. Betting
+ * restarts from zero each street (currentBet=0, committedThisStreet=0), so a
+ * prior street's action verb is stale and must not be displayed. The
+ * player's `committedTotal` and lifecycle `state` (folded / all_in) are
+ * preserved — fold/all-in status is tracked by `state`, not by `lastAction`.
  */
 export function resetForNewStreet(p: PlayerInHand): PlayerInHand {
-  return { ...p, committedThisStreet: 0, hasActedThisStreet: false };
+  return {
+    ...p,
+    committedThisStreet: 0,
+    hasActedThisStreet: false,
+    lastAction: null,
+  };
 }

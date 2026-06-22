@@ -135,8 +135,8 @@ describe('resetForNewStreet', () => {
     expect(p.state).toBe('all_in');
   });
 
-  it('keeps lastAction across the street (persists within the hand)', () => {
+  it('clears lastAction on street reset (betting restarts each street)', () => {
     const p = resetForNewStreet(player({ lastAction: 'RAISE' }));
-    expect(p.lastAction).toBe('RAISE');
+    expect(p.lastAction).toBeNull();
   });
 });

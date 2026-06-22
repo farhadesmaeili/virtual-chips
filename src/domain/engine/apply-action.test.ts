@@ -413,9 +413,9 @@ describe('lastAction (verb stamping)', () => {
     expect(Object.keys(p)).not.toContain('lastAmount');
   });
 
-  it('persists across a street reset (until the player acts again)', () => {
+  it('is cleared by a street reset (betting restarts each street)', () => {
     const next = act(mkHand({ currentBet: 30 }), { seat: 0, type: 'CALL' });
-    expect(resetForNewStreet(getPlayer(next, 0)!).lastAction).toBe('CALL');
+    expect(resetForNewStreet(getPlayer(next, 0)!).lastAction).toBeNull();
   });
 
   it('leaves non-acting players null', () => {
