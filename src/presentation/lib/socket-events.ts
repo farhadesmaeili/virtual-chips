@@ -86,6 +86,26 @@ export interface PublicHandState {
   readonly totalPot: number;
 }
 
+/**
+ * An action the engine applied, broadcast on `action:applied` purely for
+ * animation/log (task 5.1) — the authoritative chips/pot still arrive via
+ * `hand:state`. Mirrors the server's `ActionType` (domain) on the wire.
+ */
+export type AppliedActionType =
+  | 'FOLD'
+  | 'CHECK'
+  | 'CALL'
+  | 'BET'
+  | 'RAISE'
+  | 'ALL_IN';
+
+export interface ActionApplied {
+  readonly seat: number;
+  readonly action: AppliedActionType;
+  /** Raise/bet target when the client supplied one; null for call/all-in. */
+  readonly amount: number | null;
+}
+
 /** Chips won per seat, broadcast on `hand:settled` after the banker settles. */
 export interface HandSettled {
   readonly payouts: readonly {

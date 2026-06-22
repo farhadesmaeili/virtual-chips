@@ -8,6 +8,8 @@ import { ActionMenu } from './action-menu';
 import { ActionPanel } from './action-panel';
 import { deriveActions, type ActionKind } from './action-availability';
 import { deriveMenuItems } from './menu-availability';
+import { type ChipMotion, flightsFor, planChipMotion } from './chip-motion';
+import { type ChipFlight } from './chip-motion-layer';
 import { PokerTable } from './poker-table';
 import { RoomIdBadge } from './room-id-badge';
 import { ShowdownControls } from './showdown-controls';
@@ -16,6 +18,7 @@ import { TurnBanner } from './turn-banner';
 import { getSocket } from '@/presentation/lib/socket';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import type {
+  ActionApplied,
   ChipRequestList,
   HandSettled,
   PublicChipRequest,
@@ -39,6 +42,13 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   const [chipRequests, setChipRequests] = useState<
     readonly PublicChipRequest[]
   >([]);
+  // In-flight chip animations (task 5.1). Triggered only by LIVE events below;
+  // never reconstructed from a snapshot, so a resync replays no chip flights.
+  const [flights, setFlights] = useState<readonly ChipFlight[]>([]);
+  const flightId = useRef(0);
+  const removeFlight = useCallback((id: string): void => {
+    setFlights((prev) => prev.filter((f) => f.id !== id));
+  }, []);
   // Which control owns the next error: a betting/hand action or a funding one.
   const intent = useRef<'action' | 'funding'>('action');
   // Set while a leave is in flight, so only the leaver returns to the lobby
@@ -53,6 +63,18 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
 
   useEffect(() => {
     const socket = getSocket();
+    // Turn a LIVE chip motion into rendered flights. Called only from the
+    // transient action:applied / hand:settled handlers — never from a snapshot.
+    const enqueue = (motion: ChipMotion | null): void => {
+      if (motion === null) return;
+      setFlights((prev) => [
+        ...prev,
+        ...flightsFor(motion).map((spec) => ({
+          ...spec,
+          id: `flight-${(flightId.current += 1)}`,
+        })),
+      ]);
+    };
     const onState = (state: PublicRoomState): void => {
       setRoom(state);
       // room:state is the success response for presence actions (sit out / sit
@@ -79,9 +101,15 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
       // A new betting hand clears the previous hand's result banner.
       if (state.status === 'betting') setPayouts(null);
     };
+    const onAction = (event: ActionApplied): void => {
+      // player→pot on a live committing action (bet/call/raise/all-in).
+      enqueue(planChipMotion({ type: 'action', event }));
+    };
     const onSettled = (result: HandSettled): void => {
       setPending(false);
       setPayouts(result.payouts);
+      // pot→winner(s) on the live settlement.
+      enqueue(planChipMotion({ type: 'settled', event: result }));
     };
     const onRequests = (list: ChipRequestList): void => {
       setChipRequests(list.requests);
@@ -98,6 +126,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     };
     socket.on('room:state', onState);
     socket.on('hand:state', onHand);
+    socket.on('action:applied', onAction);
     socket.on('hand:settled', onSettled);
     socket.on('chips:requests', onRequests);
     socket.on('error', onError);
@@ -112,6 +141,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     return () => {
       socket.off('room:state', onState);
       socket.off('hand:state', onHand);
+      socket.off('action:applied', onAction);
       socket.off('hand:settled', onSettled);
       socket.off('chips:requests', onRequests);
       socket.off('error', onError);
@@ -290,7 +320,12 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
 
           <TurnBanner hand={hand} members={room.members} heroSeat={heroSeat} />
 
-          <PokerTable room={room} hand={hand} />
+          <PokerTable
+            room={room}
+            hand={hand}
+            flights={flights}
+            onFlightDone={removeFlight}
+          />
 
           {/* Result of the last settled hand, until the next deal. */}
           {payouts !== null &&

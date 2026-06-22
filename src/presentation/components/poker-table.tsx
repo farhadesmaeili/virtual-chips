@@ -4,6 +4,7 @@ import { AnimatePresence, LayoutGroup } from 'framer-motion';
 import { streetName } from '@/domain/engine';
 import { BlindsReadout } from './blinds-readout';
 import { ChipStack } from './chip';
+import { ChipMotionLayer, type ChipFlight } from './chip-motion-layer';
 import { Seat } from './seat';
 import { MAX_SEATS, seatSlots } from './seat-layout';
 import { highlightSeat, seatPresenceKey } from './table-presence';
@@ -16,6 +17,10 @@ export interface PokerTableProps {
   readonly room: PublicRoomState;
   /** Live hand state when a hand is in play; null between hands (4.2 wiring). */
   readonly hand?: PublicHandState | null;
+  /** In-flight chip animations (task 5.1); driven by live events, not state. */
+  readonly flights?: readonly ChipFlight[];
+  /** Removes a finished flight so it cleans itself up. */
+  readonly onFlightDone?: (id: string) => void;
 }
 
 /**
@@ -27,6 +32,8 @@ export interface PokerTableProps {
 export function PokerTable({
   room,
   hand = null,
+  flights = [],
+  onFlightDone,
 }: PokerTableProps): React.ReactElement {
   const slots = seatSlots(MAX_SEATS);
   const memberBySeat = new Map(room.members.map((m) => [m.seat, m]));
@@ -135,6 +142,13 @@ export function PokerTable({
                 })}
               </AnimatePresence>
             </LayoutGroup>
+
+            {/* Chips in flight (player→pot, pot→winner). Shares the seat-overlay
+                coordinate space so endpoints line up with seats. */}
+            <ChipMotionLayer
+              flights={flights}
+              onDone={onFlightDone ?? (() => undefined)}
+            />
           </div>
         </div>
       </div>
