@@ -1,10 +1,12 @@
 'use client';
 
+import { AnimatePresence, LayoutGroup } from 'framer-motion';
 import { streetName } from '@/domain/engine';
 import { BlindsReadout } from './blinds-readout';
 import { ChipStack } from './chip';
 import { Seat } from './seat';
 import { MAX_SEATS, seatSlots } from './seat-layout';
+import { highlightSeat, seatPresenceKey } from './table-presence';
 import type {
   PublicHandState,
   PublicRoomState,
@@ -33,6 +35,8 @@ export function PokerTable({
   const livePot = inPlay ? hand.totalPot : 0;
   // Side pots come straight from the authoritative hand state.
   const sidePots = inPlay && hand.pots.length > 1 ? hand.pots : [];
+  // Seat the turn highlight slides to (null between turns / streets).
+  const activeSeat = highlightSeat(hand);
 
   return (
     <div className="vc-table-stage w-full pb-10 pt-2">
@@ -107,20 +111,30 @@ export function PokerTable({
           </div>
 
           {/* Seats sit at the rail; the overlay spans the table box but tucks in
-              horizontally on mobile so side seats and nameplates never clip. */}
+              horizontally on mobile so side seats and nameplates never clip.
+              LayoutGroup scopes the shared-layout turn highlight; AnimatePresence
+              animates join/leave/swap (keyed by seat + occupant), with
+              `initial={false}` so seats present on first load don't pop in. */}
           <div className="absolute inset-y-0 inset-x-[9%] sm:inset-x-0">
-            {slots.map((slot) => (
-              <Seat
-                key={slot.seat}
-                slot={slot}
-                member={memberBySeat.get(slot.seat)}
-                handPlayer={playerBySeat.get(slot.seat)}
-                isActing={hand?.actingSeat === slot.seat}
-                isButton={hand?.buttonSeat === slot.seat}
-                actionDeadline={hand?.actionDeadline ?? null}
-                actionTimeoutMs={room.settings.actionTimeoutMs}
-              />
-            ))}
+            <LayoutGroup>
+              <AnimatePresence initial={false}>
+                {slots.map((slot) => {
+                  const member = memberBySeat.get(slot.seat);
+                  return (
+                    <Seat
+                      key={seatPresenceKey(slot.seat, member)}
+                      slot={slot}
+                      member={member}
+                      handPlayer={playerBySeat.get(slot.seat)}
+                      isActing={activeSeat === slot.seat}
+                      isButton={hand?.buttonSeat === slot.seat}
+                      actionDeadline={hand?.actionDeadline ?? null}
+                      actionTimeoutMs={room.settings.actionTimeoutMs}
+                    />
+                  );
+                })}
+              </AnimatePresence>
+            </LayoutGroup>
           </div>
         </div>
       </div>
