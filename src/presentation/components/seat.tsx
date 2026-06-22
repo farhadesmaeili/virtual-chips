@@ -1,6 +1,7 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
+import { useEffect } from 'react';
 import {
   playerEnter,
   seatHighlight,
@@ -10,8 +11,10 @@ import {
 } from '@/presentation/animations';
 import { ChipStack } from './chip';
 import { CountdownRing } from './countdown-ring';
+import { actionVerbLabel, labelFade } from './seat-action';
 import type { SeatSlot } from './seat-layout';
 import type {
+  AppliedActionType,
   PublicHandPlayer,
   PublicRoomMember,
 } from '@/presentation/lib/socket-events';
@@ -61,6 +64,7 @@ export function Seat({
   const sittingOut = member?.sittingOut ?? false;
   const stack = handPlayer?.stack ?? member?.chips ?? 0;
   const bet = handPlayer?.committedThisStreet ?? 0;
+  const lastAction = handPlayer?.lastAction ?? null;
 
   // Enter/exit (join/leave/swap) — scale + fade under reduced-motion (fade only).
   // `x`/`y` keep the seat centered on its slot point while Framer composes the
@@ -163,9 +167,10 @@ export function Seat({
                   </span>
                 )}
               </div>
-              <div className="font-mono text-sm font-semibold tabular-nums text-vc-gold">
-                {allIn ? 'All in' : stack.toLocaleString()}
-              </div>
+              {/* Last action (verb only) — a fixed-height row so the seat never
+                  reflows as the label appears/clears. */}
+              <LastActionLabel verb={lastAction} />
+              <StackReadout stack={stack} allIn={allIn} />
               {sittingOut && (
                 <div className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-vc-ink-muted">
                   Sitting out
@@ -199,6 +204,72 @@ function SeatHighlight(): React.ReactElement {
       animate="active"
       transition={{ layout: reduced ? { duration: 0 } : springSoft }}
     />
+  );
+}
+
+/**
+ * The seat's last action this hand (verb only — the chips in front already show
+ * the amount). The row keeps a fixed height even when empty so the seat never
+ * reflows as the label appears/clears. On a verb change it fades in via the 5.0
+ * helper (opacity only; instant under reduced motion).
+ */
+function LastActionLabel({
+  verb,
+}: {
+  verb: AppliedActionType | null;
+}): React.ReactElement {
+  const variants = useMotionVariants(labelFade);
+  const label = actionVerbLabel(verb);
+  return (
+    <div className="flex h-3.5 items-center justify-center">
+      {label !== '' && (
+        <motion.span
+          // Remount on verb change so the fade replays.
+          key={verb ?? 'none'}
+          variants={variants}
+          initial="initial"
+          animate="animate"
+          className="text-[9px] font-semibold uppercase tracking-[0.12em] text-vc-ink-muted"
+        >
+          {label}
+        </motion.span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The seat's stack readout. The number is a Framer motion value rendered
+ * directly into the DOM (`<motion.span>{text}</motion.span>`) and tweened with
+ * `animate()`, so it counts up/down on change WITHOUT re-rendering the seat each
+ * frame — only the text node updates (the same approach as the 5.2 ring). Under
+ * reduced motion it snaps to the value instantly. The tween always settles on
+ * the authoritative `stack`, and the "All in" display is preserved.
+ */
+function StackReadout({
+  stack,
+  allIn,
+}: {
+  stack: number;
+  allIn: boolean;
+}): React.ReactElement {
+  const reduced = useReducedMotionPreference();
+  const value = useMotionValue(stack);
+  const text = useTransform(value, (v) => Math.round(v).toLocaleString());
+
+  useEffect(() => {
+    if (reduced) {
+      value.set(stack);
+      return;
+    }
+    const controls = animate(value, stack, { duration: 0.5, ease: 'easeOut' });
+    return () => controls.stop();
+  }, [stack, reduced, value]);
+
+  return (
+    <div className="font-mono text-sm font-semibold tabular-nums text-vc-gold">
+      {allIn ? 'All in' : <motion.span>{text}</motion.span>}
+    </div>
   );
 }
 
