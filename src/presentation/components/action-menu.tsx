@@ -20,7 +20,6 @@ export interface ActionMenuProps {
   readonly onSitIn: () => void;
   readonly onLeave: () => void;
   readonly onRequestChips: (amount: number) => void;
-  readonly onStartHand: () => void;
   readonly onApproveChips: (id: string) => void;
   readonly onRejectChips: (id: string) => void;
 }
@@ -31,9 +30,9 @@ const FOCUSABLE =
 /**
  * The unified action menu (task 4.16): one button opening a sheet that collects
  * the always-present controls that used to be scattered bars — presence
- * (sit out / in, leave; task 4.14), funding (request chips, and the banker's
- * approve/deny queue; task 4.15) and the banker's start-hand button. The
- * phase-flow trays (betting, deal-street, showdown) deliberately stay separate.
+ * (sit out / in, leave; task 4.14) and funding (request chips, and the banker's
+ * approve/deny queue; task 4.15). The phase-flow trays (betting, deal-street,
+ * showdown, and the banker's start-hand button) deliberately stay separate.
  *
  * This is presentation only: it sends the same intents the bars sent. The server
  * re-validates every event, so hiding/disabling an item is UX, not authorization.
@@ -49,7 +48,6 @@ export function ActionMenu({
   onSitIn,
   onLeave,
   onRequestChips,
-  onStartHand,
   onApproveChips,
   onRejectChips,
 }: ActionMenuProps): React.ReactElement | null {
@@ -170,18 +168,6 @@ export function ActionMenu({
                   ✕
                 </button>
               </div>
-
-              {/* Banker: start the (next) hand. */}
-              {model.startHand.show && (
-                <button
-                  type="button"
-                  disabled={model.startHand.disabled}
-                  onClick={onStartHand}
-                  className="rounded-lg border border-vc-gold/50 bg-vc-gold/10 px-4 py-2 text-sm font-semibold text-vc-gold transition hover:bg-vc-gold/20 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {model.startHand.label}
-                </button>
-              )}
 
               {/* Presence: sit out / sit in. */}
               {model.sitIn.show && (

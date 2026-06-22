@@ -13,6 +13,7 @@ import { type ChipFlight } from './chip-motion-layer';
 import { PokerTable } from './poker-table';
 import { RoomIdBadge } from './room-id-badge';
 import { ShowdownControls } from './showdown-controls';
+import { StartHandControl } from './start-hand-control';
 import { StreetControls } from './street-controls';
 import { TurnBanner } from './turn-banner';
 import { getSocket } from '@/presentation/lib/socket';
@@ -370,23 +371,31 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               onDeal={dealStreet}
             />
           ) : (
-            // Remounting on turn/bet change resets the local sizing controls.
-            <ActionPanel
-              key={`${hand?.id ?? 'none'}:${hand?.actingSeat ?? 'x'}:${hand?.currentBet ?? 0}`}
-              availability={availability}
-              pot={hand?.totalPot ?? 0}
-              currentBet={hand?.currentBet ?? 0}
-              pending={pending}
-              error={actionError}
-              actingName={actingName}
-              onAct={act}
-              actionDeadline={hand?.actionDeadline ?? null}
-              timeExtensionsRemaining={
-                hand?.players.find((p) => p.seat === heroSeat)
-                  ?.timeExtensionsRemaining ?? 0
-              }
-              onAddTime={requestTime}
-            />
+            // No phase tray (no live hand): the banker's start-hand control sits
+            // with the deal/advance family, above the (waiting) action panel.
+            <>
+              <StartHandControl
+                state={menuModel.startHand}
+                onStart={startHand}
+              />
+              {/* Remounting on turn/bet change resets the local sizing controls. */}
+              <ActionPanel
+                key={`${hand?.id ?? 'none'}:${hand?.actingSeat ?? 'x'}:${hand?.currentBet ?? 0}`}
+                availability={availability}
+                pot={hand?.totalPot ?? 0}
+                currentBet={hand?.currentBet ?? 0}
+                pending={pending}
+                error={actionError}
+                actingName={actingName}
+                onAct={act}
+                actionDeadline={hand?.actionDeadline ?? null}
+                timeExtensionsRemaining={
+                  hand?.players.find((p) => p.seat === heroSeat)
+                    ?.timeExtensionsRemaining ?? 0
+                }
+                onAddTime={requestTime}
+              />
+            </>
           )}
 
           <ActionMenu
@@ -400,7 +409,6 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
             onSitIn={sitIn}
             onLeave={leave}
             onRequestChips={requestChips}
-            onStartHand={startHand}
             onApproveChips={approveChips}
             onRejectChips={rejectChips}
           />
