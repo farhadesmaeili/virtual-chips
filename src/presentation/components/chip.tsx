@@ -1,5 +1,9 @@
 import type { CSSProperties } from 'react';
-import { chipColor, topDenomination } from './chip-denominations';
+import {
+  chipColor,
+  denominationBreakdown,
+  topDenomination,
+} from './chip-denominations';
 
 /**
  * A semi-3D casino chip — the brand atom (vc-design). Pure CSS depth (layered
@@ -81,6 +85,63 @@ export function ChipStack({
               width: size,
               height: size,
               '--chip': tint,
+            } as CSSProperties
+          }
+        />
+      ))}
+    </span>
+  );
+}
+
+// A tall pot must not render hundreds of discs — purely a display cap. The
+// decomposition math stays exact; we just show the most significant chips.
+const MAX_POT_DISCS = 12;
+
+/**
+ * The pot pile as a real mixed stack: discs colored per denomination from the
+ * amount's breakdown (largest at the bottom), so the pot reads as accumulated
+ * chips of many values rather than one color tied to the total. Bets and flying
+ * chips keep their single-amount tint ({@link ChipStack} / {@link Chip}).
+ */
+export function PotStack({
+  amount,
+  size = 24,
+  className,
+}: {
+  amount: number;
+  /** Diameter of each chip disc. */
+  size?: number;
+  className?: string;
+}): React.ReactElement {
+  // Per-disc colors, largest denomination first (most significant). Capping
+  // keeps the biggest chips and drops the smallest top discs on a huge pot.
+  const discs = denominationBreakdown(amount)
+    .flatMap(({ denom, count }) =>
+      Array.from({ length: count }, () => chipColor(denom)),
+    )
+    .slice(0, MAX_POT_DISCS);
+  const offset = Math.max(2, Math.round(size * 0.16));
+  const rendered = Math.max(1, discs.length);
+
+  return (
+    <span
+      aria-hidden
+      className={`relative inline-block ${className ?? ''}`}
+      style={{ width: size, height: size + (rendered - 1) * offset }}
+    >
+      {discs.map((color, i) => (
+        <span
+          key={i}
+          className="vc-chip"
+          style={
+            {
+              position: 'absolute',
+              left: 0,
+              bottom: i * offset,
+              display: 'block',
+              width: size,
+              height: size,
+              '--chip': color,
             } as CSSProperties
           }
         />

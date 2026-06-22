@@ -21,3 +21,29 @@ export function topDenomination(amount: number): Denomination {
 export function chipColor(denom: Denomination): string {
   return `var(--vc-chip-${denom})`;
 }
+
+/** How many chips of one denomination make up part of an amount. */
+export interface DenominationCount {
+  readonly denom: Denomination;
+  readonly count: number;
+}
+
+/**
+ * Greedy decomposition of `amount` into the existing denomination tiers, largest
+ * first — e.g. 175 → [{100,1}, {25,3}]. Used to render the pot as a real mixed
+ * stack instead of one color. Exact and total-preserving: the sum of
+ * `denom * count` equals `floor(max(0, amount))` (chip amounts are whole, and the
+ * smallest tier is 1, so any non-negative integer decomposes with no remainder).
+ */
+export function denominationBreakdown(amount: number): DenominationCount[] {
+  let remaining = Math.max(0, Math.floor(amount));
+  const breakdown: DenominationCount[] = [];
+  for (const denom of DENOMINATIONS) {
+    const count = Math.floor(remaining / denom);
+    if (count > 0) {
+      breakdown.push({ denom, count });
+      remaining -= denom * count;
+    }
+  }
+  return breakdown;
+}

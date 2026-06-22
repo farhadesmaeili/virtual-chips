@@ -3,7 +3,7 @@
 import { AnimatePresence, LayoutGroup } from 'framer-motion';
 import { streetName } from '@/domain/engine';
 import { BlindsReadout } from './blinds-readout';
-import { ChipStack } from './chip';
+import { PotStack } from './chip';
 import { ChipMotionLayer, type ChipFlight } from './chip-motion-layer';
 import { Seat } from './seat';
 import { MAX_SEATS, seatSlots } from './seat-layout';
@@ -63,15 +63,10 @@ export function PokerTable({
                   )}
                   {livePot > 0 ? (
                     <>
-                      {/* The pot pile — tinted by its denomination (vc-design:
-                          color encodes value), and the anchor chips spring to in
-                          Phase 5. */}
-                      <ChipStack
-                        amount={livePot}
-                        size={24}
-                        height={4}
-                        className="mb-1.5"
-                      />
+                      {/* The pot pile — a mixed stack of denomination-colored
+                          discs (vc-design: color encodes value), and the anchor
+                          chips spring to in Phase 5. */}
+                      <PotStack amount={livePot} size={24} className="mb-1.5" />
                       <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-vc-ink-muted">
                         Pot
                       </span>
