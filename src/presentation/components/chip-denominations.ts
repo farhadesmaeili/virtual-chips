@@ -47,3 +47,57 @@ export function denominationBreakdown(amount: number): DenominationCount[] {
   }
   return breakdown;
 }
+
+/**
+ * Chooses which discs the pot pile renders when the exact breakdown has more
+ * discs than the display `cap`. So the capped view reflects the pot's true
+ * composition rather than only its biggest chips:
+ *
+ *  1. reserve one disc per denomination present (every color the pot contains
+ *     is guaranteed to show), and
+ *  2. distribute the remaining slots by descending count (heavier tiers get more
+ *     of their extra discs).
+ *
+ * Returns denominations in descending order (largest first, for stacking).
+ * Length is `min(totalDiscs, cap)`; never exceeds the cap; never invents a
+ * denomination absent from `breakdown`. Pure — `denominationBreakdown` stays
+ * exact and untouched.
+ */
+export function selectPotDiscs(
+  breakdown: readonly DenominationCount[],
+  cap: number,
+): Denomination[] {
+  const totalDiscs = breakdown.reduce((sum, b) => sum + b.count, 0);
+
+  // Everything fits — render every disc, descending.
+  if (totalDiscs <= cap) {
+    return breakdown.flatMap(({ denom, count }) =>
+      Array.from({ length: count }, () => denom),
+    );
+  }
+
+  // More distinct denominations than slots — keep the largest, one disc each.
+  if (breakdown.length >= cap) {
+    return breakdown.slice(0, cap).map((b) => b.denom);
+  }
+
+  // Reserve one disc per denomination, then fill the rest by descending count.
+  const chosen = new Map<Denomination, number>(
+    breakdown.map((b) => [b.denom, 1]),
+  );
+  let remaining = cap - breakdown.length;
+  const byCount = [...breakdown].sort(
+    (a, b) => b.count - a.count || b.denom - a.denom,
+  );
+  for (const { denom, count } of byCount) {
+    if (remaining === 0) break;
+    const take = Math.min(count - 1, remaining);
+    chosen.set(denom, (chosen.get(denom) ?? 1) + take);
+    remaining -= take;
+  }
+
+  // Rebuild in descending denomination order (breakdown is already descending).
+  return breakdown.flatMap(({ denom }) =>
+    Array.from({ length: chosen.get(denom) ?? 0 }, () => denom),
+  );
+}

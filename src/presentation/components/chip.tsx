@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react';
 import {
   chipColor,
   denominationBreakdown,
+  selectPotDiscs,
   topDenomination,
 } from './chip-denominations';
 
@@ -113,13 +114,14 @@ export function PotStack({
   size?: number;
   className?: string;
 }): React.ReactElement {
-  // Per-disc colors, largest denomination first (most significant). Capping
-  // keeps the biggest chips and drops the smallest top discs on a huge pot.
-  const discs = denominationBreakdown(amount)
-    .flatMap(({ denom, count }) =>
-      Array.from({ length: count }, () => chipColor(denom)),
-    )
-    .slice(0, MAX_POT_DISCS);
+  // Per-disc colors, largest denomination first (most significant). When the pot
+  // has more discs than the cap, selectPotDiscs reserves one per denomination
+  // (every color shows) then fills by descending count — so the capped view
+  // reflects the pot's true composition, not just its biggest chips.
+  const discs = selectPotDiscs(
+    denominationBreakdown(amount),
+    MAX_POT_DISCS,
+  ).map(chipColor);
   const offset = Math.max(2, Math.round(size * 0.16));
   const rendered = Math.max(1, discs.length);
 
