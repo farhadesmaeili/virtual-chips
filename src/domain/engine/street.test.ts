@@ -204,6 +204,62 @@ describe('isStreetComplete', () => {
     );
     expect(isStreetComplete(matched)).toBe(true);
   });
+
+  it('completes a fresh street with a lone active player who owes nothing (opponent all-in)', () => {
+    // All-in run-out: seat 1 is all-in, seat 0 is the only one who could act but
+    // owes nothing on the fresh street (currentBet 0). No one to bet against →
+    // the street is complete even though seat 0 has not "acted".
+    const hand = mkHand(
+      [
+        mkPlayer({
+          seat: 0,
+          committedThisStreet: 0,
+          hasActedThisStreet: false,
+        }),
+        mkPlayer({ seat: 1, state: 'all_in', committedThisStreet: 0 }),
+      ],
+      { currentBet: 0 },
+    );
+    expect(isStreetComplete(hand)).toBe(true);
+  });
+
+  it('does NOT complete when the lone active player still owes an all-in call', () => {
+    // REGRESSION GUARD: a lone active player facing an unmatched all-in must
+    // still call/fold — the fix must never let a seat skip calling an all-in.
+    const hand = mkHand(
+      [
+        mkPlayer({
+          seat: 0,
+          committedThisStreet: 0,
+          hasActedThisStreet: false,
+        }),
+        mkPlayer({ seat: 1, state: 'all_in', committedThisStreet: 800 }),
+      ],
+      { currentBet: 800, actingSeat: 0 },
+    );
+    expect(isStreetComplete(hand)).toBe(false);
+  });
+
+  it('does NOT complete with two active players when one has not yet acted', () => {
+    // Pins the length>=2 path as unchanged: even with both committed equal to
+    // the current bet, an unacted player keeps the street open (the BB option).
+    const hand = mkHand(
+      [
+        mkPlayer({
+          seat: 0,
+          committedThisStreet: 10,
+          hasActedThisStreet: true,
+        }),
+        mkPlayer({
+          seat: 1,
+          committedThisStreet: 10,
+          hasActedThisStreet: false,
+        }),
+      ],
+      { currentBet: 10 },
+    );
+    expect(isStreetComplete(hand)).toBe(false);
+  });
 });
 
 describe('advanceHand — street complete, not last (manual pacing)', () => {
@@ -326,6 +382,80 @@ describe('dealNextStreet (banker confirms the next street)', () => {
     expect(hand.street).toBe(2);
     // River (street 3) is the last street → showdown.
     hand = dealNextStreet(hand, { minBet: MIN_BET });
+    expect(hand.status).toBe('awaiting_showdown');
+    expect(hand.street).toBe(3);
+    expect(hand.actingSeat).toBeNull();
+  });
+
+  it('pauses to awaiting_street when the lone active player IS the button (all-in run-out hard stall)', () => {
+    // The exact stall repro: heads-up, the only player with chips left (seat 0)
+    // is the button; seat 1 is all-in. firstActiveAfterButton can't seat the
+    // turn on the button, so before the fix this fell through to a stuck
+    // betting/null-actor state. It must now pause for the banker instead.
+    const hand = mkHand(
+      [
+        mkPlayer({
+          seat: 0,
+          stack: 200,
+          committedThisStreet: 800,
+          committedTotal: 800,
+          hasActedThisStreet: true,
+        }),
+        mkPlayer({ seat: 1, state: 'all_in', committedTotal: 800 }),
+      ],
+      { currentBet: 800, street: 0, buttonSeat: 0, status: 'awaiting_street' },
+    );
+    const next = dealNextStreet(hand, { minBet: MIN_BET });
+    expect(next.status).toBe('awaiting_street');
+    expect(next.status).not.toBe('betting'); // never the stuck state
+    expect(next.actingSeat).toBeNull();
+    expect(next.street).toBe(1);
+    expect(next.currentBet).toBe(0);
+  });
+
+  it('pauses to awaiting_street when the lone active player is NOT the button (1b variant)', () => {
+    // Same root, non-button case: before the fix this seated a pointless CHECK
+    // turn for seat 0 each street; it must now pause for the banker too.
+    const hand = mkHand(
+      [
+        mkPlayer({
+          seat: 0,
+          stack: 200,
+          committedTotal: 800,
+          hasActedThisStreet: true,
+        }),
+        mkPlayer({ seat: 1, state: 'all_in', committedTotal: 800 }),
+      ],
+      { currentBet: 800, street: 0, buttonSeat: 1, status: 'awaiting_street' },
+    );
+    const next = dealNextStreet(hand, { minBet: MIN_BET });
+    expect(next.status).toBe('awaiting_street');
+    expect(next.actingSeat).toBeNull();
+    expect(next.street).toBe(1);
+  });
+
+  it('paces a one-player-capped all-in run-out to the river, then showdown', () => {
+    // One player still has chips (seat 0), opponent all-in: no betting is
+    // possible, so every dealt street pauses until the river → showdown.
+    let hand = mkHand(
+      [
+        mkPlayer({
+          seat: 0,
+          stack: 200,
+          committedTotal: 800,
+          hasActedThisStreet: true,
+        }),
+        mkPlayer({ seat: 1, state: 'all_in', committedTotal: 800 }),
+      ],
+      { street: 0, currentBet: 800, buttonSeat: 0, status: 'awaiting_street' },
+    );
+    hand = dealNextStreet(hand, { minBet: MIN_BET }); // flop
+    expect(hand.status).toBe('awaiting_street');
+    expect(hand.street).toBe(1);
+    hand = dealNextStreet(hand, { minBet: MIN_BET }); // turn
+    expect(hand.status).toBe('awaiting_street');
+    expect(hand.street).toBe(2);
+    hand = dealNextStreet(hand, { minBet: MIN_BET }); // river → showdown
     expect(hand.status).toBe('awaiting_showdown');
     expect(hand.street).toBe(3);
     expect(hand.actingSeat).toBeNull();

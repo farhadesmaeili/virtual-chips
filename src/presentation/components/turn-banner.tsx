@@ -3,6 +3,7 @@
 import { streetName } from '@/domain/engine';
 import { useCountdown } from '@/presentation/hooks/use-countdown';
 import { formatCountdown } from '@/presentation/lib/countdown';
+import { turnBannerLabelKind } from './turn-banner-label';
 import type {
   PublicHandState,
   PublicRoomMember,
@@ -29,36 +30,42 @@ export function TurnBanner({
   const deadline = betting ? hand.actionDeadline : null;
   const seconds = useCountdown(deadline);
 
-  if (hand === null || hand.status === 'settled') return null;
+  // The label decision lives in a pure helper so the branching is unit-tested;
+  // `none` covers settled / no hand / an unexpected betting-no-actor state.
+  const labelKind = turnBannerLabelKind(hand, heroSeat);
+  if (labelKind.kind === 'none') return null;
 
-  const heroActing = betting && hand.actingSeat === heroSeat;
+  const heroActing = labelKind.kind === 'your-turn';
   let label: React.ReactNode;
 
-  if (betting && hand.actingSeat !== null) {
-    if (heroActing) {
+  switch (labelKind.kind) {
+    case 'your-turn':
       label = 'Your turn';
-    } else {
+      break;
+    case 'to-act': {
       const name =
-        members.find((m) => m.seat === hand.actingSeat)?.username ??
-        `Seat ${hand.actingSeat}`;
+        members.find((m) => m.seat === labelKind.seat)?.username ??
+        `Seat ${labelKind.seat}`;
       label = (
         <>
           <span className="font-medium text-vc-ink">{name}</span> to act
         </>
       );
+      break;
     }
-  } else if (hand.status === 'awaiting_street') {
-    label = (
-      <>
-        Waiting for the banker to deal the{' '}
-        <span className="font-medium text-vc-ink">
-          {streetName(hand.street + 1)}
-        </span>
-      </>
-    );
-  } else {
-    // awaiting_showdown
-    label = 'Waiting for the banker to settle';
+    case 'deal-next':
+      label = (
+        <>
+          Waiting for the banker to deal the{' '}
+          <span className="font-medium text-vc-ink">
+            {streetName(labelKind.street)}
+          </span>
+        </>
+      );
+      break;
+    case 'settle':
+      label = 'Waiting for the banker to settle';
+      break;
   }
 
   const low = seconds !== null && seconds <= 5;

@@ -165,6 +165,37 @@ describe('settleHand — banker-declared, multiple pots', () => {
   });
 });
 
+describe('settleHand — one-player-capped all-in run-out', () => {
+  it('settles the capped run-out money-correctly and zero-sum', () => {
+    // Heads-up: seat 0 started 1000 and has 200 behind (committed 800); seat 1
+    // started 800 and is all-in (committed 800). Both committed equally, so it
+    // is a single 1600 pot eligible to both; the banker awards seat 0.
+    const hand = mkHand([
+      mkPlayer({ seat: 0, committedTotal: 800, state: 'active', stack: 200 }),
+      mkPlayer({ seat: 1, committedTotal: 800, state: 'all_in', stack: 0 }),
+    ]);
+    const { hand: settled, payouts, pots } = settleHand(hand, [[0]]);
+
+    expect(pots).toHaveLength(1);
+    expect(payouts.get(0)).toBe(1600);
+    expect(payouts.has(1)).toBe(false);
+    // Winner's stack: 200 behind + 1600 pot.
+    expect(settled.players.find((p) => p.seat === 0)!.stack).toBe(1800);
+    expect(settled.players.find((p) => p.seat === 1)!.stack).toBe(0);
+
+    // Zero-sum against buy-ins (seat 0 bought 1000, seat 1 bought 800).
+    const { nets } = computeNetSettlement([
+      { seat: 0, currentChips: 1800, totalBuyIn: 1000 },
+      { seat: 1, currentChips: 0, totalBuyIn: 800 },
+    ]);
+    expect(nets).toEqual([
+      { seat: 0, net: 800 },
+      { seat: 1, net: -800 },
+    ]);
+    expect(nets.reduce((a, n) => a + n.net, 0)).toBe(0);
+  });
+});
+
 describe('computeNetSettlement', () => {
   const ledgers: PlayerLedger[] = [
     { seat: 0, currentChips: 150, totalBuyIn: 100 },
