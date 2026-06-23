@@ -108,6 +108,7 @@ function TurnControls({
   timeExtensionsRemaining,
   onAddTime,
 }: Omit<ActionPanelProps, 'isHeroTurn' | 'actingName'>): React.ReactElement {
+  const reduce = useReducedMotionPreference();
   const { toCall, canFold, canCheck, canCall, sizing, canAllIn, allInTo } =
     availability;
   const [open, setOpen] = useState(false);
@@ -152,9 +153,19 @@ function TurnControls({
       <AnimatePresence initial={false}>
         {open && sizing && (
           <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
+            initial={
+              reduce ? false : { opacity: 0, clipPath: 'inset(0 0 100% 0)' }
+            }
+            animate={
+              reduce
+                ? { opacity: 1 }
+                : { opacity: 1, clipPath: 'inset(0 0 0 0)' }
+            }
+            exit={
+              reduce
+                ? { opacity: 0 }
+                : { opacity: 0, clipPath: 'inset(0 0 100% 0)' }
+            }
             transition={{ duration: 0.18 }}
             className="overflow-hidden"
           >
