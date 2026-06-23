@@ -298,7 +298,10 @@ funding.ts`) به‌صورت موقت chips می‌دهد. باید با جری�
 - [x] **5.2** حلقه‌ی timer (countdown ring) دور آواتار فعال. _(PR #49)_
 - [x] **5.3** transition تغییر نوبت + ورود/خروج بازیکن (`AnimatePresence`). _(PR #50)_
 - [x] **5.4** افکت برد (celebration) و dealer/blind motion. _(PR #55)_
-- [ ] **5.5** احترام به `prefers-reduced-motion` + بهینه‌سازی ۶۰fps.
+- [x] **5.5** احترام به `prefers-reduced-motion` + بهینه‌سازی ۶۰fps. _(audit:
+      PR #62 reduced-motion fail-safe across 6 secondary-UI components؛ PR #63
+      clip-path tray reveal replacing height-thrash. Table-surface animations
+      were already clean.)_
 
 **DoD:** بدون jank؛ روی موبایل هم روان.
 
