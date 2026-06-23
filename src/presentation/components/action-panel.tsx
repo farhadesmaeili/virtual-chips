@@ -1,7 +1,8 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
+import { useReducedMotionPreference } from '@/presentation/animations';
 import type { ActionAvailability, ActionKind } from './action-availability';
 import { AddTimeButton } from './add-time-button';
 
@@ -46,7 +47,7 @@ export function ActionPanel({
   timeExtensionsRemaining,
   onAddTime,
 }: ActionPanelProps): React.ReactElement {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionPreference();
   const { isHeroTurn } = availability;
 
   return (

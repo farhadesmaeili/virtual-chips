@@ -1,6 +1,6 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -18,6 +18,7 @@ import { ShowdownControls } from './showdown-controls';
 import { StartHandControl } from './start-hand-control';
 import { StreetControls } from './street-controls';
 import { TurnBanner } from './turn-banner';
+import { useReducedMotionPreference } from '@/presentation/animations';
 import { getSocket } from '@/presentation/lib/socket';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import type {
@@ -32,7 +33,7 @@ import type {
 import { useConnectionStore } from '@/presentation/stores/connection-store';
 
 export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionPreference();
   const router = useRouter();
   const status = useConnectionStore((s) => s.status);
   const user = useConnectionStore((s) => s.user);

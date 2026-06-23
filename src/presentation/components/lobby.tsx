@@ -1,9 +1,10 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useReducedMotionPreference } from '@/presentation/animations';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import { getSocket } from '@/presentation/lib/socket';
 import type {
@@ -28,7 +29,7 @@ const fieldClass =
   'rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-vc-ink placeholder:text-vc-ink-faint outline-none transition focus:border-vc-emerald/60 focus:bg-black/30';
 
 export function Lobby(): React.ReactElement {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionPreference();
   const router = useRouter();
   const { data: session } = useSession();
   const status = useConnectionStore((s) => s.status);
