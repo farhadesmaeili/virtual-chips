@@ -1,7 +1,8 @@
 'use client';
 
-import { motion, useReducedMotion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useState } from 'react';
+import { useReducedMotionPreference } from '@/presentation/animations';
 import type {
   PublicHandState,
   PublicRoomMember,
@@ -31,7 +32,7 @@ export function ShowdownControls({
   error,
   onSettle,
 }: ShowdownControlsProps): React.ReactElement {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionPreference();
   const pots = hand.pots;
 
   const nameOf = (seat: number): string =>

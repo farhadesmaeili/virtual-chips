@@ -1,7 +1,8 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useReducedMotionPreference } from '@/presentation/animations';
 import type { MenuModel } from './menu-availability';
 import type { PublicChipRequest } from '@/presentation/lib/socket-events';
 
@@ -51,7 +52,7 @@ export function ActionMenu({
   onApproveChips,
   onRejectChips,
 }: ActionMenuProps): React.ReactElement | null {
-  const reduce = useReducedMotion();
+  const reduce = useReducedMotionPreference();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState('1000');
   const panelId = useId();
