@@ -7,6 +7,7 @@ import type {
 import type { PublicHandPlayer } from '@/presentation/lib/socket-events';
 import {
   highlightSeat,
+  isHandInPlay,
   seatHandPlayer,
   seatPresenceKey,
 } from './table-presence';
@@ -83,6 +84,23 @@ describe('highlightSeat', () => {
 
   it('is null when settled', () => {
     expect(highlightSeat(handWith('settled', 2))).toBeNull();
+  });
+});
+
+describe('isHandInPlay', () => {
+  it('is true while a hand is being played', () => {
+    expect(isHandInPlay(handWith('betting', 2))).toBe(true);
+    expect(isHandInPlay(handWith('awaiting_street', null))).toBe(true);
+    expect(isHandInPlay(handWith('awaiting_showdown', null))).toBe(true);
+  });
+
+  it('is false once the hand is settled', () => {
+    expect(isHandInPlay(handWith('settled', null))).toBe(false);
+  });
+
+  it('is false when there is no hand', () => {
+    expect(isHandInPlay(null)).toBe(false);
+    expect(isHandInPlay(undefined)).toBe(false);
   });
 });
 
