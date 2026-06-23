@@ -1,5 +1,6 @@
 import type { Hand } from '../entities/hand';
 import { resetForNewStreet } from '../entities/player-in-hand';
+import { returnUncalledBet } from './uncalled';
 
 /** Default number of betting streets (preflop/flop/turn/river-style). */
 export const DEFAULT_STREET_COUNT = 4;
@@ -102,12 +103,15 @@ export function isStreetComplete(hand: Hand): boolean {
 }
 
 function endBetting(hand: Hand): Hand {
-  return {
+  // Betting is over for this hand — return any uncalled over-bet before the
+  // state is exposed, so the live projection and settlement agree (it derives
+  // from the same committedTotal). A no-op when nothing is uncalled.
+  return returnUncalledBet({
     ...hand,
     status: 'awaiting_showdown',
     actingSeat: null,
     actionDeadline: null,
-  };
+  });
 }
 
 function isLastStreet(hand: Hand, streetCount: number): boolean {
@@ -133,14 +137,17 @@ function startNextStreet(hand: Hand, minBet: number): Hand {
  * settlement. No turn is pending either way.
  */
 function pauseAfterStreet(hand: Hand, streetCount: number): Hand {
-  return {
+  // This street's betting is settled — return any uncalled over-bet now, before
+  // the (paused) state is broadcast or the next street is dealt. Idempotent, so
+  // re-firing on each street of an all-in run-out only returns it once.
+  return returnUncalledBet({
     ...hand,
     status: isLastStreet(hand, streetCount)
       ? 'awaiting_showdown'
       : 'awaiting_street',
     actingSeat: null,
     actionDeadline: null,
-  };
+  });
 }
 
 /**
