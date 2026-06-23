@@ -24,17 +24,17 @@
 
 ## Server → Client (broadcast به room)
 
-| Event            | Payload                          | توضیح                             |
-| ---------------- | -------------------------------- | --------------------------------- |
-| `room:state`     | `PublicRoomState`                | snapshot کامل (هنگام join/resync) |
-| `hand:state`     | `PublicHandState`                | بعد از هر تغییر                   |
-| `turn:changed`   | `{ actingSeat, actionDeadline }` | شروع نوبت جدید + deadline         |
-| `action:applied` | `{ seat, action, amount }`       | برای انیمیشن/لاگ                  |
-| `pot:updated`    | `{ pots }`                       | تغییر pot/side-pot                |
-| `hand:settled`   | `{ awards[] }`                   | نتیجه‌ی دست (برای انیمیشن برد)    |
-| `chips:requests` | `{ requests[] }`                 | صفِ درخواست‌های buy-in (4.15)     |
-| `game:ended`     | `{ settlement }`                 | net هر بازیکن                     |
-| `error`          | `{ code, message }`              | خطای دامنه‌ی map شده              |
+| Event            | Payload                           | توضیح                             |
+| ---------------- | --------------------------------- | --------------------------------- |
+| `room:state`     | `PublicRoomState`                 | snapshot کامل (هنگام join/resync) |
+| `hand:state`     | `PublicHandState`                 | بعد از هر تغییر                   |
+| `turn:changed`   | `{ actingSeat, actionDeadline }`  | شروع نوبت جدید + deadline         |
+| `action:applied` | `{ seat, action, amount }`        | برای انیمیشن/لاگ                  |
+| `pot:updated`    | `{ pots }`                        | تغییر pot/side-pot                |
+| `hand:settled`   | `{ payouts: { seat, amount }[] }` | نتیجه‌ی دست (برای انیمیشن برد)    |
+| `chips:requests` | `{ requests[] }`                  | صفِ درخواست‌های buy-in (4.15)     |
+| `game:ended`     | `{ settlement }`                  | net هر بازیکن                     |
+| `error`          | `{ code, message }`               | خطای دامنه‌ی map شده              |
 
 ## اصول
 

@@ -289,10 +289,15 @@ funding.ts`) به‌صورت موقت chips می‌دهد. باید با جری�
 
 هدف: انیمیشن‌های سطح بالا با Framer Motion (`docs/ANIMATIONS.md`).
 
-- [ ] **5.1** حرکت ژتون بازیکن→pot و pot→برنده (spring، chip stack).
-- [ ] **5.2** حلقه‌ی timer (countdown ring) دور آواتار فعال.
-- [ ] **5.3** transition تغییر نوبت + ورود/خروج بازیکن (`AnimatePresence`).
-- [ ] **5.4** افکت برد (celebration) و dealer/blind motion.
+> ترتیبِ واقعیِ merge بنیان‌محور بود (foundation-first): **5.0 → 5.2 → 5.3 → 5.1
+> → 5.4**. شماره‌ها عمداً تغییر نکرده‌اند (در git history و جاهای دیگر ارجاع داده
+> شده‌اند)؛ پس 5.1 با اینکه شماره‌اش کوچک‌تر است، بعد از بنیانِ خودش لَند شد.
+
+- [x] **5.0** animation foundations — reduced-motion chokepoint + transform/opacity + motion-value/rAF infra. _(در کد موجود بود ولی در لیست ثبت نشده بود؛ PR #48.)_
+- [x] **5.1** حرکت ژتون بازیکن→pot و pot→برنده (spring، chip stack). _(PR #51)_
+- [x] **5.2** حلقه‌ی timer (countdown ring) دور آواتار فعال. _(PR #49)_
+- [x] **5.3** transition تغییر نوبت + ورود/خروج بازیکن (`AnimatePresence`). _(PR #50)_
+- [x] **5.4** افکت برد (celebration) و dealer/blind motion. _(PR #55)_
 - [ ] **5.5** احترام به `prefers-reduced-motion` + بهینه‌سازی ۶۰fps.
 
 **DoD:** بدون jank؛ روی موبایل هم روان.
