@@ -4,11 +4,17 @@ import type {
   PublicHandState,
   PublicRoomMember,
 } from '@/presentation/lib/socket-events';
-import { highlightSeat, seatPresenceKey } from './table-presence';
+import type { PublicHandPlayer } from '@/presentation/lib/socket-events';
+import {
+  highlightSeat,
+  seatHandPlayer,
+  seatPresenceKey,
+} from './table-presence';
 
 function handWith(
   status: HandStatus,
   actingSeat: number | null,
+  players: readonly PublicHandPlayer[] = [],
 ): PublicHandState {
   return {
     id: 'h1',
@@ -20,9 +26,23 @@ function handWith(
     actingSeat,
     actionDeadline: null,
     status,
-    players: [],
+    players,
     pots: [],
     totalPot: 0,
+  };
+}
+
+function player(overrides: Partial<PublicHandPlayer> = {}): PublicHandPlayer {
+  return {
+    seat: 0,
+    stack: 0,
+    committedThisStreet: 0,
+    committedTotal: 0,
+    state: 'active',
+    hasActedThisStreet: false,
+    lastAction: null,
+    timeExtensionsRemaining: 0,
+    ...overrides,
   };
 }
 
@@ -63,6 +83,32 @@ describe('highlightSeat', () => {
 
   it('is null when settled', () => {
     expect(highlightSeat(handWith('settled', 2))).toBeNull();
+  });
+});
+
+describe('seatHandPlayer', () => {
+  it('returns the seat-matched live player during a betting hand', () => {
+    const allIn = player({ seat: 2, state: 'all_in', stack: 0 });
+    const hand = handWith('betting', 2, [player({ seat: 0 }), allIn]);
+    expect(seatHandPlayer(hand, 2)).toBe(allIn);
+  });
+
+  it('is undefined once the hand is settled (seat falls back to member chips)', () => {
+    // The settled hand still carries the all-in player as a historical record;
+    // the seat must stop reading it so the label/bet chips clear post-settle.
+    const allIn = player({ seat: 2, state: 'all_in', stack: 0 });
+    const hand = handWith('settled', null, [allIn]);
+    expect(seatHandPlayer(hand, 2)).toBeUndefined();
+  });
+
+  it('is undefined when there is no hand', () => {
+    expect(seatHandPlayer(null, 2)).toBeUndefined();
+    expect(seatHandPlayer(undefined, 2)).toBeUndefined();
+  });
+
+  it('is undefined for a seat with no matching live player', () => {
+    const hand = handWith('betting', 0, [player({ seat: 0 })]);
+    expect(seatHandPlayer(hand, 5)).toBeUndefined();
   });
 });
 

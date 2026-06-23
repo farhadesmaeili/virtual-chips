@@ -8,7 +8,11 @@ import { ChipMotionLayer, type ChipFlight } from './chip-motion-layer';
 import { CelebrationLayer, type Celebration } from './celebration-layer';
 import { Seat } from './seat';
 import { MAX_SEATS, seatSlots } from './seat-layout';
-import { highlightSeat, seatPresenceKey } from './table-presence';
+import {
+  highlightSeat,
+  seatHandPlayer,
+  seatPresenceKey,
+} from './table-presence';
 import type {
   PublicHandState,
   PublicRoomState,
@@ -44,7 +48,6 @@ export function PokerTable({
 }: PokerTableProps): React.ReactElement {
   const slots = seatSlots(MAX_SEATS);
   const memberBySeat = new Map(room.members.map((m) => [m.seat, m]));
-  const playerBySeat = new Map((hand?.players ?? []).map((p) => [p.seat, p]));
   const inPlay = hand !== null && hand.status !== 'settled';
   const livePot = inPlay ? hand.totalPot : 0;
   // Side pots come straight from the authoritative hand state.
@@ -134,7 +137,7 @@ export function PokerTable({
                       key={seatPresenceKey(slot.seat, member)}
                       slot={slot}
                       member={member}
-                      handPlayer={playerBySeat.get(slot.seat)}
+                      handPlayer={seatHandPlayer(hand, slot.seat)}
                       isActing={activeSeat === slot.seat}
                       isButton={hand?.buttonSeat === slot.seat}
                       actionDeadline={hand?.actionDeadline ?? null}
