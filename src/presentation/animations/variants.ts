@@ -81,3 +81,37 @@ export const winPulse: MotionVariantSet = {
     win: { opacity: 1 },
   },
 };
+
+/**
+ * The win-celebration glow behind a pot winner (5.4). Unlike {@link winPulse}
+ * (which pulses an always-visible element), this enters and leaves, so it carries
+ * `initial`/`animate`/`exit` for use under `AnimatePresence`: scale + fade in,
+ * fade out. Reduced-motion degrades to opacity only.
+ */
+export const winGlow: MotionVariantSet = {
+  full: {
+    initial: { opacity: 0, scale: 0.6 },
+    animate: { opacity: 1, scale: 1, transition: springBouncy },
+    exit: { opacity: 0, scale: 1.2, transition: fadeTransition },
+  },
+  reduced: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: fadeTransition },
+    exit: { opacity: 0, transition: fadeTransition },
+  },
+};
+
+/**
+ * Blind / bet chips appearing in front of a seat (5.4). A deliberate IN-PLACE
+ * spring entrance (scale + small lift), NOT a seat→felt flight — see seat.tsx.
+ */
+export const betPost: MotionVariantSet = {
+  full: {
+    initial: { opacity: 0, scale: 0.5, y: 6 },
+    animate: { opacity: 1, scale: 1, y: 0, transition: springBouncy },
+  },
+  reduced: {
+    initial: { opacity: 0 },
+    animate: { opacity: 1, transition: fadeTransition },
+  },
+};

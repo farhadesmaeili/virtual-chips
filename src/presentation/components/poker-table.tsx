@@ -5,6 +5,7 @@ import { streetName } from '@/domain/engine';
 import { BlindsReadout } from './blinds-readout';
 import { PotStack } from './chip';
 import { ChipMotionLayer, type ChipFlight } from './chip-motion-layer';
+import { CelebrationLayer, type Celebration } from './celebration-layer';
 import { Seat } from './seat';
 import { MAX_SEATS, seatSlots } from './seat-layout';
 import { highlightSeat, seatPresenceKey } from './table-presence';
@@ -21,6 +22,10 @@ export interface PokerTableProps {
   readonly flights?: readonly ChipFlight[];
   /** Removes a finished flight so it cleans itself up. */
   readonly onFlightDone?: (id: string) => void;
+  /** Win celebrations (task 5.4); driven by the live hand:settled, not state. */
+  readonly celebrations?: readonly Celebration[];
+  /** Removes a finished celebration so it cleans itself up. */
+  readonly onCelebrationDone?: (id: string) => void;
 }
 
 /**
@@ -34,6 +39,8 @@ export function PokerTable({
   hand = null,
   flights = [],
   onFlightDone,
+  celebrations = [],
+  onCelebrationDone,
 }: PokerTableProps): React.ReactElement {
   const slots = seatSlots(MAX_SEATS);
   const memberBySeat = new Map(room.members.map((m) => [m.seat, m]));
@@ -143,6 +150,13 @@ export function PokerTable({
             <ChipMotionLayer
               flights={flights}
               onDone={onFlightDone ?? (() => undefined)}
+            />
+
+            {/* Win celebration bursts on the pot winner(s). Same coordinate
+                space as the chips, layered above so the cheer lands on top. */}
+            <CelebrationLayer
+              celebrations={celebrations}
+              onDone={onCelebrationDone ?? (() => undefined)}
             />
           </div>
         </div>

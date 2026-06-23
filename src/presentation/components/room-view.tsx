@@ -10,6 +10,8 @@ import { deriveActions, type ActionKind } from './action-availability';
 import { deriveMenuItems } from './menu-availability';
 import { type ChipMotion, flightsFor, planChipMotion } from './chip-motion';
 import { type ChipFlight } from './chip-motion-layer';
+import { celebrationBursts } from './celebration';
+import { type Celebration } from './celebration-layer';
 import { PokerTable } from './poker-table';
 import { RoomIdBadge } from './room-id-badge';
 import { ShowdownControls } from './showdown-controls';
@@ -49,6 +51,14 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   const flightId = useRef(0);
   const removeFlight = useCallback((id: string): void => {
     setFlights((prev) => prev.filter((f) => f.id !== id));
+  }, []);
+  // Win celebrations (task 5.4). Like flights, raised only by the LIVE
+  // hand:settled handler below — never reconstructed from a snapshot, so a resync
+  // replays no celebration.
+  const [celebrations, setCelebrations] = useState<readonly Celebration[]>([]);
+  const celebrationId = useRef(0);
+  const removeCelebration = useCallback((id: string): void => {
+    setCelebrations((prev) => prev.filter((c) => c.id !== id));
   }, []);
   // Which control owns the next error: a betting/hand action or a funding one.
   const intent = useRef<'action' | 'funding'>('action');
@@ -110,11 +120,28 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
       // player→pot on a live committing action (bet/call/raise/all-in).
       enqueue(planChipMotion({ type: 'action', event }));
     };
+    // Turn a LIVE settlement into win celebrations. Reads the SAME internal
+    // ChipMotion model the chip flights use (motion.awards) — not the raw socket
+    // payload — so it inherits the live-only guarantee and is unaffected if the
+    // payouts[]/awards[] contract doc-drift is later reconciled.
+    const cheer = (motion: ChipMotion | null): void => {
+      const bursts = celebrationBursts(motion);
+      if (bursts.length === 0) return;
+      setCelebrations((prev) => [
+        ...prev,
+        ...bursts.map((b) => ({
+          ...b,
+          id: `cheer-${(celebrationId.current += 1)}`,
+        })),
+      ]);
+    };
     const onSettled = (result: HandSettled): void => {
       setPending(false);
       setPayouts(result.payouts);
-      // pot→winner(s) on the live settlement.
-      enqueue(planChipMotion({ type: 'settled', event: result }));
+      // pot→winner(s) chips + win celebration, both from the one live settlement.
+      const motion = planChipMotion({ type: 'settled', event: result });
+      enqueue(motion);
+      cheer(motion);
     };
     const onRequests = (list: ChipRequestList): void => {
       setChipRequests(list.requests);
@@ -330,6 +357,8 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
             hand={hand}
             flights={flights}
             onFlightDone={removeFlight}
+            celebrations={celebrations}
+            onCelebrationDone={removeCelebration}
           />
 
           {/* Result of the last settled hand, until the next deal. */}

@@ -3,6 +3,7 @@
 import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import { useEffect } from 'react';
 import {
+  betPost,
   playerEnter,
   seatHighlight,
   springSoft,
@@ -21,6 +22,8 @@ import type {
 
 /** Shared-layout id for the single turn highlight that slides between seats. */
 const ACTIVE_HIGHLIGHT_LAYOUT_ID = 'active-seat-highlight';
+/** Shared-layout id for the single dealer button that glides between seats. */
+const DEALER_BUTTON_LAYOUT_ID = 'dealer-button';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -70,6 +73,8 @@ export function Seat({
   // `x`/`y` keep the seat centered on its slot point while Framer composes the
   // entrance scale into the same transform (no top/left thrash).
   const presenceVariants = useMotionVariants(playerEnter);
+  // Blind/bet chips appearing in front of the seat (task 5.4).
+  const betVariants = useMotionVariants(betPost);
 
   return (
     <motion.div
@@ -96,9 +101,13 @@ export function Seat({
               folded || sittingOut ? 'opacity-40' : 'opacity-100'
             }`}
           >
-            {/* Bet chips sit on the felt between the seat and the pot; in Phase 5
-                the whole `.vc-bet` stack springs to the center. The stack is
-                tinted by the bet's top chip denomination. */}
+            {/* Bet chips sit on the felt between the seat and the pot. The outer
+                div owns positioning (its `transform` offsets toward center); the
+                inner motion node owns the entrance so Framer's scale never fights
+                the positioning transform. Blinds/bets get an IN-PLACE spring pop
+                (task 5.4) — deliberately NOT a seat→felt flight, so it can't be
+                "upgraded" to one later. The stack is tinted by its top chip
+                denomination. */}
             {bet > 0 && (
               <div
                 className="vc-bet absolute -top-1 left-1/2 flex -translate-x-1/2 -translate-y-full items-center gap-1.5"
@@ -108,10 +117,17 @@ export function Seat({
                   }px)`,
                 }}
               >
-                <ChipStack amount={bet} size={16} height={3} />
-                <span className="font-mono text-xs font-semibold tabular-nums text-vc-gold [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]">
-                  {bet.toLocaleString()}
-                </span>
+                <motion.div
+                  className="flex items-center gap-1.5"
+                  variants={betVariants}
+                  initial="initial"
+                  animate="animate"
+                >
+                  <ChipStack amount={bet} size={16} height={3} />
+                  <span className="font-mono text-xs font-semibold tabular-nums text-vc-gold [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]">
+                    {bet.toLocaleString()}
+                  </span>
+                </motion.div>
               </div>
             )}
 
@@ -144,12 +160,9 @@ export function Seat({
                 {initials(member.username)}
               </div>
 
-              {/* Dealer button rides just off the avatar; Phase 5 glides it. */}
-              {isButton && (
-                <span className="absolute -bottom-1 -right-1 z-30 grid h-5 w-5 place-items-center rounded-full bg-vc-gold font-mono text-[10px] font-bold text-vc-felt-edge shadow-[0_2px_5px_rgb(0_0_0/0.5)]">
-                  D
-                </span>
-              )}
+              {/* Dealer button rides just off the avatar; it glides between
+                  seats each new hand via shared layout (task 5.4). */}
+              {isButton && <DealerButton />}
             </div>
 
             {/* Nameplate — username over a tote-board stack readout. */}
@@ -204,6 +217,27 @@ function SeatHighlight(): React.ReactElement {
       animate="active"
       transition={{ layout: reduced ? { duration: 0 } : springSoft }}
     />
+  );
+}
+
+/**
+ * The single dealer button. It carries the shared `layoutId`, so as only one is
+ * mounted at a time it glides from the previous button seat to the new one when
+ * the hand rotates — the same shared-layout pattern as {@link SeatHighlight}
+ * (task 5.3). The glide is a Framer layout animation (transform, not top/left);
+ * under reduced-motion it repositions instantly, via the 5.0 helper.
+ */
+function DealerButton(): React.ReactElement {
+  const reduced = useReducedMotionPreference();
+  return (
+    <motion.span
+      layoutId={DEALER_BUTTON_LAYOUT_ID}
+      aria-label="Dealer button"
+      className="pointer-events-none absolute -bottom-1 -right-1 z-30 grid h-5 w-5 place-items-center rounded-full bg-vc-gold font-mono text-[10px] font-bold text-vc-felt-edge shadow-[0_2px_5px_rgb(0_0_0/0.5)]"
+      transition={{ layout: reduced ? { duration: 0 } : springSoft }}
+    >
+      D
+    </motion.span>
   );
 }
 
