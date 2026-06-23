@@ -14,6 +14,8 @@ export {
   seatHighlight,
   playerEnter,
   winPulse,
+  winGlow,
+  betPost,
   type MotionVariantSet,
 } from './variants';
 export {
