@@ -3,9 +3,38 @@
 // from the authoritative room/hand state, so the branching is unit-tested.
 
 import type {
+  PublicHandPlayer,
   PublicHandState,
   PublicRoomMember,
 } from '@/presentation/lib/socket-events';
+
+/**
+ * Whether a hand is currently live: there is a hand and it is not yet `settled`.
+ * The single source of truth for the "settled/absent hand => not live" rule, so
+ * the pot and the seats gate on the SAME predicate and can never diverge. A type
+ * guard, so callers keep narrowing `hand` to non-null when this is true.
+ */
+export function isHandInPlay(
+  hand: PublicHandState | null | undefined,
+): hand is PublicHandState {
+  return hand != null && hand.status !== 'settled';
+}
+
+/**
+ * The seat's live in-hand projection, or `undefined` when no hand is live at the
+ * seat (see {@link isHandInPlay}). A settled hand is a historical record (a
+ * player who was all-in keeps `state: 'all_in'`), so the seat must stop reading
+ * it once the hand ends and fall back to the member's persistent chips — the same
+ * gate the pot uses, applied at the seat so the in-hand 'all in' label and bet
+ * chips clear on settle instead of sticking until the next deal.
+ */
+export function seatHandPlayer(
+  hand: PublicHandState | null | undefined,
+  seat: number,
+): PublicHandPlayer | undefined {
+  if (!isHandInPlay(hand)) return undefined;
+  return hand.players.find((p) => p.seat === seat);
+}
 
 /**
  * Seat the turn highlight should sit on, or null when no seat is acting.
