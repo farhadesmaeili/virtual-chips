@@ -1,5 +1,5 @@
 import type { ChipRequest, UserRoomMembership } from '@/application/ports';
-import type { RoomSnapshot } from '@/application/use-cases';
+import type { EndGameResult, RoomSnapshot } from '@/application/use-cases';
 import type { RoomSettings, RoomStatus } from '@/domain/entities';
 
 /** A pending chip request as shown to clients — no raw userId. */
@@ -47,6 +47,30 @@ export interface PublicRoomState {
   readonly status: RoomStatus;
   readonly settings: RoomSettings;
   readonly members: readonly PublicRoomMember[];
+}
+
+/** A player's end-of-game net, broadcast on `game:ended` (no raw userId). */
+export interface PublicNetResult {
+  readonly seat: number;
+  readonly net: number;
+}
+
+/** Display-only end-of-game settlement broadcast on `game:ended`. */
+export interface PublicGameEnded {
+  readonly nets: readonly PublicNetResult[];
+  readonly rake: number;
+}
+
+/**
+ * Projects an EndGame result to the public `game:ended` payload. Raw userIds and
+ * the internal gameId are dropped — clients see seat + net only (the projection
+ * rule: never broadcast internal data).
+ */
+export function toPublicGameEnded(result: EndGameResult): PublicGameEnded {
+  return {
+    nets: result.nets.map((n) => ({ seat: n.seat, net: n.net })),
+    rake: result.rake,
+  };
 }
 
 /**

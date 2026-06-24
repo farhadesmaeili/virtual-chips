@@ -1,6 +1,7 @@
 import type { HandStore, RoomRepository } from '@/application/ports';
 import type {
   AdvanceStreet,
+  EndGame,
   PlayerAct,
   RequestTimeExtension,
   SettleHand,
@@ -10,7 +11,7 @@ import type { Hand } from '@/domain/entities';
 import { autoActionType, type ActionType } from '@/domain/engine';
 import type { PotDeclaration } from '@/domain/engine';
 import { toPublicHandState } from './hand-projection';
-import { toPublicRoomState } from './room-projection';
+import { toPublicGameEnded, toPublicRoomState } from './room-projection';
 import type { AppServer } from './socket-auth';
 
 /**
@@ -38,6 +39,7 @@ export class HandGateway {
     private readonly advanceStreet: AdvanceStreet,
     private readonly settleHand: SettleHand,
     private readonly requestTimeExtension: RequestTimeExtension,
+    private readonly endGameUseCase: EndGame,
     private readonly hands: HandStore,
     private readonly rooms: RoomRepository,
   ) {}
@@ -129,6 +131,24 @@ export class HandGateway {
     this.io.to(roomId).emit('hand:settled', {
       payouts: [...payouts].map(([seat, amount]) => ({ seat, amount })),
     });
+  }
+
+  /**
+   * Ends the room's game (banker-only; the use-case enforces it). On success the
+   * game is settled and the room is `ended`, so there is no live hand or turn:
+   * cancel the per-room turn timer and delete the hand snapshot (so a reconnect
+   * resync returns no stale settled hand), then broadcast the projected
+   * `game:ended` (seat + net only — no raw userId) and the fresh `room:state`.
+   */
+  async endGame(roomId: string, userId: string): Promise<void> {
+    const result = await this.endGameUseCase.execute({
+      roomId,
+      requesterId: userId,
+    });
+    this.clear(roomId);
+    await this.hands.clear(roomId);
+    this.io.to(roomId).emit('game:ended', toPublicGameEnded(result));
+    this.io.to(roomId).emit('room:state', toPublicRoomState(result.snapshot));
   }
 
   /** Cancels a room's turn timer (e.g. when the room empties). */

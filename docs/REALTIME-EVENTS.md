@@ -33,7 +33,7 @@
 | `pot:updated`    | `{ pots }`                        | تغییر pot/side-pot                |
 | `hand:settled`   | `{ payouts: { seat, amount }[] }` | نتیجه‌ی دست (برای انیمیشن برد)    |
 | `chips:requests` | `{ requests[] }`                  | صفِ درخواست‌های buy-in (4.15)     |
-| `game:ended`     | `{ settlement }`                  | net هر بازیکن                     |
+| `game:ended`     | `{ nets: { seat, net }[], rake }` | net هر بازیکن (بدون userId)       |
 | `error`          | `{ code, message }`               | خطای دامنه‌ی map شده              |
 
 ## اصول

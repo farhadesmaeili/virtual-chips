@@ -4,14 +4,20 @@ import type {
   RoomRepository,
   SettlementRepository,
 } from '@/application/ports';
-import { isBanker } from '@/domain/entities';
-import { computeNetSettlement, type PlayerLedger } from '@/domain/engine';
+import { isBanker, withStatus } from '@/domain/entities';
+import {
+  computeNetSettlement,
+  type NetResult,
+  type PlayerLedger,
+} from '@/domain/engine';
 import {
   HandInProgressError,
+  InvalidSettlementError,
   NoOpenGameError,
   NotBankerError,
   RoomNotFoundError,
 } from '@/domain/errors';
+import { toRoomSnapshot, type RoomSnapshot } from './room-snapshot';
 
 export interface EndGameInput {
   readonly roomId: string;
@@ -25,6 +31,32 @@ export interface NetResultEntry {
   readonly net: number;
 }
 
+/** The seat → user lookup `joinNetsToUsers` needs (a subset of a member). */
+export interface SeatUser {
+  readonly seat: number;
+  readonly userId: string;
+}
+
+/**
+ * Joins each net result back to its member's userId. Throws
+ * {@link InvalidSettlementError} if a seat has no member — an invariant
+ * violation (nets derive from the same members) that this guards defensively now
+ * that the path runs live.
+ */
+export function joinNetsToUsers(
+  nets: readonly NetResult[],
+  members: readonly SeatUser[],
+): NetResultEntry[] {
+  const seatToUser = new Map(members.map((m) => [m.seat, m.userId]));
+  return nets.map((n) => {
+    const userId = seatToUser.get(n.seat);
+    if (userId === undefined) {
+      throw new InvalidSettlementError(`no member found for seat ${n.seat}`);
+    }
+    return { seat: n.seat, userId, net: n.net };
+  });
+}
+
 export interface EndGameResult {
   /** The game that was closed. */
   readonly gameId: string;
@@ -32,6 +64,8 @@ export interface EndGameResult {
   readonly nets: readonly NetResultEntry[];
   /** Rake removed from play (0 until rake is configurable). */
   readonly rake: number;
+  /** The room after it is marked ended, for the fresh `room:state` broadcast. */
+  readonly snapshot: RoomSnapshot;
 }
 
 /**
@@ -81,12 +115,7 @@ export class EndGame {
     // rake) — we never persist inconsistent ledgers. Rake is 0 for now.
     const { nets, rake } = computeNetSettlement(ledgers);
 
-    const seatToUser = new Map(members.map((m) => [m.seat, m.userId]));
-    const enriched: NetResultEntry[] = nets.map((n) => ({
-      seat: n.seat,
-      userId: seatToUser.get(n.seat)!,
-      net: n.net,
-    }));
+    const enriched = joinNetsToUsers(nets, members);
 
     await this.settlements.saveForGame(
       game.id,
@@ -95,6 +124,7 @@ export class EndGame {
     await this.games.end(game.id);
     await this.rooms.updateStatus(roomId, 'ended');
 
-    return { gameId: game.id, nets: enriched, rake };
+    const snapshot = toRoomSnapshot(withStatus(room, 'ended'), members);
+    return { gameId: game.id, nets: enriched, rake, snapshot };
   }
 }

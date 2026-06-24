@@ -6,15 +6,19 @@ import type {
   RoomMemberRecord,
   RoomRepository,
   SaveHandInput,
+  SettlementRecordInput,
+  SettlementRepository,
   UserRoomMembership,
 } from '@/application/ports';
 import {
   AdvanceStreet,
+  EndGame,
   PlayerAct,
   RequestTimeExtension,
   SettleHand,
   StartHand,
 } from '@/application/use-cases';
+import { NotBankerError } from '@/domain/errors';
 import {
   createRoom,
   type Hand,
@@ -120,10 +124,38 @@ class FakeGameRepository implements GameRepository {
   }
 }
 
+class FakeSettlementRepository implements SettlementRepository {
+  readonly saved: { gameId: string; settlements: SettlementRecordInput[] }[] =
+    [];
+  async saveForGame(
+    gameId: string,
+    settlements: readonly SettlementRecordInput[],
+  ): Promise<void> {
+    this.saved.push({ gameId, settlements: [...settlements] });
+  }
+}
+
 // The gateway only broadcasts through io.to(room).emit(...); swallow it.
 const noopIo = {
   to: () => ({ emit: () => undefined }),
 } as unknown as AppServer;
+
+/** Records every io.to(room).emit(event, payload) for assertions. */
+interface Emission {
+  readonly room: string;
+  readonly event: string;
+  readonly payload: unknown;
+}
+function recordingIo(): { io: AppServer; emissions: Emission[] } {
+  const emissions: Emission[] = [];
+  const io = {
+    to: (room: string) => ({
+      emit: (event: string, payload: unknown) =>
+        emissions.push({ room, event, payload }),
+    }),
+  } as unknown as AppServer;
+  return { io, emissions };
+}
 
 const clock = { now: () => 1000 };
 const ids = () => {
@@ -156,6 +188,8 @@ const room = createRoom({
 
 let rooms: FakeRoomRepository;
 let store: FakeHandStore;
+let games: FakeGameRepository;
+let settlements: FakeSettlementRepository;
 let gateway: HandGateway;
 
 beforeEach(() => {
@@ -165,13 +199,16 @@ beforeEach(() => {
   vi.setSystemTime(1000);
   rooms = new FakeRoomRepository();
   store = new FakeHandStore();
+  games = new FakeGameRepository();
+  settlements = new FakeSettlementRepository();
   gateway = new HandGateway(
     noopIo,
-    new StartHand(rooms, store, ids(), clock, new FakeGameRepository()),
+    new StartHand(rooms, store, ids(), clock, games),
     new PlayerAct(rooms, store, clock),
     new AdvanceStreet(rooms, store, clock),
     new SettleHand(rooms, store),
     new RequestTimeExtension(store, clock),
+    new EndGame(rooms, store, games, settlements),
     store,
     rooms,
   );
@@ -299,5 +336,84 @@ describe('HandGateway — time bank (task 4.12)', () => {
     expect(
       hand?.players.find((p) => p.seat === 1)?.timeExtensionsRemaining,
     ).toBe(2);
+  });
+});
+
+describe('HandGateway — endGame (6.2)', () => {
+  // alice won 500 off bob over the game; zero-sum (chips - buyInTotal).
+  function seedEndable(): void {
+    rooms.seed(room, [
+      { userId: 'alice', username: 'alice', seat: 0, chips: 1500, buyInTotal: 1000, sittingOut: false }, // prettier-ignore
+      { userId: 'bob', username: 'bob', seat: 1, chips: 500, buyInTotal: 1000, sittingOut: false }, // prettier-ignore
+    ]);
+  }
+
+  function endGameGateway(io: AppServer): HandGateway {
+    return new HandGateway(
+      io,
+      new StartHand(rooms, store, ids(), clock, games),
+      new PlayerAct(rooms, store, clock),
+      new AdvanceStreet(rooms, store, clock),
+      new SettleHand(rooms, store),
+      new RequestTimeExtension(store, clock),
+      new EndGame(rooms, store, games, settlements),
+      store,
+      rooms,
+    );
+  }
+
+  it('emits a projected game:ended (seat + net only, no userId) and a fresh ended room:state', async () => {
+    seedEndable();
+    await games.create('r1'); // open a game; no live hand → endable
+
+    const { io, emissions } = recordingIo();
+    await endGameGateway(io).endGame('r1', 'alice');
+
+    const ended = emissions.find((e) => e.event === 'game:ended');
+    expect(ended?.payload).toEqual({
+      nets: [
+        { seat: 0, net: 500 },
+        { seat: 1, net: -500 },
+      ],
+      rake: 0,
+    });
+    // No raw userId may leak in the broadcast.
+    const payload = ended?.payload as { nets: Record<string, unknown>[] };
+    for (const n of payload.nets) {
+      expect(Object.keys(n).sort()).toEqual(['net', 'seat']);
+    }
+
+    const roomState = emissions.find((e) => e.event === 'room:state');
+    expect((roomState?.payload as { status: string }).status).toBe('ended');
+  });
+
+  it('cancels the turn timer and deletes the hand snapshot on success', async () => {
+    seedEndable();
+    await games.create('r1');
+    // A settled snapshot lingers in the store; end-game must delete it so a
+    // reconnect resync returns no stale hand.
+    await store.save('r1', { status: 'settled' } as unknown as Hand);
+
+    const gw = endGameGateway(noopIo);
+    const timerClear = vi.spyOn(gw, 'clear');
+    const handsClear = vi.spyOn(store, 'clear');
+
+    await gw.endGame('r1', 'alice');
+
+    expect(timerClear).toHaveBeenCalledWith('r1');
+    expect(handsClear).toHaveBeenCalledWith('r1');
+    expect(await store.get('r1')).toBeNull();
+  });
+
+  it('rejects a non-banker and changes nothing', async () => {
+    seedEndable();
+    await games.create('r1');
+
+    const { io, emissions } = recordingIo();
+    await expect(endGameGateway(io).endGame('r1', 'bob')).rejects.toThrow(
+      NotBankerError,
+    );
+    expect(emissions).toHaveLength(0);
+    expect(settlements.saved).toHaveLength(0);
   });
 });
