@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type {
+  GameRecord,
+  GameRepository,
   HandStore,
   RoomMemberRecord,
   RoomRepository,
+  SaveHandInput,
   UserRoomMembership,
 } from '@/application/ports';
 import {
@@ -112,6 +115,45 @@ class FakeHandStore implements HandStore {
   }
 }
 
+/**
+ * Tracks open games per room so the lazy-on-first-hand lifecycle can be asserted:
+ * `createCount` counts how many games were opened, and a game stays open until
+ * `end` clears its `endedAt` (end-game lands in PR2).
+ */
+class FakeGameRepository implements GameRepository {
+  private readonly byRoom = new Map<string, GameRecord>();
+  createCount = 0;
+
+  async create(roomId: string): Promise<GameRecord> {
+    this.createCount += 1;
+    const game: GameRecord = {
+      id: `game-${this.createCount}`,
+      roomId,
+      startedAt: new Date(0),
+      endedAt: null,
+    };
+    this.byRoom.set(roomId, game);
+    return game;
+  }
+  async findById(id: string): Promise<GameRecord | null> {
+    for (const game of this.byRoom.values()) {
+      if (game.id === id) return game;
+    }
+    return null;
+  }
+  async findOpenByRoom(roomId: string): Promise<GameRecord | null> {
+    return this.byRoom.get(roomId) ?? null;
+  }
+  async end(id: string): Promise<void> {
+    for (const [roomId, game] of this.byRoom) {
+      if (game.id === id) this.byRoom.delete(roomId);
+    }
+  }
+  async saveHand(_input: SaveHandInput): Promise<{ id: string }> {
+    return { id: 'hand-record' };
+  }
+}
+
 const ids = () => {
   let n = 0;
   return { generate: () => `hand-${++n}` };
@@ -138,6 +180,7 @@ function member(
 
 let rooms: FakeRoomRepository;
 let store: FakeHandStore;
+let games: FakeGameRepository;
 
 const room = createRoom({
   id: 'r1',
@@ -149,6 +192,7 @@ const room = createRoom({
 beforeEach(() => {
   rooms = new FakeRoomRepository();
   store = new FakeHandStore();
+  games = new FakeGameRepository();
 });
 
 describe('StartHand', () => {
@@ -158,10 +202,12 @@ describe('StartHand', () => {
       member('bob', 1, 100),
       member('carol', 2, 100),
     ]);
-    const hand = await new StartHand(rooms, store, ids(), clock).execute({
-      roomId: 'r1',
-      requesterId: 'banker',
-    });
+    const hand = await new StartHand(rooms, store, ids(), clock, games).execute(
+      {
+        roomId: 'r1',
+        requesterId: 'banker',
+      },
+    );
     expect(hand.status).toBe('betting');
     expect(hand.buttonSeat).toBe(0);
     // 3-handed: SB=seat1, BB=seat2, first actor=seat0 (left of the BB).
@@ -180,7 +226,7 @@ describe('StartHand', () => {
   it('rejects a non-banker', async () => {
     rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
     await expect(
-      new StartHand(rooms, store, ids(), clock).execute({
+      new StartHand(rooms, store, ids(), clock, games).execute({
         roomId: 'r1',
         requesterId: 'bob',
       }),
@@ -190,7 +236,7 @@ describe('StartHand', () => {
   it('rejects when fewer than two players are funded', async () => {
     rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 0)]);
     await expect(
-      new StartHand(rooms, store, ids(), clock).execute({
+      new StartHand(rooms, store, ids(), clock, games).execute({
         roomId: 'r1',
         requesterId: 'banker',
       }),
@@ -203,7 +249,7 @@ describe('StartHand', () => {
       member('bob', 1, 100),
       member('carol', 2, 100),
     ]);
-    const start = new StartHand(rooms, store, ids(), clock);
+    const start = new StartHand(rooms, store, ids(), clock, games);
 
     const h1 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
     expect(h1.buttonSeat).toBe(0); // first hand: lowest seat
@@ -226,7 +272,7 @@ describe('StartHand', () => {
 
   it('rejects starting while a hand is in progress', async () => {
     rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
-    const start = new StartHand(rooms, store, ids(), clock);
+    const start = new StartHand(rooms, store, ids(), clock, games);
     await start.execute({ roomId: 'r1', requesterId: 'banker' });
     await expect(
       start.execute({ roomId: 'r1', requesterId: 'banker' }),
@@ -239,10 +285,12 @@ describe('StartHand', () => {
       member('bob', 1, 100, true), // sitting out before the hand
       member('carol', 2, 100),
     ]);
-    const hand = await new StartHand(rooms, store, ids(), clock).execute({
-      roomId: 'r1',
-      requesterId: 'banker',
-    });
+    const hand = await new StartHand(rooms, store, ids(), clock, games).execute(
+      {
+        roomId: 'r1',
+        requesterId: 'banker',
+      },
+    );
     // bob (seat 1) is excluded from the hand entirely…
     expect(hand.players.map((p) => p.seat)).toEqual([0, 2]); // bob skipped
     expect(hand.players.some((p) => p.seat === 1)).toBe(false);
@@ -258,10 +306,12 @@ describe('StartHand', () => {
     ]);
     // bob returns before the deal.
     await rooms.setMemberSittingOut('r1', 'bob', false);
-    const hand = await new StartHand(rooms, store, ids(), clock).execute({
-      roomId: 'r1',
-      requesterId: 'banker',
-    });
+    const hand = await new StartHand(rooms, store, ids(), clock, games).execute(
+      {
+        roomId: 'r1',
+        requesterId: 'banker',
+      },
+    );
     expect(hand.players.map((p) => p.seat)).toEqual([0, 1, 2]);
   });
 
@@ -271,7 +321,7 @@ describe('StartHand', () => {
       member('bob', 1, 100),
       member('carol', 2, 100),
     ]);
-    const start = new StartHand(rooms, store, ids(), clock);
+    const start = new StartHand(rooms, store, ids(), clock, games);
     const h1 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
     // bob is dealt into the current hand.
     expect(h1.players.map((p) => p.seat)).toContain(1);
@@ -285,6 +335,31 @@ describe('StartHand', () => {
     const h2 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
     expect(h2.players.map((p) => p.seat)).toEqual([0, 2]);
   });
+
+  it('opens a durable game on the first hand (lazy-on-first-hand)', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+
+    expect(await games.findOpenByRoom('r1')).toBeNull();
+    await new StartHand(rooms, store, ids(), clock, games).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+
+    expect(games.createCount).toBe(1);
+    expect(await games.findOpenByRoom('r1')).not.toBeNull();
+  });
+
+  it('reuses the open game across later hands (creates it only once)', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    const start = new StartHand(rooms, store, ids(), clock, games);
+
+    const h1 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    // Settle so the next hand may start; the open game must be reused, not reopened.
+    await store.save('r1', { ...h1, status: 'settled' });
+    await start.execute({ roomId: 'r1', requesterId: 'banker' });
+
+    expect(games.createCount).toBe(1);
+  });
 });
 
 describe('PlayerAct', () => {
@@ -294,7 +369,7 @@ describe('PlayerAct', () => {
       member('bob', 1, 100),
       member('carol', 2, 100),
     ]);
-    await new StartHand(rooms, store, ids(), clock).execute({
+    await new StartHand(rooms, store, ids(), clock, games).execute({
       roomId: 'r1',
       requesterId: 'banker',
     });
@@ -364,7 +439,7 @@ describe('PlayerAct', () => {
       member('bob', 1, 100, true), // sat out before the hand → excluded
       member('carol', 2, 100),
     ]);
-    await new StartHand(rooms, store, ids(), clock).execute({
+    await new StartHand(rooms, store, ids(), clock, games).execute({
       roomId: 'r1',
       requesterId: 'banker',
     });

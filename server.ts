@@ -26,6 +26,7 @@ import {
 import { InMemoryChipRequestStore } from './src/infrastructure/persistence/in-memory-chip-request-store';
 import { InMemoryHandStore } from './src/infrastructure/persistence/in-memory-hand-store';
 import { prisma } from './src/infrastructure/persistence/prisma';
+import { PrismaGameRepository } from './src/infrastructure/persistence/prisma-game-repository';
 import { PrismaRoomRepository } from './src/infrastructure/persistence/prisma-room-repository';
 import { registerFundingHandlers } from './src/infrastructure/realtime/funding-handlers';
 import { HandGateway } from './src/infrastructure/realtime/hand-gateway';
@@ -103,6 +104,7 @@ async function main(): Promise<void> {
 
   // Compose the use-cases over the repositories (composition root).
   const roomRepository = new PrismaRoomRepository(prisma);
+  const gameRepository = new PrismaGameRepository(prisma);
   const handStore = new InMemoryHandStore();
   const chipRequestStore = new InMemoryChipRequestStore();
   const idGenerator: IdGenerator = { generate: () => randomUUID() };
@@ -139,7 +141,13 @@ async function main(): Promise<void> {
   };
   const handGateway = new HandGateway(
     io,
-    new StartHand(roomRepository, handStore, idGenerator, clock),
+    new StartHand(
+      roomRepository,
+      handStore,
+      idGenerator,
+      clock,
+      gameRepository,
+    ),
     new PlayerAct(roomRepository, handStore, clock),
     new AdvanceStreet(roomRepository, handStore, clock),
     new SettleHand(roomRepository, handStore),

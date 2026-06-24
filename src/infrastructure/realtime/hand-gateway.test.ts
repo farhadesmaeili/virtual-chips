@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
+  GameRecord,
+  GameRepository,
   HandStore,
   RoomMemberRecord,
   RoomRepository,
+  SaveHandInput,
   UserRoomMembership,
 } from '@/application/ports';
 import {
@@ -91,6 +94,32 @@ class FakeHandStore implements HandStore {
   }
 }
 
+// Minimal game store: StartHand opens one game per room (lazy-on-first-hand).
+// The gateway tests don't assert on games, so this just satisfies the port.
+class FakeGameRepository implements GameRepository {
+  private readonly byRoom = new Map<string, GameRecord>();
+  async create(roomId: string): Promise<GameRecord> {
+    const game: GameRecord = {
+      id: `g-${roomId}`,
+      roomId,
+      startedAt: new Date(0),
+      endedAt: null,
+    };
+    this.byRoom.set(roomId, game);
+    return game;
+  }
+  async findById(): Promise<GameRecord | null> {
+    return null;
+  }
+  async findOpenByRoom(roomId: string): Promise<GameRecord | null> {
+    return this.byRoom.get(roomId) ?? null;
+  }
+  async end(): Promise<void> {}
+  async saveHand(_input: SaveHandInput): Promise<{ id: string }> {
+    return { id: 'h' };
+  }
+}
+
 // The gateway only broadcasts through io.to(room).emit(...); swallow it.
 const noopIo = {
   to: () => ({ emit: () => undefined }),
@@ -138,7 +167,7 @@ beforeEach(() => {
   store = new FakeHandStore();
   gateway = new HandGateway(
     noopIo,
-    new StartHand(rooms, store, ids(), clock),
+    new StartHand(rooms, store, ids(), clock, new FakeGameRepository()),
     new PlayerAct(rooms, store, clock),
     new AdvanceStreet(rooms, store, clock),
     new SettleHand(rooms, store),
