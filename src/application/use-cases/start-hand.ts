@@ -1,5 +1,6 @@
 import type {
   Clock,
+  GameRepository,
   HandStore,
   IdGenerator,
   RoomRepository,
@@ -37,6 +38,7 @@ export class StartHand {
     private readonly hands: HandStore,
     private readonly ids: IdGenerator,
     private readonly clock: Clock,
+    private readonly games: GameRepository,
   ) {}
 
   async execute({ roomId, requesterId }: StartHandInput): Promise<Hand> {
@@ -89,6 +91,13 @@ export class StartHand {
           ? null
           : this.clock.now() + room.settings.actionTimeoutMs,
     };
+
+    // Game lifecycle is lazy-on-first-hand: open a durable Game the first time a
+    // hand starts for this room, and reuse it for every later hand. End-game
+    // (PR2) closes it by setting `endedAt`; a new game opens on the next start.
+    // The row is written for history/settlement (PR2/6.3); nothing reads it yet.
+    const openGame = await this.games.findOpenByRoom(roomId);
+    if (openGame === null) await this.games.create(roomId);
 
     await this.hands.save(roomId, hand);
     await this.rooms.updateStatus(roomId, 'playing');

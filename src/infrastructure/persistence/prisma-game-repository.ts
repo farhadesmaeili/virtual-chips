@@ -18,6 +18,16 @@ export class PrismaGameRepository implements GameRepository {
     return game === null ? null : toGameRecord(game);
   }
 
+  async findOpenByRoom(roomId: string): Promise<GameRecord | null> {
+    // At most one game per room is open at a time (endedAt: null), so the first
+    // such row is the open game. See GameRepository.findOpenByRoom for the
+    // lazy-on-first-hand lifecycle.
+    const game = await this.prisma.game.findFirst({
+      where: { roomId, endedAt: null },
+    });
+    return game === null ? null : toGameRecord(game);
+  }
+
   async end(id: string): Promise<void> {
     await this.prisma.game.update({
       where: { id },

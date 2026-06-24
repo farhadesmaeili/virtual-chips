@@ -15,6 +15,14 @@ export interface SaveHandInput {
 export interface GameRepository {
   create(roomId: string): Promise<GameRecord>;
   findById(id: string): Promise<GameRecord | null>;
+  /**
+   * Returns the room's currently-open game (the one with `endedAt: null`), or
+   * null when no game is open. Game lifecycle is lazy-on-first-hand: the first
+   * `StartHand` for a room creates a game, every later hand reuses this open
+   * one, and end-game (PR2) sets `endedAt` to close it. There is at most one
+   * open game per room.
+   */
+  findOpenByRoom(roomId: string): Promise<GameRecord | null>;
   end(id: string): Promise<void>;
   /** Persists a hand snapshot and returns its id. */
   saveHand(input: SaveHandInput): Promise<{ id: string }>;
