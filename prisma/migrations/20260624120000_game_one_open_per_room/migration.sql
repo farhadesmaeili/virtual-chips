@@ -1,0 +1,11 @@
+-- Enforce "at most one open game per room" at the database level. PR1 opened a
+-- durable Game lazily on the first hand and documented this invariant only in a
+-- code comment; this partial unique index makes it a real constraint.
+--
+-- The index covers open games only (endedAt IS NULL), so a room may accumulate
+-- many finished games over time but can never have two open at once — which is
+-- exactly what findOpenByRoom relies on. Partial indexes are not expressible in
+-- the Prisma schema, so this migration is hand-written.
+--
+-- The dev database has no Game rows yet, so no existing data violates this.
+CREATE UNIQUE INDEX "Game_roomId_open_key" ON "Game" ("roomId") WHERE "endedAt" IS NULL;

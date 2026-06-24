@@ -9,6 +9,7 @@ import {
   InvalidRoomSettingsError,
   InvalidSettlementError,
   isDomainError,
+  NoOpenGameError,
   NotBankerError,
   NotYourTurnError,
   RoomFullError,
@@ -66,6 +67,11 @@ const cases: Case[] = [
     name: 'NotBankerError',
     error: new NotBankerError('u1'),
     code: 'NOT_BANKER',
+  },
+  {
+    name: 'NoOpenGameError',
+    error: new NoOpenGameError('r1'),
+    code: 'NO_OPEN_GAME',
   },
   {
     name: 'InvalidSettlementError',
