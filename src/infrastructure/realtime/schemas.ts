@@ -70,6 +70,10 @@ export const handSettleSchema = z
   })
   .strict();
 
+// Banker ends the game (6.2). Carries only the roomId; the requester is the
+// authenticated session user and banker-only is enforced in the use-case.
+export const endGameSchema = z.object({ roomId: z.string().min(1) }).strict();
+
 export const chipsRequestSchema = z
   .object({
     roomId: z.string().min(1),
@@ -109,4 +113,5 @@ export type ChipsRequestPayload = z.infer<typeof chipsRequestSchema>;
 export type ChipsApprovePayload = z.infer<typeof chipsApproveSchema>;
 export type ChipsRejectPayload = z.infer<typeof chipsRejectSchema>;
 export type HandSettlePayload = z.infer<typeof handSettleSchema>;
+export type EndGamePayload = z.infer<typeof endGameSchema>;
 export type PlayerActPayload = z.infer<typeof playerActSchema>;

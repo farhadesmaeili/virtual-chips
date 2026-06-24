@@ -23,7 +23,7 @@ import {
   NotBankerError,
   RoomNotFoundError,
 } from '@/domain/errors';
-import { EndGame } from './end-game';
+import { EndGame, joinNetsToUsers } from './end-game';
 
 class FakeRoomRepository implements RoomRepository {
   private readonly roomsById = new Map<string, Room>();
@@ -295,5 +295,31 @@ describe('EndGame', () => {
     ).rejects.toThrow(InvalidSettlementError);
     expect(settlements.saved).toHaveLength(0);
     expect(games.endedIds).toEqual([]);
+  });
+});
+
+describe('joinNetsToUsers', () => {
+  it('joins each net back to its member userId', () => {
+    expect(
+      joinNetsToUsers(
+        [
+          { seat: 0, net: 500 },
+          { seat: 1, net: -500 },
+        ],
+        [
+          { seat: 0, userId: 'alice' },
+          { seat: 1, userId: 'bob' },
+        ],
+      ),
+    ).toEqual([
+      { seat: 0, userId: 'alice', net: 500 },
+      { seat: 1, userId: 'bob', net: -500 },
+    ]);
+  });
+
+  it('throws a typed error when a net seat has no member', () => {
+    expect(() =>
+      joinNetsToUsers([{ seat: 5, net: 100 }], [{ seat: 0, userId: 'alice' }]),
+    ).toThrow(InvalidSettlementError);
   });
 });

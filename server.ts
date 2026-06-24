@@ -10,6 +10,7 @@ import {
   AdvanceStreet,
   ApproveChipRequest,
   CreateRoom,
+  EndGame,
   JoinRoom,
   LeaveRoom,
   ListUserRooms,
@@ -28,6 +29,7 @@ import { InMemoryHandStore } from './src/infrastructure/persistence/in-memory-ha
 import { prisma } from './src/infrastructure/persistence/prisma';
 import { PrismaGameRepository } from './src/infrastructure/persistence/prisma-game-repository';
 import { PrismaRoomRepository } from './src/infrastructure/persistence/prisma-room-repository';
+import { PrismaSettlementRepository } from './src/infrastructure/persistence/prisma-settlement-repository';
 import { registerFundingHandlers } from './src/infrastructure/realtime/funding-handlers';
 import { HandGateway } from './src/infrastructure/realtime/hand-gateway';
 import { registerHandHandlers } from './src/infrastructure/realtime/hand-handlers';
@@ -105,6 +107,7 @@ async function main(): Promise<void> {
   // Compose the use-cases over the repositories (composition root).
   const roomRepository = new PrismaRoomRepository(prisma);
   const gameRepository = new PrismaGameRepository(prisma);
+  const settlementRepository = new PrismaSettlementRepository(prisma);
   const handStore = new InMemoryHandStore();
   const chipRequestStore = new InMemoryChipRequestStore();
   const idGenerator: IdGenerator = { generate: () => randomUUID() };
@@ -152,6 +155,12 @@ async function main(): Promise<void> {
     new AdvanceStreet(roomRepository, handStore, clock),
     new SettleHand(roomRepository, handStore),
     new RequestTimeExtension(handStore, clock),
+    new EndGame(
+      roomRepository,
+      handStore,
+      gameRepository,
+      settlementRepository,
+    ),
     handStore,
     roomRepository,
   );

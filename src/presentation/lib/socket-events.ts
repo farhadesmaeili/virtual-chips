@@ -120,6 +120,19 @@ export interface HandSettled {
   }[];
 }
 
+/**
+ * End-of-game net per player, broadcast on `game:ended` when the banker ends the
+ * game (6.2). Seat + net only — raw userIds are never broadcast.
+ */
+export interface GameEnded {
+  readonly nets: readonly {
+    readonly seat: number;
+    readonly net: number;
+  }[];
+  /** Rake removed from play (0 until rake is configurable). */
+  readonly rake: number;
+}
+
 export interface SocketError {
   readonly code: string;
   readonly message: string;

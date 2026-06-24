@@ -2,6 +2,7 @@ import type { HandGateway } from './hand-gateway';
 import type { RateLimiter } from './rate-limiter';
 import {
   advanceStreetSchema,
+  endGameSchema,
   handSettleSchema,
   handStartSchema,
   playerActSchema,
@@ -76,6 +77,22 @@ export function registerHandHandlers(
           userId,
           parsed.data.declarations,
         );
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  socket.on('banker:endGame', (payload: unknown) => {
+    void (async () => {
+      const parsed = endGameSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid banker:endGame payload');
+        return;
+      }
+      try {
+        // Banker-only; the use-case enforces authorization.
+        await deps.gateway.endGame(parsed.data.roomId, userId);
       } catch (error) {
         handleError(socket, error);
       }
