@@ -19,6 +19,7 @@ export type DomainErrorCode =
   | 'NOT_ENOUGH_PLAYERS'
   | 'HAND_IN_PROGRESS'
   | 'NO_ACTIVE_HAND'
+  | 'NO_OPEN_GAME'
   | 'NOT_YOUR_TURN'
   | 'INVALID_ACTION'
   | 'INVALID_RAISE'
@@ -147,6 +148,19 @@ export class NoActiveHandError extends DomainError {
 
   constructor(readonly roomId: string) {
     super(`No active hand in room: ${roomId}`);
+  }
+}
+
+/**
+ * Thrown when ending a game for a room that has no open game (none was ever
+ * started, or it was already ended). The game lifecycle is lazy-on-first-hand:
+ * a Game opens on the first hand and is closed by end-game.
+ */
+export class NoOpenGameError extends DomainError {
+  readonly code = 'NO_OPEN_GAME';
+
+  constructor(readonly roomId: string) {
+    super(`No open game to end in room: ${roomId}`);
   }
 }
 
