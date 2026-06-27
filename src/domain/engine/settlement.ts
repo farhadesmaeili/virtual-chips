@@ -1,4 +1,4 @@
-import { type Hand } from '../entities/hand';
+import { getPlayer, type Hand } from '../entities/hand';
 import type { Pot } from '../entities/pot';
 import { InvalidSettlementError } from '../errors';
 import { Chips } from '../value-objects/chips';
@@ -140,6 +140,44 @@ export function settleHand(
   };
 
   return { hand: settledHand, pots, payouts };
+}
+
+/**
+ * Translates the players' player-showdown claims (mode B,
+ * docs/BETTING-ENGINE.md §5) into the {@link PotDeclaration}[] that
+ * {@link settleHand} already consumes, so the banker-confirm path reuses
+ * `settleHand` UNCHANGED. There is deliberately no second award path and no
+ * second shape: this returns byte-for-byte what `settleHand` consumes and what
+ * mode A already produces, so `settleHand` stays the sole chip-mover — the
+ * end-of-game net / zero-sum invariants (task 6.2) depend on that.
+ *
+ * Side pots are derived from the SAME `calculateSidePotsForPlayers(hand.players)`
+ * call `settleHand` uses, so the result is DENSE and positional: index `i` is
+ * pot `i`, and `length` always equals the pot count (no holes). For each pot the
+ * winners are its eligible seats whose player claimed `'win'` — eligibility is
+ * already encoded in `eligibleSeats` (the side-pot calculator excludes folded /
+ * sitting-out seats), so a claimant only ever wins pots they are eligible for,
+ * and `'muck'` / not-yet-claimed seats are never listed.
+ *
+ * This helper NEVER moves chips and NEVER divides a pot: when several eligible
+ * seats claim `'win'` on one pot it lists ALL of them and leaves the split —
+ * including the odd-chip rule — to `settleHand`.
+ *
+ * A pot with no eligible `'win'` claim (everyone mucked, or nobody has claimed
+ * yet) is `[]` at its index — never a hole, never a placeholder for "done". That
+ * is exactly how `settleHand` reads "no winners for this pot": a contested pot
+ * with `[]` is rejected on confirm (not yet confirmable), an uncontested pot
+ * ignores it and auto-awards. So the PR2 banker-confirm completeness gate is just
+ * a positional "every contested pot has a non-empty entry" check; it is not
+ * enforced here.
+ */
+export function claimsToDeclarations(hand: Hand): readonly PotDeclaration[] {
+  const pots = calculateSidePotsForPlayers(hand.players);
+  // Dense + positional by construction: one entry per pot (possibly []), so the
+  // result aligns with the pot list settleHand recomputes the same way.
+  return pots.map((pot) =>
+    pot.eligibleSeats.filter((seat) => getPlayer(hand, seat)?.claim === 'win'),
+  );
 }
 
 export interface PlayerLedger {

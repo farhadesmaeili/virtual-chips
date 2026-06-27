@@ -10,6 +10,16 @@ export type PlayerState = 'active' | 'folded' | 'all_in' | 'sitting_out';
 export type ActionVerb = 'FOLD' | 'CHECK' | 'CALL' | 'BET' | 'RAISE' | 'ALL_IN';
 
 /**
+ * A player's showdown claim in player-showdown settlement (mode B,
+ * docs/BETTING-ENGINE.md §5): `'win'` to claim a pot, `'muck'` to concede. Only
+ * meaningful for a non-folded player while the hand is `awaiting_showdown`;
+ * absent at every other time. Advisory only — a claim NEVER moves chips; chips
+ * move solely when the banker confirms, which runs the existing `settleHand`
+ * engine over the declarations derived from these claims.
+ */
+export type ClaimChoice = 'win' | 'muck';
+
+/**
  * Time-bank extensions each player starts a hand with (task 4.12). The budget
  * lives per-hand on PlayerInHand, so it refreshes automatically every hand (the
  * player is rebuilt at hand start). Defined here, next to the field it seeds, so
@@ -42,6 +52,17 @@ export interface PlayerInHand {
   readonly lastAction: ActionVerb | null;
   /** Remaining time-bank extensions this hand (task 4.12). */
   readonly timeExtensionsRemaining: number;
+  /**
+   * The player's player-showdown claim (mode B, 6.1), or absent when they have
+   * not claimed / the hand is not at showdown. Optional + additive so betting
+   * hands and the existing hand-state projection are unaffected. It lives on the
+   * player (already keyed by seat, and a plain string union — unlike a Map)
+   * rather than a separate Hand-level structure, so the whole Hand state stays a
+   * JSON blob and the claim survives resync as the single source of truth during
+   * the showdown window. Setting it (authz: active player, self, showdown mode)
+   * is a later use-case concern, not part of the entity.
+   */
+  readonly claim?: ClaimChoice;
 }
 
 export interface CreatePlayerInHandInput {

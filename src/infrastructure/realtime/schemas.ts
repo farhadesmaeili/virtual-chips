@@ -99,6 +99,18 @@ export const playerActSchema = z
   })
   .strict();
 
+// Player-showdown claim (mode B, task 6.1). Carries only the roomId and the
+// claim verb; the claiming player (seat / user) is always the authenticated
+// session user, NEVER the payload (IDOR). This validates shape only —
+// authorization (active player, self, showdown mode, awaiting_showdown) is
+// enforced in the use-case in a later PR, not here.
+export const playerClaimSchema = z
+  .object({
+    roomId: z.string().min(1),
+    claim: z.enum(['win', 'muck']),
+  })
+  .strict();
+
 export type CreateRoomPayload = z.infer<typeof createRoomSchema>;
 export type JoinRoomPayload = z.infer<typeof joinRoomSchema>;
 export type LeaveRoomPayload = z.infer<typeof leaveRoomSchema>;
@@ -115,3 +127,4 @@ export type ChipsRejectPayload = z.infer<typeof chipsRejectSchema>;
 export type HandSettlePayload = z.infer<typeof handSettleSchema>;
 export type EndGamePayload = z.infer<typeof endGameSchema>;
 export type PlayerActPayload = z.infer<typeof playerActSchema>;
+export type PlayerClaimPayload = z.infer<typeof playerClaimSchema>;
