@@ -69,6 +69,21 @@ describe('toPublicHandState', () => {
     expect(state.players[1]?.lastAction).toBeNull();
   });
 
+  it('surfaces a player showdown claim additively (present when set, absent otherwise)', () => {
+    const base = handWith();
+    const hand: Hand = {
+      ...base,
+      status: 'awaiting_showdown',
+      players: [
+        { ...base.players[0]!, claim: 'win' },
+        { ...base.players[1]! }, // unclaimed
+      ],
+    };
+    const state = toPublicHandState(hand);
+    expect(state.players[0]?.claim).toBe('win');
+    expect(state.players[1]?.claim).toBeUndefined();
+  });
+
   it('never leaks raw userId', () => {
     const serialized = JSON.stringify(toPublicHandState(handWith()));
     expect(serialized).not.toContain('userId');

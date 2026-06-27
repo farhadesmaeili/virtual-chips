@@ -6,6 +6,7 @@ import {
   handSettleSchema,
   handStartSchema,
   playerActSchema,
+  playerClaimSchema,
   turnRequestTimeSchema,
 } from './schemas';
 import { emitError, handleError } from './socket-errors';
@@ -117,6 +118,33 @@ export function registerHandHandlers(
           type: parsed.data.action,
           amount: parsed.data.amount,
         });
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  // Player-showdown claim (mode B, 6.1). Mirrors player:act: Zod-validate the
+  // shape, rate-limit, then run the use-case — which resolves the seat from the
+  // session user (self-only) and enforces mode / phase / contender server-side.
+  // The claim verb is the only client input; the seat is never taken from it.
+  socket.on('player:claim', (payload: unknown) => {
+    void (async () => {
+      const parsed = playerClaimSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid player:claim payload');
+        return;
+      }
+      if (!deps.actLimiter.tryAcquire(userId)) {
+        emitError(socket, 'RATE_LIMITED', 'Too many actions; slow down');
+        return;
+      }
+      try {
+        await deps.gateway.recordClaim(
+          parsed.data.roomId,
+          userId,
+          parsed.data.claim,
+        );
       } catch (error) {
         handleError(socket, error);
       }

@@ -1,6 +1,10 @@
 import type { HandStore, RoomRepository } from '@/application/ports';
 import { isBanker, type Hand } from '@/domain/entities';
-import { settleHand, type PotDeclaration } from '@/domain/engine';
+import {
+  claimsToDeclarations,
+  settleHand,
+  type PotDeclaration,
+} from '@/domain/engine';
 import {
   NoActiveHandError,
   NotBankerError,
@@ -53,9 +57,22 @@ export class SettleHand {
     const hand = await this.hands.get(roomId);
     if (hand === null) throw new NoActiveHandError(roomId);
 
+    // Confirm authority (mode B): in player-showdown mode the winners come from
+    // the players' stored claims (claimsToDeclarations) — the banker only
+    // ratifies — so any client-passed declarations are IGNORED. In banker mode
+    // (mode A) the banker's client declarations are used as before. Either way
+    // the pure settleHand engine below remains the sole chip-mover.
+    const effectiveDeclarations =
+      room.settings.settlementMode === 'showdown'
+        ? claimsToDeclarations(hand)
+        : declarations;
+
     // Pure settlement (validates the hand is awaiting showdown and the
-    // declarations are well-formed; throws a typed domain error otherwise).
-    const { hand: settled, payouts } = settleHand(hand, declarations);
+    // declarations are well-formed; throws a typed domain error otherwise). It
+    // returns a new hand or throws BEFORE any persistence below, so an
+    // incomplete claim set (a contested pot still []) fails atomically: no save,
+    // no chip movement, the hand stays awaiting_showdown.
+    const { hand: settled, payouts } = settleHand(hand, effectiveDeclarations);
 
     // Persist every dealt player's final stack so the next hand is funded
     // correctly (winners up, losers down by what they committed).

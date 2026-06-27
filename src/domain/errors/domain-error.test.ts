@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DomainError,
   HandNotInBettingError,
+  HandNotInShowdownError,
   InsufficientChipsError,
   InvalidActionError,
   InvalidChipsAmountError,
@@ -62,6 +63,11 @@ const cases: Case[] = [
     name: 'HandNotInBettingError',
     error: new HandNotInBettingError('settled'),
     code: 'HAND_NOT_IN_BETTING',
+  },
+  {
+    name: 'HandNotInShowdownError',
+    error: new HandNotInShowdownError('betting'),
+    code: 'HAND_NOT_IN_SHOWDOWN',
   },
   {
     name: 'NotBankerError',

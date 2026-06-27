@@ -1,5 +1,6 @@
 import type {
   ActionVerb,
+  ClaimChoice,
   Hand,
   HandStatus,
   PlayerState,
@@ -21,6 +22,13 @@ export interface PublicHandPlayer {
   readonly lastAction: ActionVerb | null;
   /** Time-bank extensions left this hand (task 4.12); drives the hero's button. */
   readonly timeExtensionsRemaining: number;
+  /**
+   * The player's player-showdown claim (mode B, 6.1), or absent when unclaimed /
+   * not at showdown. Additive: it rides `hand:state` only (never the
+   * animation-trigger events), and survives resync since it lives in the hand
+   * state. Consumed by the claim UI in PR3.
+   */
+  readonly claim?: ClaimChoice;
 }
 
 export interface PublicPot {
@@ -71,6 +79,7 @@ export function toPublicHandState(hand: Hand): PublicHandState {
       hasActedThisStreet: p.hasActedThisStreet,
       lastAction: p.lastAction,
       timeExtensionsRemaining: p.timeExtensionsRemaining,
+      claim: p.claim,
     })),
     pots: pots.map((pot) => ({
       amount: pot.amount,

@@ -3,11 +3,12 @@ import type {
   AdvanceStreet,
   EndGame,
   PlayerAct,
+  RecordClaim,
   RequestTimeExtension,
   SettleHand,
   StartHand,
 } from '@/application/use-cases';
-import type { Hand } from '@/domain/entities';
+import type { ClaimChoice, Hand } from '@/domain/entities';
 import { autoActionType, type ActionType } from '@/domain/engine';
 import type { PotDeclaration } from '@/domain/engine';
 import { toPublicHandState } from './hand-projection';
@@ -38,6 +39,7 @@ export class HandGateway {
     private readonly playerAct: PlayerAct,
     private readonly advanceStreet: AdvanceStreet,
     private readonly settleHand: SettleHand,
+    private readonly recordClaimUseCase: RecordClaim,
     private readonly requestTimeExtension: RequestTimeExtension,
     private readonly endGameUseCase: EndGame,
     private readonly hands: HandStore,
@@ -111,6 +113,27 @@ export class HandGateway {
     // Starts a timer only if the new street has someone to act; a paused
     // all-in run-out (awaiting_street again) schedules nothing.
     await this.resolveTurn(roomId, hand);
+  }
+
+  /**
+   * Records a player's player-showdown claim (mode B, 6.1) and broadcasts the
+   * refreshed hand state. The use-case resolves the seat from `userId` (self-only)
+   * and writes the claim onto the Hand only; no member chips change, so unlike
+   * `settle` this emits `hand:state` alone. The claim rides `hand:state` (not
+   * `action:applied` / `hand:settled`), keeping the live-only animation triggers
+   * untouched.
+   */
+  async recordClaim(
+    roomId: string,
+    userId: string,
+    claim: ClaimChoice,
+  ): Promise<void> {
+    const { hand } = await this.recordClaimUseCase.execute({
+      roomId,
+      userId,
+      claim,
+    });
+    this.io.to(roomId).emit('hand:state', toPublicHandState(hand));
   }
 
   async settle(

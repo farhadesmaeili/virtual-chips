@@ -15,6 +15,7 @@ import {
   LeaveRoom,
   ListUserRooms,
   PlayerAct,
+  RecordClaim,
   RejectChipRequest,
   RequestChips,
   RequestTimeExtension,
@@ -154,6 +155,7 @@ async function main(): Promise<void> {
     new PlayerAct(roomRepository, handStore, clock),
     new AdvanceStreet(roomRepository, handStore, clock),
     new SettleHand(roomRepository, handStore),
+    new RecordClaim(roomRepository, handStore),
     new RequestTimeExtension(handStore, clock),
     new EndGame(
       roomRepository,

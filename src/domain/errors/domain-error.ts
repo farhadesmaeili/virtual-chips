@@ -24,6 +24,7 @@ export type DomainErrorCode =
   | 'INVALID_ACTION'
   | 'INVALID_RAISE'
   | 'HAND_NOT_IN_BETTING'
+  | 'HAND_NOT_IN_SHOWDOWN'
   | 'NO_TIME_BANK'
   | 'NOT_BANKER'
   | 'INVALID_SETTLEMENT'
@@ -204,6 +205,18 @@ export class HandNotInBettingError extends DomainError {
 
   constructor(readonly status: string) {
     super(`Hand is not in the betting phase (status: ${status})`);
+  }
+}
+
+/**
+ * Thrown when a player-showdown claim (mode B, 6.1) is attempted on a hand that
+ * is not at showdown. Mirrors {@link HandNotInBettingError} for the claim phase.
+ */
+export class HandNotInShowdownError extends DomainError {
+  readonly code = 'HAND_NOT_IN_SHOWDOWN';
+
+  constructor(readonly status: string) {
+    super(`Hand is not at showdown (status: ${status})`);
   }
 }
 
