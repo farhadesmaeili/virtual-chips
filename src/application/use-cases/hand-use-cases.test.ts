@@ -12,6 +12,7 @@ import {
   createHand,
   createPlayerInHand,
   createRoom,
+  type ClaimChoice,
   type Hand,
   type PlayerInHand,
   type Room,
@@ -19,15 +20,18 @@ import {
 } from '@/domain/entities';
 import {
   HandInProgressError,
+  HandNotInShowdownError,
   InvalidActionError,
   InvalidSettlementError,
   NoActiveHandError,
   NotBankerError,
   NotEnoughPlayersError,
   NotYourTurnError,
+  RoomNotFoundError,
 } from '@/domain/errors';
 import { AdvanceStreet } from './advance-street';
 import { PlayerAct } from './player-act';
+import { RecordClaim } from './record-claim';
 import { SettleHand } from './settle-hand';
 import { StartHand } from './start-hand';
 
@@ -560,6 +564,283 @@ describe('SettleHand', () => {
       new SettleHand(rooms, store).execute({
         roomId: 'r1',
         requesterId: 'banker',
+      }),
+    ).rejects.toThrow(NoActiveHandError);
+  });
+
+  // --- Confirm authority in player-showdown mode (mode B, 6.1) ---
+
+  const showdownRoom = createRoom({
+    id: 'r1',
+    name: 'Table',
+    bankerId: 'banker',
+    settings: { smallBlind: 5, bigBlind: 10, settlementMode: 'showdown' },
+  });
+
+  function withClaim(p: PlayerInHand, claim?: ClaimChoice): PlayerInHand {
+    return { ...p, claim };
+  }
+
+  it('showdown mode: seeds declarations from stored claims and ignores client declarations', async () => {
+    rooms.seedRoom(showdownRoom, [
+      member('banker', 0, 100),
+      member('bob', 1, 100),
+    ]);
+    // Contested pot [0,1]; bob claimed win, banker mucked.
+    await store.save(
+      'r1',
+      awaitingHand([
+        withClaim(showdownPlayer(0, 'banker', 80, 20, 'active'), 'muck'),
+        withClaim(showdownPlayer(1, 'bob', 80, 20, 'active'), 'win'),
+      ]),
+    );
+
+    const result = await new SettleHand(rooms, store).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+      // Deliberately wrong client declarations (claims seat 0); must be IGNORED.
+      declarations: [[0]],
+    });
+
+    // Stored claim wins: seat 1, not the client's seat 0.
+    expect(result.payouts.get(1)).toBe(40);
+    expect(result.payouts.get(0)).toBeUndefined();
+    expect(result.snapshot.members.find((m) => m.seat === 1)?.chips).toBe(120);
+  });
+
+  it('banker mode: uses client declarations and ignores any stray stored claims', async () => {
+    rooms.seedRoom(room, [member('banker', 0, 100), member('bob', 1, 100)]);
+    await store.save(
+      'r1',
+      awaitingHand([
+        // Stray claim on seat 0 must NOT influence a banker-mode settlement.
+        withClaim(showdownPlayer(0, 'banker', 80, 20, 'active'), 'win'),
+        withClaim(showdownPlayer(1, 'bob', 80, 20, 'active'), 'muck'),
+      ]),
+    );
+
+    const result = await new SettleHand(rooms, store).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+      declarations: [[1]], // banker declares seat 1
+    });
+
+    expect(result.payouts.get(1)).toBe(40);
+    expect(result.payouts.get(0)).toBeUndefined();
+  });
+
+  it('showdown mode: an incomplete claim set fails atomically (throws, no save, no chip movement)', async () => {
+    rooms.seedRoom(showdownRoom, [
+      member('banker', 0, 100),
+      member('bob', 1, 100),
+    ]);
+    // Contested pot [0,1] but nobody claimed win → claimsToDeclarations = [[]].
+    await store.save(
+      'r1',
+      awaitingHand([
+        withClaim(showdownPlayer(0, 'banker', 80, 20, 'active'), 'muck'),
+        withClaim(showdownPlayer(1, 'bob', 80, 20, 'active'), 'muck'),
+      ]),
+    );
+
+    await expect(
+      new SettleHand(rooms, store).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+      }),
+    ).rejects.toThrow(InvalidSettlementError);
+
+    // Atomic: the hand is untouched and chips never moved.
+    expect((await store.get('r1'))?.status).toBe('awaiting_showdown');
+    const members = await rooms.listMembers('r1');
+    expect(members.find((m) => m.seat === 0)?.chips).toBe(100);
+    expect(members.find((m) => m.seat === 1)?.chips).toBe(100);
+  });
+});
+
+describe('RecordClaim', () => {
+  const showdownRoom = createRoom({
+    id: 'r1',
+    name: 'Table',
+    bankerId: 'banker',
+    settings: { smallBlind: 5, bigBlind: 10, settlementMode: 'showdown' },
+  });
+
+  function claimPlayer(
+    seat: number,
+    userId: string,
+    state: PlayerInHand['state'] = 'active',
+    claim?: ClaimChoice,
+  ): PlayerInHand {
+    return {
+      ...createPlayerInHand({ seat, userId, stack: 80 }),
+      committedTotal: 20,
+      state,
+      claim,
+    };
+  }
+
+  function showdownHand(
+    players: PlayerInHand[],
+    status: Hand['status'] = 'awaiting_showdown',
+  ): Hand {
+    const base = createHand({ id: 'h1', roomId: 'r1', buttonSeat: 0, players });
+    return { ...base, status, actingSeat: null };
+  }
+
+  function seed(players: PlayerInHand[], settlementRoom: Room = showdownRoom) {
+    rooms.seedRoom(settlementRoom, [
+      member('banker', 0, 100),
+      member('bob', 1, 100),
+    ]);
+    return store.save('r1', showdownHand(players));
+  }
+
+  it('stores a win claim on the claimer’s own seat only (self-only, seat from session)', async () => {
+    await seed([claimPlayer(0, 'banker'), claimPlayer(1, 'bob')]);
+
+    const { hand } = await new RecordClaim(rooms, store).execute({
+      roomId: 'r1',
+      userId: 'bob',
+      claim: 'win',
+    });
+
+    expect(hand.players.find((p) => p.seat === 1)?.claim).toBe('win');
+    // The other seat is untouched — a userId can only set its own seat.
+    expect(hand.players.find((p) => p.seat === 0)?.claim).toBeUndefined();
+    // Persisted on the Hand (single source of truth).
+    const saved = await store.get('r1');
+    expect(saved?.players.find((p) => p.seat === 1)?.claim).toBe('win');
+  });
+
+  it('stores a muck claim (mucking is a claim value, not a folded state)', async () => {
+    await seed([claimPlayer(0, 'banker'), claimPlayer(1, 'bob')]);
+
+    const { hand } = await new RecordClaim(rooms, store).execute({
+      roomId: 'r1',
+      userId: 'bob',
+      claim: 'muck',
+    });
+
+    expect(hand.players.find((p) => p.seat === 1)?.claim).toBe('muck');
+    expect(hand.players.find((p) => p.seat === 1)?.state).toBe('active');
+  });
+
+  it('idempotently overwrites the player’s own prior claim', async () => {
+    await seed([
+      claimPlayer(0, 'banker'),
+      claimPlayer(1, 'bob', 'active', 'win'),
+    ]);
+
+    const { hand } = await new RecordClaim(rooms, store).execute({
+      roomId: 'r1',
+      userId: 'bob',
+      claim: 'muck',
+    });
+
+    expect(hand.players.find((p) => p.seat === 1)?.claim).toBe('muck');
+  });
+
+  it('lets an all-in contender claim', async () => {
+    await seed([claimPlayer(0, 'banker'), claimPlayer(1, 'bob', 'all_in')]);
+
+    const { hand } = await new RecordClaim(rooms, store).execute({
+      roomId: 'r1',
+      userId: 'bob',
+      claim: 'win',
+    });
+
+    expect(hand.players.find((p) => p.seat === 1)?.claim).toBe('win');
+  });
+
+  it('rejects a folded player', async () => {
+    await seed([claimPlayer(0, 'banker'), claimPlayer(1, 'bob', 'folded')]);
+    await expect(
+      new RecordClaim(rooms, store).execute({
+        roomId: 'r1',
+        userId: 'bob',
+        claim: 'win',
+      }),
+    ).rejects.toThrow(InvalidActionError);
+  });
+
+  it('rejects a sitting-out player', async () => {
+    await seed([
+      claimPlayer(0, 'banker'),
+      claimPlayer(1, 'bob', 'sitting_out'),
+    ]);
+    await expect(
+      new RecordClaim(rooms, store).execute({
+        roomId: 'r1',
+        userId: 'bob',
+        claim: 'win',
+      }),
+    ).rejects.toThrow(InvalidActionError);
+  });
+
+  it('rejects a user who is not in the hand', async () => {
+    await seed([claimPlayer(0, 'banker'), claimPlayer(1, 'bob')]);
+    await expect(
+      new RecordClaim(rooms, store).execute({
+        roomId: 'r1',
+        userId: 'carol',
+        claim: 'win',
+      }),
+    ).rejects.toThrow(InvalidActionError);
+  });
+
+  it('rejects claims in banker mode (claims not enabled)', async () => {
+    await seed([claimPlayer(0, 'banker'), claimPlayer(1, 'bob')], room);
+    await expect(
+      new RecordClaim(rooms, store).execute({
+        roomId: 'r1',
+        userId: 'bob',
+        claim: 'win',
+      }),
+    ).rejects.toThrow(InvalidActionError);
+  });
+
+  it('rejects a claim off showdown (status not awaiting_showdown)', async () => {
+    rooms.seedRoom(showdownRoom, [
+      member('banker', 0, 100),
+      member('bob', 1, 100),
+    ]);
+    await store.save(
+      'r1',
+      showdownHand(
+        [claimPlayer(0, 'banker'), claimPlayer(1, 'bob')],
+        'betting',
+      ),
+    );
+    await expect(
+      new RecordClaim(rooms, store).execute({
+        roomId: 'r1',
+        userId: 'bob',
+        claim: 'win',
+      }),
+    ).rejects.toThrow(HandNotInShowdownError);
+  });
+
+  it('rejects when the room does not exist', async () => {
+    await expect(
+      new RecordClaim(rooms, store).execute({
+        roomId: 'missing',
+        userId: 'bob',
+        claim: 'win',
+      }),
+    ).rejects.toThrow(RoomNotFoundError);
+  });
+
+  it('rejects when there is no active hand', async () => {
+    rooms.seedRoom(showdownRoom, [
+      member('banker', 0, 100),
+      member('bob', 1, 100),
+    ]);
+    await expect(
+      new RecordClaim(rooms, store).execute({
+        roomId: 'r1',
+        userId: 'bob',
+        claim: 'win',
       }),
     ).rejects.toThrow(NoActiveHandError);
   });

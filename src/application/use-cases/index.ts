@@ -10,5 +10,6 @@ export * from './player-act';
 export * from './request-time-extension';
 export * from './advance-street';
 export * from './settle-hand';
+export * from './record-claim';
 export * from './end-game';
 export * from './chip-requests';

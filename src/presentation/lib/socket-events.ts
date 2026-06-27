@@ -69,6 +69,12 @@ export interface PublicHandPlayer {
   readonly lastAction: AppliedActionType | null;
   /** Time-bank extensions left this hand (task 4.12). */
   readonly timeExtensionsRemaining: number;
+  /**
+   * The player's player-showdown claim (mode B, 6.1), or absent when unclaimed /
+   * not at showdown. Mirrors the server projection; consumed by the claim UI in
+   * PR3. Additive — present only on `hand:state`.
+   */
+  readonly claim?: 'win' | 'muck';
 }
 
 export interface PublicPot {
