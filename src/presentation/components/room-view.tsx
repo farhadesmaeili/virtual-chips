@@ -8,6 +8,8 @@ import { ActionMenu } from './action-menu';
 import { ActionPanel } from './action-panel';
 import { deriveActions, type ActionKind } from './action-availability';
 import { deriveMenuItems } from './menu-availability';
+import { NetReport } from './net-report';
+import { buildNetReport } from './net-report-model';
 import { type ChipMotion, flightsFor, planChipMotion } from './chip-motion';
 import { type ChipFlight } from './chip-motion-layer';
 import { celebrationBursts } from './celebration';
@@ -24,6 +26,7 @@ import { friendlyError } from '@/presentation/lib/error-messages';
 import type {
   ActionApplied,
   ChipRequestList,
+  GameEnded,
   HandSettled,
   PublicChipRequest,
   PublicHandState,
@@ -46,6 +49,11 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
   const [chipRequests, setChipRequests] = useState<
     readonly PublicChipRequest[]
   >([]);
+  // End-of-game net settlement (task 6.2). Local/ephemeral by construction:
+  // raised only by the LIVE game:ended handler below, never rebuilt from a
+  // snapshot. A reconnect to an already-ended game therefore shows the quiet
+  // "this game has ended" note with no numbers (full history is task 6.3).
+  const [netReport, setNetReport] = useState<GameEnded | null>(null);
   // In-flight chip animations (task 5.1). Triggered only by LIVE events below;
   // never reconstructed from a snapshot, so a resync replays no chip flights.
   const [flights, setFlights] = useState<readonly ChipFlight[]>([]);
@@ -149,6 +157,12 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
       setPending(false);
       setFundingError(null);
     };
+    // The banker ended the game: keep the live net report for this session only.
+    // The accompanying ended room:state (onState) flips the view to settlement.
+    const onEnded = (result: GameEnded): void => {
+      setPending(false);
+      setNetReport(result);
+    };
     const onError = (err: SocketError): void => {
       setPending(false);
       // A rejected leave (mid-hand / banker) keeps us in the room.
@@ -162,6 +176,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     socket.on('action:applied', onAction);
     socket.on('hand:settled', onSettled);
     socket.on('chips:requests', onRequests);
+    socket.on('game:ended', onEnded);
     socket.on('error', onError);
 
     // Ask for the current snapshot (works on first load and on reconnect).
@@ -177,6 +192,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
       socket.off('action:applied', onAction);
       socket.off('hand:settled', onSettled);
       socket.off('chips:requests', onRequests);
+      socket.off('game:ended', onEnded);
       socket.off('error', onError);
       socket.off('session:ready', resync);
     };
@@ -214,6 +230,16 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     },
     [roomId],
   );
+
+  // End the whole game (task 6.2). The server settles net, persists, and
+  // broadcasts game:ended + a fresh ended room:state; the menu already gates
+  // this to the banker between hands, and the server re-enforces both.
+  const endGame = useCallback((): void => {
+    intent.current = 'action';
+    setPending(true);
+    setActionError(null);
+    getSocket().emit('banker:endGame', { roomId });
+  }, [roomId]);
 
   const dealStreet = useCallback((): void => {
     intent.current = 'action';
@@ -362,86 +388,106 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
             onCelebrationDone={removeCelebration}
           />
 
-          {/* Result of the last settled hand, until the next deal. */}
-          {payouts !== null &&
-            payouts.length > 0 &&
-            hand?.status === 'settled' && (
-              <p className="text-center text-sm text-vc-ink-muted">
-                {payouts.map((p, i) => (
-                  <span key={p.seat}>
-                    {i > 0 && ' · '}
-                    <span className="font-medium text-vc-ink">
-                      {room.members.find((m) => m.seat === p.seat)?.username ??
-                        `Seat ${p.seat}`}
-                    </span>{' '}
-                    won{' '}
-                    <span className="font-mono tabular-nums text-vc-gold">
-                      {p.amount.toLocaleString()}
-                    </span>
-                  </span>
-                ))}
-              </p>
-            )}
-
-          {hand?.status === 'awaiting_showdown' ? (
-            <ShowdownControls
-              hand={hand}
-              members={room.members}
-              isBanker={heroIsBanker}
-              pending={pending}
-              error={actionError}
-              onSettle={settle}
-            />
-          ) : hand?.status === 'awaiting_street' ? (
-            <StreetControls
-              street={hand.street}
-              isBanker={heroIsBanker}
-              pending={pending}
-              error={actionError}
-              onDeal={dealStreet}
-            />
-          ) : (
-            // No phase tray (no live hand): the banker's start-hand control sits
-            // with the deal/advance family, above the (waiting) action panel.
-            <>
-              <StartHandControl
-                state={menuModel.startHand}
-                onStart={startHand}
+          {room.status === 'ended' ? (
+            // The game is over: show the net settlement and suppress every play
+            // tray + the action menu. A live game:ended gives us the numbers; a
+            // reconnect to an already-ended game has none, so we say so quietly
+            // (full history is task 6.3).
+            netReport !== null ? (
+              <NetReport
+                rows={buildNetReport(netReport.nets, room.members)}
+                rake={netReport.rake}
               />
-              {/* Remounting on turn/bet change resets the local sizing controls. */}
-              <ActionPanel
-                key={`${hand?.id ?? 'none'}:${hand?.actingSeat ?? 'x'}:${hand?.currentBet ?? 0}`}
-                availability={availability}
-                pot={hand?.totalPot ?? 0}
-                currentBet={hand?.currentBet ?? 0}
+            ) : (
+              <p className="text-center text-sm text-vc-ink-muted">
+                This game has ended.
+              </p>
+            )
+          ) : (
+            <>
+              {/* Result of the last settled hand, until the next deal. */}
+              {payouts !== null &&
+                payouts.length > 0 &&
+                hand?.status === 'settled' && (
+                  <p className="text-center text-sm text-vc-ink-muted">
+                    {payouts.map((p, i) => (
+                      <span key={p.seat}>
+                        {i > 0 && ' · '}
+                        <span className="font-medium text-vc-ink">
+                          {room.members.find((m) => m.seat === p.seat)
+                            ?.username ?? `Seat ${p.seat}`}
+                        </span>{' '}
+                        won{' '}
+                        <span className="font-mono tabular-nums text-vc-gold">
+                          {p.amount.toLocaleString()}
+                        </span>
+                      </span>
+                    ))}
+                  </p>
+                )}
+
+              {hand?.status === 'awaiting_showdown' ? (
+                <ShowdownControls
+                  hand={hand}
+                  members={room.members}
+                  isBanker={heroIsBanker}
+                  pending={pending}
+                  error={actionError}
+                  onSettle={settle}
+                />
+              ) : hand?.status === 'awaiting_street' ? (
+                <StreetControls
+                  street={hand.street}
+                  isBanker={heroIsBanker}
+                  pending={pending}
+                  error={actionError}
+                  onDeal={dealStreet}
+                />
+              ) : (
+                // No phase tray (no live hand): the banker's start-hand control sits
+                // with the deal/advance family, above the (waiting) action panel.
+                <>
+                  <StartHandControl
+                    state={menuModel.startHand}
+                    onStart={startHand}
+                  />
+                  {/* Remounting on turn/bet change resets the local sizing controls. */}
+                  <ActionPanel
+                    key={`${hand?.id ?? 'none'}:${hand?.actingSeat ?? 'x'}:${hand?.currentBet ?? 0}`}
+                    availability={availability}
+                    pot={hand?.totalPot ?? 0}
+                    currentBet={hand?.currentBet ?? 0}
+                    pending={pending}
+                    error={actionError}
+                    actingName={actingName}
+                    onAct={act}
+                    actionDeadline={hand?.actionDeadline ?? null}
+                    timeExtensionsRemaining={
+                      hand?.players.find((p) => p.seat === heroSeat)
+                        ?.timeExtensionsRemaining ?? 0
+                    }
+                    onAddTime={requestTime}
+                  />
+                </>
+              )}
+
+              <ActionMenu
+                model={menuModel}
+                requests={chipRequests}
+                heroChips={heroMember?.chips ?? 0}
                 pending={pending}
-                error={actionError}
-                actingName={actingName}
-                onAct={act}
-                actionDeadline={hand?.actionDeadline ?? null}
-                timeExtensionsRemaining={
-                  hand?.players.find((p) => p.seat === heroSeat)
-                    ?.timeExtensionsRemaining ?? 0
-                }
-                onAddTime={requestTime}
+                actionError={actionError}
+                fundingError={fundingError}
+                onSitOut={sitOut}
+                onSitIn={sitIn}
+                onLeave={leave}
+                onRequestChips={requestChips}
+                onApproveChips={approveChips}
+                onRejectChips={rejectChips}
+                onEndGame={endGame}
               />
             </>
           )}
-
-          <ActionMenu
-            model={menuModel}
-            requests={chipRequests}
-            heroChips={heroMember?.chips ?? 0}
-            pending={pending}
-            actionError={actionError}
-            fundingError={fundingError}
-            onSitOut={sitOut}
-            onSitIn={sitIn}
-            onLeave={leave}
-            onRequestChips={requestChips}
-            onApproveChips={approveChips}
-            onRejectChips={rejectChips}
-          />
         </motion.div>
       )}
     </main>

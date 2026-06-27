@@ -32,6 +32,8 @@ export interface MenuModel {
   readonly startHand: StartHandState;
   /** Whether the banker's approve/deny request queue should render. */
   readonly requestQueue: MenuItemState;
+  /** The banker's "end game" control (task 6.2): settle + close the game. */
+  readonly endGame: MenuItemState;
 }
 
 export interface MenuInput {
@@ -115,6 +117,18 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
   const requestQueue: MenuItemState =
     isBanker && requestCount > 0 ? { show: true, disabled: pending } : HIDDEN;
 
+  // End game: the banker can close a running game, but only between hands. While
+  // a hand is live the item shows disabled with a reason — reflecting (not
+  // duplicating) the server's HandInProgressError, which still enforces it.
+  const endGame: MenuItemState =
+    isBanker && gameInPlay
+      ? {
+          show: true,
+          disabled: pending || handInPlay,
+          reason: handInPlay ? 'Settle the hand first' : undefined,
+        }
+      : HIDDEN;
+
   const hasAny =
     sitOut.show ||
     sitIn.show ||
@@ -122,7 +136,8 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
     requestChips.show ||
     ownRequestPending ||
     startHand.show ||
-    requestQueue.show;
+    requestQueue.show ||
+    endGame.show;
 
   return {
     hasAny,
@@ -133,5 +148,6 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
     ownRequestPending,
     startHand,
     requestQueue,
+    endGame,
   };
 }
