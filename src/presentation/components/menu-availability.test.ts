@@ -117,6 +117,34 @@ describe('deriveMenuItems', () => {
     );
   });
 
+  it('offers end game to the banker only while a game is in play', () => {
+    expect(make({ isBanker: true, gameInPlay: true }).endGame.show).toBe(true);
+    // No running game yet → nothing to end.
+    expect(make({ isBanker: true, gameInPlay: false }).endGame.show).toBe(
+      false,
+    );
+    // Never offered to a non-banker, even mid-game.
+    expect(make({ gameInPlay: true }).endGame.show).toBe(false);
+  });
+
+  it('disables end game during a live hand with a "settle the hand first" reason', () => {
+    const m = make({ isBanker: true, gameInPlay: true, handInPlay: true });
+    expect(m.endGame.show).toBe(true);
+    expect(m.endGame.disabled).toBe(true);
+    expect(m.endGame.reason).toBe('Settle the hand first');
+  });
+
+  it('enables end game between hands (no live hand) with no reason', () => {
+    const m = make({ isBanker: true, gameInPlay: true });
+    expect(m.endGame.disabled).toBe(false);
+    expect(m.endGame.reason).toBeUndefined();
+  });
+
+  it('disables end game while a request is pending', () => {
+    const m = make({ isBanker: true, gameInPlay: true, pending: true });
+    expect(m.endGame.disabled).toBe(true);
+  });
+
   it('keeps the menu present (hasAny) through phase states for a seated banker', () => {
     // awaiting_street: hand in play, no start-hand, but presence still shows.
     expect(make({ isBanker: true, handInPlay: true }).hasAny).toBe(true);

@@ -23,6 +23,8 @@ export interface ActionMenuProps {
   readonly onRequestChips: (amount: number) => void;
   readonly onApproveChips: (id: string) => void;
   readonly onRejectChips: (id: string) => void;
+  /** Banker ends the game (task 6.2); confirmed inline before it fires. */
+  readonly onEndGame: () => void;
 }
 
 const FOCUSABLE =
@@ -51,10 +53,13 @@ export function ActionMenu({
   onRequestChips,
   onApproveChips,
   onRejectChips,
+  onEndGame,
 }: ActionMenuProps): React.ReactElement | null {
   const reduce = useReducedMotionPreference();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState('1000');
+  // Two-step confirm for the (irreversible) end-game action; reset on close.
+  const [confirmingEnd, setConfirmingEnd] = useState(false);
   const panelId = useId();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -64,6 +69,12 @@ export function ActionMenu({
     setOpen(false);
     triggerRef.current?.focus();
   }, []);
+
+  // Drop any half-finished end-game confirmation whenever the panel closes, so
+  // reopening always starts from the single "End game" button.
+  useEffect(() => {
+    if (!open) setConfirmingEnd(false);
+  }, [open]);
 
   // Close on Escape, on outside click, and trap Tab within the panel.
   useEffect(() => {
@@ -280,6 +291,49 @@ export function ActionMenu({
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Banker: end the game. Inline two-step confirm (no modal). */}
+              {model.endGame.show && (
+                <div className="mt-1 flex flex-col gap-1.5">
+                  {confirmingEnd ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => {
+                          onEndGame();
+                          setConfirmingEnd(false);
+                        }}
+                        className="flex-1 rounded-lg border border-vc-gold/60 bg-vc-gold/15 px-4 py-2 text-sm font-semibold text-vc-gold transition hover:bg-vc-gold/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Confirm end game
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingEnd(false)}
+                        className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-vc-ink-muted transition hover:text-vc-ink"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={model.endGame.disabled}
+                      title={model.endGame.reason}
+                      onClick={() => setConfirmingEnd(true)}
+                      className="rounded-lg border border-vc-gold/40 bg-vc-gold/10 px-4 py-2 text-sm font-medium text-vc-gold transition hover:bg-vc-gold/20 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      End game
+                    </button>
+                  )}
+                  {model.endGame.reason !== undefined && (
+                    <p className="text-xs text-vc-ink-faint">
+                      {model.endGame.reason}
+                    </p>
+                  )}
                 </div>
               )}
 
