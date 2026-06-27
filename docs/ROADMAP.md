@@ -75,7 +75,7 @@
 - [x] **4.3** پنل اکشن بازیکن (fold/check/call/bet/raise/all-in) با مقادیر معتبر. _(شامل دکمه‌ی موقت «Start hand» بانکدار و buy-in پیش‌فرض موقت `DEFAULT_BUY_IN`.)_
 - [x] **4.4** نمایش pot، stack ها، dealer button، نوبت فعال. _(عمدتاً حین 4.2/4.3 پیاده شد؛ countdown تایمر در 4.9 بررسی می‌شود.)_
 - [x] **4.5** Zustand store + اتصال به socket events. _(پایه حین 4.1–4.3 پیاده شد: `connection-store` + socket wiring.)_
-- [~] **4.6** نمای بانکدار (buy-in control, end game, declare winner).
+- [x] **4.6** نمای بانکدار (buy-in control, end game, declare winner).
   - **بخش ۱ (انجام‌شده، merged):** declare winner + settlement — بانکدار برنده‌ی هر pot را اعلام می‌کند، chips جابه‌جا و stack نهایی در DB ذخیره می‌شود؛ دست بعدی با chips درست شروع می‌شود (`SettleHand` use-case + `updateMemberChips`).
   - **بخش ۲ (باقی‌مانده):** کنترل buy-in/rebuy واقعیِ بانکدار → به تسکِ **4.15
     (Chip requests / banker approval)** منتقل شد (جایگزینِ `DEFAULT_BUY_IN`). +
@@ -310,7 +310,7 @@ funding.ts`) به‌صورت موقت chips می‌دهد. باید با جری�
 ## Phase 6 — Banker, Settlement & History
 
 - [ ] **6.1** هر دو mode تعیین برنده (banker / showdown-confirm).
-- [ ] **6.2** صفحه‌ی تسویه‌ی پایان بازی + گزارش net.
+- [x] **6.2** صفحه‌ی تسویه‌ی پایان بازی + گزارش net.
 - [ ] **6.3** صفحه‌ی تاریخچه‌ی بازی‌ها (per user).
 - [ ] **6.4** Straddle (forced bet اختیاری) — **تسکِ جدا و بعدی، وابسته به 4.10**.
       بعد از پایه‌ی blindها (4.10)، امکانِ straddleِ اختیاری: بازیکنِ چپِ BB می‌تواند
