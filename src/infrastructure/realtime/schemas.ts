@@ -101,6 +101,25 @@ export const chipsRejectSchema = z
   .object({ roomId: z.string().min(1), requestId: z.string().min(1) })
   .strict();
 
+// Banker directly adjusts a member's chips (task 6.7). The target is identified
+// by seat (the public projection never exposes raw userIds); the requester is
+// the authenticated session user and banker-only is enforced in the use-case.
+// amount is a signed, nonzero whole number of chips (positive = buy-in, negative
+// = correction/cash-out), bounded so a typo can't move an absurd amount.
+export const adjustChipsSchema = z
+  .object({
+    roomId: z.string().min(1),
+    seat: z.number().int().nonnegative(),
+    amount: z
+      .number()
+      .int()
+      .refine((n) => n !== 0, { message: 'amount must be non-zero' })
+      .refine((n) => Math.abs(n) <= 1_000_000, {
+        message: 'amount out of range',
+      }),
+  })
+  .strict();
+
 export const playerActSchema = z
   .object({
     roomId: z.string().min(1),
@@ -137,6 +156,7 @@ export type TurnRequestTimePayload = z.infer<typeof turnRequestTimeSchema>;
 export type ChipsRequestPayload = z.infer<typeof chipsRequestSchema>;
 export type ChipsApprovePayload = z.infer<typeof chipsApproveSchema>;
 export type ChipsRejectPayload = z.infer<typeof chipsRejectSchema>;
+export type AdjustChipsPayload = z.infer<typeof adjustChipsSchema>;
 export type HandSettlePayload = z.infer<typeof handSettleSchema>;
 export type EndGamePayload = z.infer<typeof endGameSchema>;
 export type PlayerActPayload = z.infer<typeof playerActSchema>;

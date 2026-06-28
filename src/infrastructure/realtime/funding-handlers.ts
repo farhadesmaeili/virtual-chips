@@ -1,5 +1,6 @@
 import type { ChipRequest } from '@/application/ports';
 import type {
+  AdjustMemberChips,
   ApproveChipRequest,
   RejectChipRequest,
   RequestChips,
@@ -7,6 +8,7 @@ import type {
 import type { RateLimiter } from './rate-limiter';
 import { toPublicChipRequest, toPublicRoomState } from './room-projection';
 import {
+  adjustChipsSchema,
   chipsApproveSchema,
   chipsRejectSchema,
   chipsRequestSchema,
@@ -18,6 +20,7 @@ export interface FundingHandlerDeps {
   readonly requestChips: RequestChips;
   readonly approveChipRequest: ApproveChipRequest;
   readonly rejectChipRequest: RejectChipRequest;
+  readonly adjustMemberChips: AdjustMemberChips;
   /** Anti-spam limiter for player-initiated chip requests. */
   readonly requestLimiter: RateLimiter;
 }
@@ -87,6 +90,37 @@ export function registerFundingHandlers(
           toPublicRoomState(snapshot),
         );
         broadcastRequests(io, parsed.data.roomId, requests);
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  // Banker directly adjusts a member's chips (task 6.7). Mirrors chips:approve:
+  // changes a member's chips, then broadcasts the fresh room:state. Banker-only
+  // and the between-hands / floor guards live in the use-case.
+  socket.on('banker:adjustChips', (payload: unknown) => {
+    void (async () => {
+      const parsed = adjustChipsSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(
+          socket,
+          'INVALID_PAYLOAD',
+          'Invalid banker:adjustChips payload',
+        );
+        return;
+      }
+      try {
+        const { snapshot } = await deps.adjustMemberChips.execute({
+          roomId: parsed.data.roomId,
+          requesterId: userId,
+          targetSeat: parsed.data.seat,
+          amount: parsed.data.amount,
+        });
+        io.to(parsed.data.roomId).emit(
+          'room:state',
+          toPublicRoomState(snapshot),
+        );
       } catch (error) {
         handleError(socket, error);
       }

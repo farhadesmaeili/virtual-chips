@@ -1,23 +1,56 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import type {
+  HandStore,
   RoomMemberRecord,
   RoomRepository,
   UserRoomMembership,
 } from '@/application/ports';
-import { createRoom, type Room } from '@/domain/entities';
+import {
+  createHand,
+  createPlayerInHand,
+  createRoom,
+  type Hand,
+  type Room,
+} from '@/domain/entities';
 import {
   ChipRequestNotFoundError,
   ChipRequestPendingError,
+  HandInProgressError,
+  InsufficientChipsError,
   InvalidChipsAmountError,
   NotBankerError,
   NotRoomMemberError,
 } from '@/domain/errors';
 import { InMemoryChipRequestStore } from '@/infrastructure/persistence/in-memory-chip-request-store';
+import { AdjustMemberChips } from './adjust-member-chips';
 import {
   ApproveChipRequest,
   RejectChipRequest,
   RequestChips,
 } from './chip-requests';
+
+/** Minimal HandStore for the between-hands gate; `hand` is settable per test. */
+class FakeHandStore implements HandStore {
+  hand: Hand | null = null;
+  async get(): Promise<Hand | null> {
+    return this.hand;
+  }
+  async save(): Promise<void> {}
+  async clear(): Promise<void> {}
+}
+
+/** A live (betting) hand for the in-progress gate test. */
+function liveHand(): Hand {
+  return createHand({
+    id: 'h1',
+    roomId: 'r1',
+    buttonSeat: 0,
+    players: [
+      createPlayerInHand({ seat: 0, userId: 'banker', stack: 100 }),
+      createPlayerInHand({ seat: 1, userId: 'bob', stack: 100 }),
+    ],
+  });
+}
 
 class FakeRoomRepository implements RoomRepository {
   private readonly rooms = new Map<string, Room>();
@@ -217,5 +250,164 @@ describe('RejectChipRequest', () => {
         requestId: list[0]!.id,
       }),
     ).rejects.toThrow(NotBankerError);
+  });
+});
+
+describe('AdjustMemberChips', () => {
+  let hands: FakeHandStore;
+
+  // A funded two-handed table; banker seat 0, bob seat 1.
+  const funded = (
+    over: Partial<{ bobChips: number; bobBuyIn: number }> = {},
+  ): RoomMemberRecord[] => [
+    {
+      userId: 'banker',
+      username: 'banker',
+      seat: 0,
+      chips: 1000,
+      buyInTotal: 1000,
+      sittingOut: false,
+    },
+    {
+      userId: 'bob',
+      username: 'bob',
+      seat: 1,
+      chips: over.bobChips ?? 500,
+      buyInTotal: over.bobBuyIn ?? 500,
+      sittingOut: false,
+    },
+  ];
+
+  const bob = async (): Promise<RoomMemberRecord> => {
+    const members = await rooms.listMembers('r1');
+    return members.find((m) => m.seat === 1)!;
+  };
+
+  beforeEach(() => {
+    hands = new FakeHandStore();
+  });
+
+  it('rejects a non-banker', async () => {
+    rooms.seed(room, funded());
+    await expect(
+      new AdjustMemberChips(rooms, hands).execute({
+        roomId: 'r1',
+        requesterId: 'bob',
+        targetSeat: 1,
+        amount: 100,
+      }),
+    ).rejects.toThrow(NotBankerError);
+  });
+
+  it('increases chips and buyInTotal in lockstep (net unchanged)', async () => {
+    rooms.seed(room, funded());
+    await new AdjustMemberChips(rooms, hands).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+      targetSeat: 1,
+      amount: 200,
+    });
+    const m = await bob();
+    expect(m.chips).toBe(700);
+    expect(m.buyInTotal).toBe(700);
+    expect(m.chips - m.buyInTotal).toBe(0); // net preserved
+  });
+
+  it('decreases chips and buyInTotal in lockstep (net unchanged)', async () => {
+    rooms.seed(room, funded());
+    await new AdjustMemberChips(rooms, hands).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+      targetSeat: 1,
+      amount: -200,
+    });
+    const m = await bob();
+    expect(m.chips).toBe(300);
+    expect(m.buyInTotal).toBe(300);
+    expect(m.chips - m.buyInTotal).toBe(0);
+  });
+
+  it('rejects a decrease that would drive chips below zero', async () => {
+    // chips 100 < buyInTotal 1000, so only the chips floor can trip first.
+    rooms.seed(room, funded({ bobChips: 100, bobBuyIn: 1000 }));
+    await expect(
+      new AdjustMemberChips(rooms, hands).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 1,
+        amount: -500,
+      }),
+    ).rejects.toThrow(InsufficientChipsError);
+  });
+
+  it('rejects a decrease that would drive buyInTotal below zero', async () => {
+    // chips 1000 passes the first floor; buyInTotal 100 trips the second.
+    rooms.seed(room, funded({ bobChips: 1000, bobBuyIn: 100 }));
+    await expect(
+      new AdjustMemberChips(rooms, hands).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 1,
+        amount: -500,
+      }),
+    ).rejects.toThrow(InsufficientChipsError);
+  });
+
+  it('rejects a zero or non-integer amount', async () => {
+    rooms.seed(room, funded());
+    const adjust = new AdjustMemberChips(rooms, hands);
+    await expect(
+      adjust.execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 1,
+        amount: 0,
+      }),
+    ).rejects.toThrow(InvalidChipsAmountError);
+    await expect(
+      adjust.execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 1,
+        amount: 1.5,
+      }),
+    ).rejects.toThrow(InvalidChipsAmountError);
+  });
+
+  it('rejects an unknown target seat', async () => {
+    rooms.seed(room, funded());
+    await expect(
+      new AdjustMemberChips(rooms, hands).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 99,
+        amount: 100,
+      }),
+    ).rejects.toThrow(NotRoomMemberError);
+  });
+
+  it('rejects an adjustment while a hand is in progress, allows it once settled', async () => {
+    rooms.seed(room, funded());
+    const adjust = new AdjustMemberChips(rooms, hands);
+
+    hands.hand = liveHand(); // status 'betting' → blocked
+    await expect(
+      adjust.execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 1,
+        amount: 100,
+      }),
+    ).rejects.toThrow(HandInProgressError);
+
+    // A settled hand is not "in progress" — the adjustment goes through.
+    hands.hand = { ...liveHand(), status: 'settled' };
+    await adjust.execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+      targetSeat: 1,
+      amount: 100,
+    });
+    expect((await bob()).chips).toBe(600);
   });
 });
