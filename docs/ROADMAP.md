@@ -328,7 +328,7 @@ Goal: high-level animations with Framer Motion (`docs/ANIMATIONS.md`).
   - **Work:** revert the live hand to the pre-deal state of the same hand (only this hand, not the whole
     game); banker-only; a typed guard if no hand is in progress. The smallest and without
     dependency. **High priority.**
-- [ ] **6.7** Banker direct chip adjustment — the banker can at any time decrease/increase any
+- [x] **6.7** Banker direct chip adjustment — the banker can at any time decrease/increase any
       member's chips. The sibling of 4.15 (which was player-requested + banker-approved)
       but here it is banker-initiated.
   - **Work:** reuse the existing funding plumbing (addMemberFunding /
