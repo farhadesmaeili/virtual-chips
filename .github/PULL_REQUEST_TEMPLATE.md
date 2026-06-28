@@ -1,26 +1,26 @@
-## خلاصه
+## Summary
 
-<!-- این PR چه کاری انجام می‌دهد؟ کدام تسک از ROADMAP؟ -->
+<!-- What does this PR do? Which ROADMAP task? -->
 
-مرتبط با تسک: `Phase X.Y`
+Related task: `Phase X.Y`
 Closes #
 
-## نوع تغییر
+## Type of change
 
 - [ ] feat
 - [ ] fix
 - [ ] refactor
 - [ ] chore / docs / test
 
-## چک‌لیست
+## Checklist
 
-- [ ] روی یک branch با الگوی `feature/*` کار شده (نه مستقیم روی `develop`/`main`)
-- [ ] commit ها Conventional هستند
-- [ ] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build` لوکال سبز است
-- [ ] منطق جدید unit test دارد
-- [ ] چک‌لیست امنیتی `CLAUDE.md` رعایت شده (authz, validation, server-authoritative)
-- [ ] اگر UI تغییر کرده، انیمیشن‌ها و `prefers-reduced-motion` بررسی شده
+- [ ] Worked on a branch matching the `feature/*` pattern (not directly on `develop`/`main`)
+- [ ] Commits are Conventional
+- [ ] `pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build` is green locally
+- [ ] New logic has unit tests
+- [ ] The `CLAUDE.md` security checklist is followed (authz, validation, server-authoritative)
+- [ ] If the UI changed, animations and `prefers-reduced-motion` have been checked
 
-## نکات بازبینی
+## Review notes
 
-<!-- چیزی که reviewer باید خاص بهش دقت کند -->
+<!-- Anything the reviewer should pay special attention to -->

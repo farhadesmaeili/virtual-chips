@@ -1,19 +1,19 @@
 ---
 name: Bug report
-about: گزارش یک باگ
+about: Report a bug
 labels: bug
 ---
 
-## توضیح باگ
+## Bug description
 
-## مراحل بازتولید
+## Steps to reproduce
 
 1.
 2.
 
-## رفتار مورد انتظار
+## Expected behavior
 
-## محیط
+## Environment
 
-- مرورگر/دستگاه:
+- Browser/device:
 - branch/commit:

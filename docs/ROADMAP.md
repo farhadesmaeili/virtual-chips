@@ -1,420 +1,418 @@
-# docs/ROADMAP.md — فازبندی و تسک‌بندی
+# docs/ROADMAP.md — Phasing and task breakdown
 
-> ترتیب فازها را رعایت کن. **قبل از شروع هر تسک، به کاربر اعلام کن کدام تسک را برمی‌داری** و یک feature branch بساز.
-> الگوی branch: `feature/<phase>.<task>-<slug>` — مثال: `feature/1.2-side-pot-calc`.
+> Follow the order of the phases. **Before starting each task, announce to the user which task you are picking up** and create a feature branch.
+> Branch pattern: `feature/<phase>.<task>-<slug>` — example: `feature/1.2-side-pot-calc`.
 
-وضعیت‌ها: `[ ]` انجام‌نشده · `[~]` در حال انجام · `[x]` انجام‌شده.
+Statuses: `[ ]` not done · `[~]` in progress · `[x]` done.
 
 ---
 
 ## Phase 0 — Foundation & Tooling
 
-هدف: زیرساخت پروژه و GitHub آماده شود، CI سبز شود.
+Goal: get the project infrastructure and GitHub ready, get CI green.
 
-- [x] **0.1** init پروژه‌ی Next.js + TypeScript strict + Tailwind.
-- [x] **0.2** نصب و پیکربندی ESLint + Prettier + lint-staged.
-- [x] **0.3** Husky hooks: `pre-commit` (lint-staged + branch guard) و `commit-msg` (commitlint).
-- [x] **0.4** ساختار پوشه‌های Clean Architecture (`src/domain|application|infrastructure|presentation`).
-- [x] **0.5** پیکربندی Vitest + اولین تست دود (smoke test). _(زودتر، حین تسک 0.1 انجام شد تا CI سبز شود.)_
-- [x] **0.6** بررسی و تکمیل `.github/` (CI, templates, CODEOWNERS) و سبز شدن workflow.
+- [x] **0.1** init the Next.js project + TypeScript strict + Tailwind.
+- [x] **0.2** install and configure ESLint + Prettier + lint-staged.
+- [x] **0.3** Husky hooks: `pre-commit` (lint-staged + branch guard) and `commit-msg` (commitlint).
+- [x] **0.4** Clean Architecture folder structure (`src/domain|application|infrastructure|presentation`).
+- [x] **0.5** configure Vitest + the first smoke test. _(Done earlier, during task 0.1, to get CI green.)_
+- [x] **0.6** review and complete `.github/` (CI, templates, CODEOWNERS) and get the workflow green.
 - [x] **0.7** `.env.example`, `README` setup section.
 
-**Definition of Done:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build` لوکال و در CI سبز.
+**Definition of Done:** `pnpm lint && pnpm typecheck && pnpm test && pnpm build` green locally and in CI.
 
 ---
 
 ## Phase 1 — Domain: Betting Engine (pure)
 
-هدف: موتور بت طبق `docs/BETTING-ENGINE.md`، بدون هیچ I/O.
+Goal: the betting engine per `docs/BETTING-ENGINE.md`, with no I/O.
 
-- [x] **1.1** Entities و Value Objects: `Room`, `PlayerInHand`, `Hand`, `Pot`, `Chips`.
-- [x] **1.2** الگوریتم **Side Pot** + unit test های جامع (چند all-in، folded ها).
-- [x] **1.3** validation اکشن‌ها (`FOLD/CHECK/CALL/BET/RAISE/ALL_IN`) + min-raise.
-- [x] **1.4** state machine پایان street و تعیین نوبت بعدی.
-- [x] **1.5** منطق تسویه (net, zero-sum) و تعیین برنده (uncontested + هر دو mode).
-- [x] **1.6** خطاهای دامنه‌ی typed.
+- [x] **1.1** Entities and Value Objects: `Room`, `PlayerInHand`, `Hand`, `Pot`, `Chips`.
+- [x] **1.2** the **Side Pot** algorithm + comprehensive unit tests (multiple all-ins, folded players).
+- [x] **1.3** action validation (`FOLD/CHECK/CALL/BET/RAISE/ALL_IN`) + min-raise.
+- [x] **1.4** the state machine for end of street and determining the next turn.
+- [x] **1.5** settlement logic (net, zero-sum) and determining the winner (uncontested + both modes).
+- [x] **1.6** typed domain errors.
 
-**DoD:** پوشش تست بالا روی engine؛ همه‌ی مثال‌های مستند سبز.
+**DoD:** high test coverage on the engine; all documented examples green.
 
 ---
 
 ## Phase 2 — Persistence & Auth
 
-هدف: دیتابیس و احراز هویت.
+Goal: database and authentication.
 
 - [x] **2.1** Prisma schema: `User`, `Room`, `RoomMember`, `Game`, `Hand`, `ActionLog`, `Settlement`.
-- [x] **2.2** migration اولیه + seed توسعه.
-- [x] **2.3** Auth.js (credentials + در صورت تمایل OAuth) + session.
-- [x] **2.4** پیاده‌سازی repository ها پشت port های `application` (Dependency Inversion).
+- [x] **2.2** initial migration + development seed.
+- [x] **2.3** Auth.js (credentials + OAuth if desired) + session.
+- [x] **2.4** implement the repositories behind the `application` ports (Dependency Inversion).
 
-**DoD:** ساخت کاربر، login، و persist یک room تستی.
+**DoD:** create a user, log in, and persist a test room.
 
 ---
 
 ## Phase 3 — Real-time Gateway
 
-هدف: Socket.io سرور-مرجع طبق `docs/REALTIME-EVENTS.md`.
+Goal: a server-authoritative Socket.io per `docs/REALTIME-EVENTS.md`.
 
-- [x] **3.1** custom server (Next + Socket.io) + auth بر روی connection.
-- [x] **3.2** lifecycle اتاق: create/join/leave + room state snapshot.
-- [x] **3.3** هندلر اکشن بازیکن → فراخوانی use-case → broadcast state.
-- [x] **3.4** timer نوبت (deadline-based) + auto-action سرور.
-- [x] **3.5** reconnection + resync state.
-- [x] **3.6** Zod validation روی همه‌ی payload ها + rate limiting.
+- [x] **3.1** custom server (Next + Socket.io) + auth on connection.
+- [x] **3.2** room lifecycle: create/join/leave + room state snapshot.
+- [x] **3.3** player action handler → call the use-case → broadcast state.
+- [x] **3.4** turn timer (deadline-based) + server auto-action.
+- [x] **3.5** reconnection + state resync.
+- [x] **3.6** Zod validation on all payloads + rate limiting.
 
-**DoD:** دو client هم‌زمان، اکشن‌ها لحظه‌ای sync می‌شوند؛ قطع/وصل بدون از دست رفتن state.
+**DoD:** two simultaneous clients, actions sync instantly; disconnect/reconnect without losing state.
 
 ---
 
 ## Phase 4 — Frontend (Table UI)
 
-هدف: میز، صندلی‌ها، کنترل اکشن‌ها، اتصال real-time.
+Goal: the table, the seats, action controls, real-time connection.
 
-- [x] **4.1** صفحه‌ی Lobby (ساخت/پیوستن به room).
-- [x] **4.2** کامپوننت میز + چیدمان صندلی‌ها (responsive).
-- [x] **4.3** پنل اکشن بازیکن (fold/check/call/bet/raise/all-in) با مقادیر معتبر. _(شامل دکمه‌ی موقت «Start hand» بانکدار و buy-in پیش‌فرض موقت `DEFAULT_BUY_IN`.)_
-- [x] **4.4** نمایش pot، stack ها، dealer button، نوبت فعال. _(عمدتاً حین 4.2/4.3 پیاده شد؛ countdown تایمر در 4.9 بررسی می‌شود.)_
-- [x] **4.5** Zustand store + اتصال به socket events. _(پایه حین 4.1–4.3 پیاده شد: `connection-store` + socket wiring.)_
-- [x] **4.6** نمای بانکدار (buy-in control, end game, declare winner).
-  - **بخش ۱ (انجام‌شده، merged):** declare winner + settlement — بانکدار برنده‌ی هر pot را اعلام می‌کند، chips جابه‌جا و stack نهایی در DB ذخیره می‌شود؛ دست بعدی با chips درست شروع می‌شود (`SettleHand` use-case + `updateMemberChips`).
-  - **بخش ۲ (باقی‌مانده):** کنترل buy-in/rebuy واقعیِ بانکدار → به تسکِ **4.15
-    (Chip requests / banker approval)** منتقل شد (جایگزینِ `DEFAULT_BUY_IN`). +
-    end game و گزارشِ net (`computeNetSettlement`) که اینجا باقی می‌ماند.
+- [x] **4.1** Lobby page (create/join a room).
+- [x] **4.2** table component + seat layout (responsive).
+- [x] **4.3** player action panel (fold/check/call/bet/raise/all-in) with valid values. _(Includes the banker's temporary "Start hand" button and the temporary default buy-in `DEFAULT_BUY_IN`.)_
+- [x] **4.4** display of the pot, stacks, dealer button, active turn. _(Mostly implemented during 4.2/4.3; the countdown timer is addressed in 4.9.)_
+- [x] **4.5** Zustand store + connection to socket events. _(The base was implemented during 4.1–4.3: `connection-store` + socket wiring.)_
+- [x] **4.6** banker view (buy-in control, end game, declare winner).
+  - **Part 1 (done, merged):** declare winner + settlement — the banker declares the winner of each pot, chips are moved and the final stack is stored in the DB; the next hand starts with correct chips (`SettleHand` use-case + `updateMemberChips`).
+  - **Part 2 (remaining):** the banker's real buy-in/rebuy control → moved to task **4.15
+    (Chip requests / banker approval)** (replacing `DEFAULT_BUY_IN`). +
+    end game and the net report (`computeNetSettlement`), which stays here.
 
-**DoD:** یک بازی کامل از create تا settle قابل انجام در UI.
+**DoD:** a full game from create to settle can be played in the UI.
 
 ---
 
 ## Phase 4 — Manual Game Flow (banker-driven)
 
-> ادامه‌ی Phase 4 (تسک‌های 4.7–4.15). این بخش از تست دستیِ بازی بیرون آمد: چون
-> **خود بازی دستی است** (بدون hand evaluation، کارت‌های فیزیکی)، pace را انسان
-> کنترل می‌کند نه موتور. شامل پیشروی دستی، چرخش دست، blindها، نمایش نوبت/تایمر،
-> time bank، حضور/خروج بازیکن، و درخواست/تأییدِ chips.
+> A continuation of Phase 4 (tasks 4.7–4.15). This section came out of manual playtesting: because
+> **the game itself is manual** (no hand evaluation, physical cards), the pace is controlled by a human, not the engine.
+> It includes manual progression, hand rotation, blinds, turn/timer display,
+> time bank, player presence/leaving, and chip request/approval.
 
-- [x] **4.7** پیشروی دستی + تأییدِ هر مرحله توسط بانکدار + نمایشِ نامِ مرحله.
-      بازی **مرحله‌به‌مرحله** پیش می‌رود و بانکدار باید **هر مرحله را صریح شروع کند**،
-      نه فقط «street بعدی». جریان: **start hand → start flop → start turn → start
-      river**. بعد از کامل‌شدنِ بتینگِ هر مرحله، بازی **متوقف** می‌ماند تا بانکدار
-      مرحله‌ی بعد را تأیید کند؛ **پیشروی خودکار نداریم** و زمانِ هر مرحله نامحدود است
-      (چون انسان کارت‌ها را فیزیکی pace می‌کند).
-  - **نامِ مرحله روی میز:** نامِ مرحله‌ی فعلی (**preflop / flop / turn / river**)
-    باید همیشه روی میز دیده شود (نه فقط شماره‌ی `street`).
-  - **تداخل با موتور فعلی:** در `application/use-cases/player-act.ts`، بعد از
-    `applyAction` تابع `advanceHand` (`domain/engine/street.ts`) صدا زده می‌شود که
-    هنگام کامل‌شدن street **خودکار** `startNextStreet` را اجرا و actor بعدی را
-    می‌گذارد. این رفتار باید بشکند.
-  - **تغییرات لازم:**
-    - `domain/entities` (HandStatus): افزودن وضعیت `'awaiting_street'` (بتینگِ این
-      street تمام شد و street های بعدی مانده) — جدا از `'awaiting_showdown'` (همه‌ی
-      street ها تمام یا uncontested → settle).
-    - `domain/engine/street.ts`: تفکیک `advanceHand` به‌طوری‌که هنگام **کامل‌شدنِ
-      street با وجود street بعدی** به `'awaiting_street'` برود و **`startNextStreet`
-      را صدا نزند**. `startNextStreet` (pure، موجود) به use-case جدید منتقل می‌شود.
-      منطق uncontested → `awaiting_showdown` و pass-to-next-seat بدون تغییر می‌ماند.
-    - حالت all-in: وقتی هیچ‌کس نمی‌تواند اکت کند (همه all-in)، باز هم بانکدار باید
-      street-به-street تا river جلو ببرد (برای pace کردن run-out فیزیکی)، فقط بدون
-      بتینگ. پس `'awaiting_street'` این حالت را هم پوشش می‌دهد (حلقه‌ی skip فعلی در
-      `advanceHand` حذف/جایگزین می‌شود).
-    - `application/use-cases`: use-case جدید `AdvanceStreet` (banker-only) — چک
-      می‌کند requester بانکدار است و hand در `'awaiting_street'` است، سپس
-      `startNextStreet` را اعمال + save می‌کند.
-    - `infrastructure/realtime`: event + handler جدید (مثلاً `hand:advance-street`
-      → broadcast `hand:state` + `turn:changed`)، schema با Zod؛ turn-timer در
-      `'awaiting_street'` نباید بشمارد (هیچ نوبتی pending نیست).
-    - `presentation`: افزودن `'awaiting_street'` به `PublicHandState.status` کلاینت؛
-      کنترل بانکدارِ «Deal flop / turn / river» (لیبل بر اساس `street`)؛ نمایش حالت
-      توقف به بقیه («Waiting for the banker to deal»).
-  - **DoD:** بعد از پایان بتینگِ هر street بازی منتظر می‌ماند؛ فقط بانکدار street
-    بعدی را شروع می‌کند؛ unit test برای گذارها (street کامل → `awaiting_street` →
-    street بعدی) و authorization؛ هیچ پیشرویِ خودکاری رخ نمی‌دهد.
+- [x] **4.7** manual progression + banker confirmation of each step + display of the step name.
+      The game advances **step by step**, and the banker must **explicitly start each step**,
+      not just "next street". Flow: **start hand → start flop → start turn → start
+      river**. After the betting of each step is complete, the game **stays paused** until the banker confirms
+      the next step; **there is no automatic progression** and the time for each step is unlimited
+      (because the human paces the cards physically).
+  - **Step name on the table:** the current step's name (**preflop / flop / turn / river**)
+    must always be visible on the table (not just the `street` number).
+  - **Conflict with the current engine:** in `application/use-cases/player-act.ts`, after
+    `applyAction` the function `advanceHand` (`domain/engine/street.ts`) is called, which
+    on street completion **automatically** runs `startNextStreet` and sets the next actor.
+    This behavior must be broken.
+  - **Required changes:**
+    - `domain/entities` (HandStatus): add the status `'awaiting_street'` (the betting of this
+      street is done and later streets remain) — separate from `'awaiting_showdown'` (all
+      streets done or uncontested → settle).
+    - `domain/engine/street.ts`: split `advanceHand` so that on **street completion
+      with a next street existing** it goes to `'awaiting_street'` and **does not call `startNextStreet`**.
+      `startNextStreet` (pure, existing) is moved to a new use-case.
+      The uncontested → `awaiting_showdown` and pass-to-next-seat logic stays unchanged.
+    - all-in case: when no one can act (everyone all-in), the banker must still advance
+      street-by-street to the river (to pace the physical run-out), just without
+      betting. So `'awaiting_street'` covers this case too (the current skip loop in
+      `advanceHand` is removed/replaced).
+    - `application/use-cases`: a new use-case `AdvanceStreet` (banker-only) — it checks
+      the requester is the banker and the hand is in `'awaiting_street'`, then
+      applies `startNextStreet` + saves.
+    - `infrastructure/realtime`: a new event + handler (e.g. `hand:advance-street`
+      → broadcast `hand:state` + `turn:changed`), schema with Zod; the turn-timer in
+      `'awaiting_street'` must not count (no turn is pending).
+    - `presentation`: add `'awaiting_street'` to the client's `PublicHandState.status`;
+      the banker control for "Deal flop / turn / river" (label based on `street`); display the paused
+      state to the others ("Waiting for the banker to deal").
+  - **DoD:** after the betting of each street ends, the game waits; only the banker starts the next street;
+    unit test for the transitions (street complete → `awaiting_street` →
+    next street) and authorization; no automatic progression happens.
 
-- [x] **4.8** چرخه‌ی دست توسط بانکدار: شروع دست بعدی با چرخش dealer button. _(merged)_
-      `firstButtonSeat`/`nextButtonSeat` (pure، با تست)؛ button دستِ اول کمترین
-      صندلی و سپس clockwise با wrap می‌چرخد؛ دکمه‌ی بانکدار بعد از settle
-      «Start next hand» می‌شود.
+- [x] **4.8** hand cycle by the banker: start the next hand with the dealer button rotating. _(merged)_
+      `firstButtonSeat`/`nextButtonSeat` (pure, with tests); the button for the first hand is the lowest
+      seat and then rotates clockwise with wrap; the banker's button after settle
+      becomes "Start next hand".
 
-- [x] **4.9** نمایش تایمر نوبت — شمارش معکوسِ زمانِ باقیمانده‌ی بازیکن فعال.
-      بازیکنِ فعال باید به‌وضوح ببیند چقدر زمان برای اکت دارد. حلقه‌ی countdown دور
-      آواتار (`presentation/components/seat.tsx`) ساخته شده ولی در بازی واقعی زمان
-      باقیمانده را نشان نمی‌دهد.
-  - **تشخیص:** ریشه‌ی نادیدنیِ اولیه همان off-by-one صندلی‌ها بود (در 4.3 رفع شد).
-    حلقه فعلاً **استاتیک** است؛ هیچ شمارشی از `actionDeadline` (مطلق، از سرور 3.4 و
-    رویداد `turn:changed`) توسط کلاینت مصرف نمی‌شود.
-  - **کار:** یک شمارنده‌ی قابل‌مشاهده که از `actionDeadline` رانده شود (حلقه‌ای که
-    پر/خالی می‌شود **یا** ثانیه‌شمار عددی)؛ مبتنی بر زمانِ مطلق نه تیکِ per-second در
-    state. انیمیشنِ نرمِ حلقه می‌تواند به 5.2 موکول شود، ولی **زمانِ باقیمانده باید
-    در 4.9 دیده شود**. (cross-ref: سرور 3.4، انیمیشن 5.2.)
-  - **DoD:** نوبت فعال در بازی واقعی شمارشِ زمانِ باقیمانده دارد؛ سازگار با
+- [x] **4.9** turn timer display — a countdown of the active player's remaining time.
+      The active player must clearly see how much time they have to act. The countdown ring around
+      the avatar (`presentation/components/seat.tsx`) is built but in a real game does not show the remaining
+      time.
+  - **Diagnosis:** the original invisibility root was the same seat off-by-one (fixed in 4.3).
+    The ring is currently **static**; no countdown from `actionDeadline` (absolute, from the server in 3.4 and
+    the `turn:changed` event) is consumed by the client.
+  - **Work:** a visible counter driven by `actionDeadline` (a ring that
+    fills/empties **or** a numeric seconds counter); based on absolute time, not a per-second tick in
+    state. The smooth ring animation can be deferred to 5.2, but **the remaining time must
+    be visible in 4.9**. (cross-ref: server 3.4, animation 5.2.)
+  - **DoD:** the active turn in a real game has a remaining-time countdown; compatible with
     `prefers-reduced-motion`.
 
-- [x] **4.10** Blinds — تعیین SB/BB توسط بانکدار هنگام ساخت میز + پُست‌کردنِ blindها در شروع دست.
-  - **وضعیت فعلی (گزارش):** blindها **واقعاً پُست نمی‌شوند**. در
-    `application/use-cases/start-hand.ts`، مقدار `room.settings.bigBlind` فقط
-    به‌عنوان `minBet`/`lastRaiseSize` (حداقلِ افزایشِ bet/raise) استفاده می‌شود و
-    کامنتش صریحاً می‌گوید «No blinds are posted yet». یعنی دست با `currentBet=0` و
-    pot خالی شروع می‌شود و هیچ‌کس مجبور به گذاشتنِ SB/BB نیست. مقادیر در schema هست
-    (`smallBlind`/`bigBlind`) با پیش‌فرضِ دامنه SB=1/BB=2.
-    **پلامبینگِ ست‌کردن توسط بانکدار از قبل وجود دارد** (`createRoomSchema` فیلدهای
-    اختیاری `settings.smallBlind/bigBlind` را می‌پذیرد و handler + `CreateRoom` آن
-    را به دامنه پاس می‌دهند) — فقط **فرمِ ساختِ میز در لابی هیچ ورودی‌ای ندارد**، پس
-    عملاً همیشه پیش‌فرض‌ها اعمال می‌شوند.
-  - **کار:**
-    - **لابی (`presentation`):** افزودن ورودی‌های عددیِ Small blind / Big blind به
-      فرمِ ساختِ میز، با اعتبارسنجی (`BB > SB > 0`، اعدادِ صحیح) و پیش‌فرضِ معقول؛
-      ارسال در `settings` رویدادِ `room:create` (پلامبینگ موجود است).
-    - **`StartHand`:** پُست‌کردنِ blindهای اجباری در شروع دست — SB توسطِ بازیکنِ
-      چپِ button و BB توسطِ بعدی؛ `currentBet=BB`، `lastRaiseSize=BB`، commit‌کردنِ
-      chips و کاهشِ stack (با مدیریتِ all-in برای stackِ کوتاه)؛ اولین actor =
-      چپِ BB. حالتِ heads-up (button همان SB را می‌گذارد) را جدا مدیریت کن.
-    - **نمایش/تسویه:** نمایشِ SB/BB روی میز (readout)؛ chipهای blind از طریقِ
-      `committedTotal` به‌صورت خودکار در settlement لحاظ می‌شوند.
-  - **DoD:** بانکدار هنگامِ ساخت، SB/BB را تعیین می‌کند؛ در شروعِ هر دست blindها
-    پُست می‌شوند (pot و currentBet درست)؛ unit test برای پُستِ blind، heads-up و
-    all-inِ stackِ کوتاه.
-  - **پی‌گیری‌های UIِ پس از merge (post-merge follow-ups to 4.10):** بعد از mergeِ
-    4.10 سه فیکسِ UI لازم شد (برای صداقتِ تاریخچه اینجا ثبت می‌شوند):
-    - **جای‌گذاریِ readout بلایندها:** readout که در 4.10 پایین‌وسطِ felt بود روی
-      آواتارِ heroِ صندلیِ ۰ می‌افتاد → به tote-boardِ مرکزی منتقل شد. فیکسِ اولیه
-      روی یک branch به develop merge نشد و دوباره از طریق **PR #39** لَند شد.
-    - **سرریزِ ورودی‌های بلایند در لابی:** ورودی‌های جدیدِ SB/BB در فرمِ ساختِ میز
-      روی عرض‌های باریک از کارت بیرون می‌زدند → با `min-w-0`/`w-full` رفع شد
+- [x] **4.10** Blinds — the banker sets SB/BB when creating the table + posting the blinds at the start of a hand.
+  - **Current status (report):** blinds are **not actually posted**. In
+    `application/use-cases/start-hand.ts`, the value of `room.settings.bigBlind` is only
+    used as `minBet`/`lastRaiseSize` (the minimum bet/raise increment), and
+    its comment explicitly says "No blinds are posted yet". That is, the hand starts with `currentBet=0` and
+    an empty pot and no one is forced to post SB/BB. The values are in the schema
+    (`smallBlind`/`bigBlind`) with domain defaults SB=1/BB=2.
+    **The plumbing for the banker to set them already exists** (`createRoomSchema` accepts the optional
+    `settings.smallBlind/bigBlind` fields and the handler + `CreateRoom` pass
+    them to the domain) — only **the table creation form in the lobby has no input**, so
+    in practice the defaults always apply.
+  - **Work:**
+    - **Lobby (`presentation`):** add Small blind / Big blind numeric inputs to
+      the table creation form, with validation (`BB > SB > 0`, integers) and a sensible default;
+      send them in the `settings` of the `room:create` event (the plumbing exists).
+    - **`StartHand`:** post the mandatory blinds at the start of a hand — SB by the player
+      left of the button and BB by the next one; `currentBet=BB`, `lastRaiseSize=BB`, committing
+      chips and reducing the stack (with all-in handling for a short stack); the first actor =
+      left of the BB. Handle the heads-up case (the button posts the SB) separately.
+    - **Display/settlement:** show SB/BB on the table (readout); the blind chips are automatically
+      included in settlement via `committedTotal`.
+  - **DoD:** the banker sets SB/BB on creation; the blinds are posted at the start of each hand
+    (pot and currentBet correct); unit test for posting a blind, heads-up, and the
+    short-stack all-in.
+  - **Post-merge follow-ups to 4.10:** after merging
+    4.10, three UI fixes were needed (recorded here for history honesty):
+    - **Blinds readout placement:** the readout that in 4.10 was at the bottom-center of the felt fell on
+      the hero avatar of seat 0 → moved to the central tote-board. The initial fix
+      on a branch was not merged to develop and was landed again via **PR #39**.
+    - **Blind input overflow in the lobby:** the new SB/BB inputs in the table creation form
+      overflowed the card at narrow widths → fixed with `min-w-0`/`w-full`
       (**PR #38**).
-    - **بازبینیِ هم‌پوشانی (recheck):** تشخیص داده شد فیکسِ readout هرگز به develop
-      merge نشده بود؛ روی همه‌ی state‌ها و تعدادِ صندلی‌ها دوباره verify و از طریق
-      **PR #39** لَند شد.
+    - **Overlap recheck:** it was determined that the readout fix had never been merged to develop;
+      it was re-verified across all states and seat counts and landed via
+      **PR #39**.
 
-- [x] **4.11** بنرِ نوبتِ فعال در بالای میز — نمایشِ واضحِ «نوبتِ چه کسی است».
-      نامِ بازیکنی که نوبتش است به‌صورت برجسته در بالای میز/صفحه دیده شود (مثلاً
-      «alice to act»).
-  - **کار:** از `hand.actingSeat` → نامِ memberِ متناظر؛ یک بنر/نوار بالای میز با
-    هویتِ بصریِ vc-design (آرام، tote-board). حالت‌های دیگر را هم پوشش بده:
-    `awaiting_street` → «Waiting for the banker to deal»، `awaiting_showdown` →
-    «Showdown — banker to settle»، بدون نوبت → پیامِ مناسب. مکمّلِ تایمرِ 4.9.
-  - **DoD:** در هر لحظه روشن است نوبتِ چه کسی است؛ روی موبایل هم خوانا.
+- [x] **4.11** active-turn banner at the top of the table — clearly showing "whose turn it is".
+      The name of the player whose turn it is should be prominently visible at the top of the table/screen (e.g.
+      "alice to act").
+  - **Work:** from `hand.actingSeat` → the corresponding member's name; a banner/bar at the top of the table with
+    the vc-design visual identity (calm, tote-board). Cover the other states too:
+    `awaiting_street` → "Waiting for the banker to deal", `awaiting_showdown` →
+    "Showdown — banker to settle", no turn → an appropriate message. Complements the 4.9 timer.
+  - **DoD:** at any moment it's clear whose turn it is; readable on mobile too.
 
-- [x] **4.12** Time bank — درخواستِ زمانِ اضافه توسط بازیکن. **وابسته به 4.9.**
-      وقتی تایمرِ نوبتِ بازیکن رو به اتمام است، بتواند **زمانِ اضافه** درخواست کند تا
-      مهلتش تمدید شود (مثلِ time bank در اپ‌های پوکر).
-  - **کار:**
-    - **سرور (authoritative):** هر بازیکن یک بودجه‌ی زمانیِ محدود (مثلاً چند ثانیه،
-      قابلِ تنظیم) دارد؛ رویدادِ socket مثلِ `turn:request-time` که `actionDeadline`
-      را تمدید و بودجه را کم می‌کند؛ اعتبارسنجی با Zod (فقط بازیکنِ صاحبِ نوبت، فقط
-      اگر بودجه دارد). turn-timer سرور بر اساسِ deadlineِ جدید reschedule شود.
-    - **کلاینت:** دکمه‌ی «Add time» نزدیکِ پنل اکشن وقتی نوبتِ خودت است و زمان کم
-      است؛ نمایشِ بودجه‌ی باقیمانده.
-  - **DoD:** بازیکن می‌تواند نوبتش را تمدید کند؛ بودجه محترم شمرده می‌شود؛ unit test
-    برای تمدید و اتمامِ بودجه. (cross-ref: 4.9 تایمر، 3.4 turn-timer سرور.)
+- [x] **4.12** Time bank — a player's request for extra time. **Depends on 4.9.**
+      When a player's turn timer is running out, they can request **extra time** so
+      their deadline is extended (like a time bank in poker apps).
+  - **Work:**
+    - **Server (authoritative):** each player has a limited time budget (e.g. a few seconds,
+      configurable); a socket event like `turn:request-time` that extends the `actionDeadline`
+      and reduces the budget; validation with Zod (only the player whose turn it is, only
+      if they have budget). The server's turn-timer is rescheduled based on the new deadline.
+    - **Client:** an "Add time" button near the action panel when it's your turn and time is
+      low; display the remaining budget.
+  - **DoD:** a player can extend their turn; the budget is respected; unit test
+    for extension and budget exhaustion. (cross-ref: 4.9 timer, 3.4 server turn-timer.)
 
-- [x] **4.13** لابی «میزِ فعالِ تو» — بازگشتِ سریع به میزی که سرِ آن نشسته‌ای.
-      وقتی بازیکن به لابی برمی‌گردد، باید ببیند هم‌اکنون عضوِ کدام میز است و با یک
-      کلیک به آن برگردد (به‌جای واردکردنِ دوباره‌ی کد).
-  - **یادآوری:** این دقیقاً همان قابلیتی است که کاربر درخواست کرد (بازگشتِ سریع به
-    میزِ فعال از لابی) — از قبل یک تسکِ برنامه‌ریزی‌شده است، نه چیزِ جدید.
-  - **وضعیت فعلی:** عضویت در DB ماندگار است؛ ورودِ دوباره با کد در لابی به‌درستی به
-    میز می‌برد (منطقِ `ALREADY_IN_ROOM` → ریدایرکت)، ولی هیچ نمایشی از «میزِ فعالِ
-    تو» وجود ندارد.
-  - **کار:**
-    - **سرور/use-case:** راهی برای یافتنِ میز(ها)یی که کاربر در آن‌ها member است
-      (مثلاً `listRoomsForUser(userId)` در repository + use-case/رویدادِ لابی).
-    - **لابی (`presentation`):** کارتِ «Your table» با نامِ میز + دکمه‌ی «Rejoin»
-      (مسیر `/room/<id>`). اگر عضوِ هیچ میزی نیست، چیزی نشان نده.
-  - **DoD:** بازیکن میزِ فعالش را در لابی می‌بیند و با یک کلیک برمی‌گردد.
+- [x] **4.13** lobby "your active table" — quick return to the table you are seated at.
+      When a player returns to the lobby, they should see which table they are currently a member of and return to it with one
+      click (instead of re-entering the code).
+  - **Reminder:** this is exactly the capability the user requested (quick return to the active
+    table from the lobby) — it is already a planned task, not something new.
+  - **Current status:** membership is persistent in the DB; re-entering the code in the lobby correctly takes you to
+    the table (the `ALREADY_IN_ROOM` → redirect logic), but there is no display of "your active
+    table".
+  - **Work:**
+    - **Server/use-case:** a way to find the table(s) the user is a member of
+      (e.g. `listRoomsForUser(userId)` in the repository + a lobby use-case/event).
+    - **Lobby (`presentation`):** a "Your table" card with the table name + a "Rejoin" button
+      (path `/room/<id>`). If the user is a member of no table, show nothing.
+  - **DoD:** the player sees their active table in the lobby and returns with one click.
 
-- [x] **4.14** Sit out / Leave — تکمیلِ «Leave room»ِ ناقصِ فعلی.
-  - **Sit out:** رد کردنِ موقتِ دست‌ها با حفظِ صندلی؛ بازیکنِ sitting-out در شروعِ
-    دست deal نمی‌شود ولی صندلی و chipsش می‌ماند و می‌تواند برگردد (sit in).
-    وضعیتِ `'sitting_out'` در `PlayerState` از قبل وجود دارد؛ باید در lifecycle و UI
-    سیم‌کشی شود.
-  - **Leave:** خروجِ کاملِ بازیکن از میز و **آزادشدنِ صندلی** (`removeMember` موجود
-    است؛ use-case `LeaveRoom` هم هست ولی در UI کامل وصل نیست). اگر بازیکن وسطِ دست
-    leave کند، مثلِ fold رفتار شود.
-  - **کار:**
-    - **سرور:** رویداد/handlerهای `room:sit-out` / `room:sit-in` / `room:leave`
-      (با Zod + authz)؛ اعمال در lifecycle (deal فقط بازیکنانِ نشسته‌ی فعال).
-    - **کلاینت:** دکمه‌های Sit out / Sit in / Leave در نمای میز؛ نمایشِ وضعیتِ
-      sitting-out روی صندلی.
-  - **DoD:** sit out/in بدون از دست رفتنِ صندلی؛ leave صندلی را آزاد می‌کند؛
-    رفتارِ درست هنگامِ leaveِ وسطِ دست. (cross-ref: edge-case های 7.3 — خروجِ بانکدار.)
+- [x] **4.14** Sit out / Leave — completing the current incomplete "Leave room".
+  - **Sit out:** temporarily skipping hands while keeping the seat; a sitting-out player is not dealt at the start of
+    a hand but their seat and chips remain and they can return (sit in).
+    The `'sitting_out'` status already exists in `PlayerState`; it must be wired into the lifecycle and UI.
+  - **Leave:** the player leaving the table completely and **freeing the seat** (`removeMember` exists;
+    the `LeaveRoom` use-case exists too but is not fully wired in the UI). If a player leaves mid-hand,
+    it should behave like a fold.
+  - **Work:**
+    - **Server:** the `room:sit-out` / `room:sit-in` / `room:leave` event/handlers
+      (with Zod + authz); apply in the lifecycle (deal only seated active players).
+    - **Client:** Sit out / Sit in / Leave buttons in the table view; display the
+      sitting-out state on the seat.
+  - **DoD:** sit out/in without losing the seat; leave frees the seat;
+    correct behavior on a mid-hand leave. (cross-ref: 7.3 edge cases — banker leaving.)
 
-- [x] **4.15** Chip requests / banker buy-in approval — **تکمیلِ بخشِ buy-inِ تسکِ 4.6**.
-      جایگزینِ `DEFAULT_BUY_IN`ِ موقت. بازیکن **درخواستِ chips** می‌دهد؛ بانکدار
-      تأیید/رد می‌کند؛ chipsِ تأییدشده به stackِ بازیکن اضافه و `buyInTotal` به‌روز
-      می‌شود (برای محاسبه‌ی net در 6.2). **یک قابلیتِ هسته‌ایِ بانکدار.**
-  - **وضعیت فعلی:** نشستن از طریقِ `DEFAULT_BUY_IN` (در `application/use-cases/
-funding.ts`) به‌صورت موقت chips می‌دهد. باید با جریانِ درخواست/تأیید جایگزین شود؛
-    آن‌موقع نشستن باید 0 chips بدهد.
-  - **کار:**
-    - **سرور/use-case:** `RequestChips` (بازیکن) و `ApproveChips`/`DenyChips`
-      (banker-only)؛ افزودنِ chips به member و افزایشِ `buyInTotal` (متدِ repository
-      مثلِ `addMemberChips`/`updateMemberFunding`)؛ رویدادهای socket + Zod + authz؛
-      broadcastِ `room:state` به‌روز و یک صفِ درخواست‌ها به بانکدار.
-    - **کلاینت:** دکمه‌ی «Request chips» برای بازیکن؛ صفِ تأیید برای بانکدار (لیستِ
-      درخواست‌ها با Approve/Deny)؛ حذفِ اتکا به `DEFAULT_BUY_IN`.
-  - **DoD:** بازیکن می‌تواند chips بخواهد و بانکدار تأیید کند؛ stack و buyInTotal
-    درست به‌روز می‌شوند؛ نشستن دیگر chipِ خودکار نمی‌دهد؛ unit test برای approve/deny
-    و به‌روزرسانیِ funding. (cross-ref: 4.6 بخش ۲، 6.2 گزارشِ net.)
+- [x] **4.15** Chip requests / banker buy-in approval — **completing the buy-in part of task 4.6**.
+      Replacing the temporary `DEFAULT_BUY_IN`. The player makes a **chip request**; the banker
+      approves/rejects; the approved chips are added to the player's stack and `buyInTotal` is updated
+      (for computing net in 6.2). **A core banker capability.**
+  - **Current status:** sitting down gives chips temporarily via `DEFAULT_BUY_IN` (in `application/use-cases/
+funding.ts`). It must be replaced with the request/approval flow;
+    at that point sitting down should give 0 chips.
+  - **Work:**
+    - **Server/use-case:** `RequestChips` (player) and `ApproveChips`/`DenyChips`
+      (banker-only); adding chips to the member and increasing `buyInTotal` (a repository method
+      like `addMemberChips`/`updateMemberFunding`); socket events + Zod + authz;
+      broadcasting the updated `room:state` and a request queue to the banker.
+    - **Client:** a "Request chips" button for the player; an approval queue for the banker (a list of
+      requests with Approve/Deny); removing reliance on `DEFAULT_BUY_IN`.
+  - **DoD:** a player can request chips and the banker can approve; stack and buyInTotal
+    update correctly; sitting down no longer gives automatic chips; unit test for approve/deny
+    and the funding update. (cross-ref: 4.6 part 2, 6.2 net report.)
 
-- [x] **4.16** Action menu — یک دکمه‌ی واحد که منویی از اکشن‌های بازیکن را باز
-      می‌کند به‌جای پخش‌شدنِ دکمه‌ها در نمای میز. **وابسته به 4.14 و 4.15؛ بعد از
-      4.14 بیاید.**
-  - **کار:**
-    - **بازیکن:** یک دکمه که منویی شامل request chips (4.15)، sit out / sit in و
-      leave (4.14) را جمع می‌کند.
-    - **بانکدار (variant):** همان منو با کنترل‌های بانکدار (مثلاً deal/advance،
-      settle، تأیید/ردِ درخواست‌های chips) در یک جای واحد.
-  - **وابستگی:** به handler/UIِ sit-out/leave از **4.14** و request-chips از
-    **4.15** متکی است؛ بنابراین باید **بعد از 4.14** انجام شود. presentation محور
-    (بدون منطقِ دامنه‌ی جدید).
-  - **DoD:** یک دکمه/منوی واحد همه‌ی اکشن‌های بازیکن را عرضه می‌کند؛ نسخه‌ی بانکدار
-    کنترل‌های بانکدار را نشان می‌دهد؛ روی موبایل خوانا و دسترس‌پذیر.
+- [x] **4.16** Action menu — a single button that opens a menu of player actions
+      instead of the buttons being scattered across the table view. **Depends on 4.14 and 4.15; comes after
+      4.14.**
+  - **Work:**
+    - **Player:** a button that gathers a menu including request chips (4.15), sit out / sit in, and
+      leave (4.14).
+    - **Banker (variant):** the same menu with the banker controls (e.g. deal/advance,
+      settle, approve/reject chip requests) in a single place.
+  - **Dependency:** it relies on the sit-out/leave handler/UI from **4.14** and request-chips from
+    **4.15**; therefore it must be done **after 4.14**. Presentation-focused
+    (no new domain logic).
+  - **DoD:** a single button/menu offers all player actions; the banker version shows the banker
+    controls; readable and accessible on mobile.
 
-- [x] **4.17** Room id UX — نمایشِ کوتاه‌شده‌ی شناسه‌ی میز با دکمه‌ی copy. مستقل از
-      بقیه‌ی تسک‌ها.
-  - **کار:** در نمای میز (`room-view`)، شناسه‌ی میز را به‌صورت کوتاه‌شده نشان بده
-    (مثلاً چند کاراکترِ اول + «…») همراه با یک دکمه‌ی copy که **شناسه‌ی کامل** را در
-    clipboard کپی می‌کند.
-  - **محدوده:** فقط presentation — بدونِ تغییر در schema یا join-code؛ مقدارِ واقعیِ
-    شناسه دست‌نخورده می‌ماند و فقط نمایشش کوتاه می‌شود.
-  - **DoD:** شناسه‌ی کوتاه‌شده دیده می‌شود؛ copy شناسه‌ی کامل را کپی می‌کند؛ بازخوردِ
-    کوتاهِ «copied»؛ روی موبایل هم کار می‌کند.
+- [x] **4.17** Room id UX — display a shortened table id with a copy button. Independent of
+      the other tasks.
+  - **Work:** in the table view (`room-view`), show the table id in a shortened form
+    (e.g. the first few characters + "…") together with a copy button that copies **the full id** to the
+    clipboard.
+  - **Scope:** presentation only — no change to the schema or join-code; the actual id value
+    stays untouched and only its display is shortened.
+  - **DoD:** the shortened id is visible; copy copies the full id; a brief
+    "copied" feedback; works on mobile too.
 
-> یادداشت: Phase 4 از نظرِ عملکرد کامل است (۴.۱ تا ۴.۱۷ merge شده‌اند). تنها
-> باقی‌مانده، بخشِ end-game/گزارشِ net در ۴.۶ است که عمداً `[~]` می‌ماند و ذیلِ
-> **۶.۲** پیگیری می‌شود.
+> Note: Phase 4 is functionally complete (4.1 through 4.17 are merged). The only
+> remaining piece is the end-game/net-report part of 4.6, which deliberately stays `[~]` and is followed up under
+> **6.2**.
 
 ---
 
-## Phase 5 — Animations (الزامی، حرفه‌ای)
+## Phase 5 — Animations (mandatory, professional)
 
-هدف: انیمیشن‌های سطح بالا با Framer Motion (`docs/ANIMATIONS.md`).
+Goal: high-level animations with Framer Motion (`docs/ANIMATIONS.md`).
 
-> ترتیبِ واقعیِ merge بنیان‌محور بود (foundation-first): **5.0 → 5.2 → 5.3 → 5.1
-> → 5.4**. شماره‌ها عمداً تغییر نکرده‌اند (در git history و جاهای دیگر ارجاع داده
-> شده‌اند)؛ پس 5.1 با اینکه شماره‌اش کوچک‌تر است، بعد از بنیانِ خودش لَند شد.
+> The actual merge order was foundation-first: **5.0 → 5.2 → 5.3 → 5.1
+> → 5.4**. The numbers were deliberately not changed (they are referenced in git history and elsewhere);
+> so 5.1, even though its number is smaller, landed after its own foundation.
 
-- [x] **5.0** animation foundations — reduced-motion chokepoint + transform/opacity + motion-value/rAF infra. _(در کد موجود بود ولی در لیست ثبت نشده بود؛ PR #48.)_
-- [x] **5.1** حرکت ژتون بازیکن→pot و pot→برنده (spring، chip stack). _(PR #51)_
-- [x] **5.2** حلقه‌ی timer (countdown ring) دور آواتار فعال. _(PR #49)_
-- [x] **5.3** transition تغییر نوبت + ورود/خروج بازیکن (`AnimatePresence`). _(PR #50)_
-- [x] **5.4** افکت برد (celebration) و dealer/blind motion. _(PR #55)_
-- [x] **5.5** احترام به `prefers-reduced-motion` + بهینه‌سازی ۶۰fps. _(audit:
-      PR #62 reduced-motion fail-safe across 6 secondary-UI components؛ PR #63
+- [x] **5.0** animation foundations — reduced-motion chokepoint + transform/opacity + motion-value/rAF infra. _(It existed in the code but was not recorded in the list; PR #48.)_
+- [x] **5.1** chip movement player→pot and pot→winner (spring, chip stack). _(PR #51)_
+- [x] **5.2** the timer ring (countdown ring) around the active avatar. _(PR #49)_
+- [x] **5.3** turn-change transition + player enter/leave (`AnimatePresence`). _(PR #50)_
+- [x] **5.4** win effect (celebration) and dealer/blind motion. _(PR #55)_
+- [x] **5.5** respect `prefers-reduced-motion` + 60fps optimization. _(audit:
+      PR #62 reduced-motion fail-safe across 6 secondary-UI components; PR #63
       clip-path tray reveal replacing height-thrash. Table-surface animations
       were already clean.)_
 
-**DoD:** بدون jank؛ روی موبایل هم روان.
+**DoD:** no jank; smooth on mobile too.
 
 ---
 
 ## Phase 6 — Banker, Settlement & History
 
-- [x] **6.1** هر دو mode تعیین برنده (banker / showdown-confirm).
-- [x] **6.2** صفحه‌ی تسویه‌ی پایان بازی + گزارش net.
-- [ ] **6.3** صفحه‌ی تاریخچه‌ی بازی‌ها (per user).
-- [ ] **6.4** Straddle (forced bet اختیاری) — **تسکِ جدا و بعدی، وابسته به 4.10**.
-      بعد از پایه‌ی blindها (4.10)، امکانِ straddleِ اختیاری: بازیکنِ چپِ BB می‌تواند
-      پیش از deal یک bet اجباری (معمولاً ۲×BB) بگذارد که به blindِ مؤثرِ جدید تبدیل
-      می‌شود و آن بازیکن preflop آخر اکت می‌کند. اختیاری per-hand (فعال‌سازیِ
-      بازیکن/بانکدار). **عمداً از blindهای پایه جدا و با اولویتِ پایین‌تر.**
-  - **کار:** افزودنِ straddle به موتورِ شروعِ دست (بعد از blindها، قبل از اولین
-    actor)؛ کنترلِ UI برای فعال‌سازی؛ unit test برای ترتیبِ اکت و currentBetِ مؤثر.
-- [ ] **6.5** «Deal» — _placeholder، تعریف‌نشده._ یک آیتمِ آینده برای کارت‌ها/deal
-      است که هنوز محدوده‌اش مشخص نیست. فعلاً فقط ثبت می‌شود تا فراموش نشود؛ قبل از
-      شروع باید به یک تسکِ مشخص با دامنه تبدیل شود. (یادآوری: محصول عمداً hand
-      evaluation ندارد و کارت‌ها فیزیکی‌اند — این آیتم باید با آن سازگار بماند.)
-- [ ] **6.6** Banker reset current hand — بانکدار می‌تواند **دستِ در جریان** را دور
-      بریزد و دوباره deal کند (نه کلِ بازی). چون بازی دستی است و خطای انسانی رخ
-      می‌دهد، بانکدار دستِ فعلی را discard و replay می‌کند.
-  - **کار:** برگرداندنِ live hand به وضعیتِ pre-deal همان دست (فقط همین دست، نه کلِ
-    بازی)؛ banker-only؛ گاردِ typed اگر دستی در جریان نباشد. کوچک‌ترین و بدونِ
-    وابستگی. **اولویتِ بالا.**
-- [ ] **6.7** Banker direct chip adjustment — بانکدار می‌تواند هر زمان chips هر
-      member را کم/زیاد کند. خواهرِ 4.15 (که player-requested + banker-approved بود)
-      ولی این‌جا banker-initiated است.
-  - **کار:** استفاده‌ی مجدد از funding plumbingِ موجود (addMemberFunding /
-    buyInTotal)؛ domain + UI؛ banker-only.
-- [ ] **6.8** Dealer tip after win — پس از دریافتِ award، بازیکنِ برنده یک پنجره‌ی
-      زمانی (قابلِ تنظیم توسطِ بانکدار، مثلاً 10s) دارد تا به dealer انعام بدهد، تا
-      سقفِ درصدی (قابلِ تنظیم، مثلاً 10%) از chips خودش.
-  - **کار:** domain (محاسبه‌ی tip از award، کسر از stack) + UI (پنجره‌ی countdown) +
-    room settings. وابسته به مسیرِ پایدارِ award/settle (اکنون via 6.2 موجود است).
-  - **یادداشت (تقسیمِ فاز):** 6.6/6.7/6.8 به banker/settlement نزدیک‌اند و در همین
-    فاز می‌مانند. در مقابل 7.7/7.8/7.9 عمداً به Phase 7 موکول شده‌اند، چون room state
-    machine / membership را لمس می‌کنند نه settlement را.
+- [x] **6.1** both winner-determination modes (banker / showdown-confirm).
+- [x] **6.2** end-of-game settlement page + net report.
+- [x] **6.3** game history page (per user).
+- [ ] **6.4** Straddle (optional forced bet) — **a separate and subsequent task, depends on 4.10**.
+      After the blinds base (4.10), the option of an optional straddle: the player left of the BB can
+      post a forced bet (usually 2×BB) before the deal, which becomes the new effective blind
+      and that player acts last preflop. Optional per-hand (player/banker
+      activation). **Deliberately separate from the base blinds and with lower priority.**
+  - **Work:** add the straddle to the hand-start engine (after the blinds, before the first
+    actor); a UI control for activation; unit test for the act order and effective currentBet.
+- [ ] **6.5** "Deal" — _placeholder, undefined._ A future item for cards/deal
+      whose scope is not yet defined. For now it is only recorded so it isn't forgotten; before
+      starting it must become a concrete, scoped task. (Reminder: the product deliberately has no hand
+      evaluation and the cards are physical — this item must stay compatible with that.)
+- [ ] **6.6** Banker reset current hand — the banker can throw away **the in-progress hand**
+      and re-deal (not the whole game). Because the game is manual and human error happens,
+      the banker discards and replays the current hand.
+  - **Work:** revert the live hand to the pre-deal state of the same hand (only this hand, not the whole
+    game); banker-only; a typed guard if no hand is in progress. The smallest and without
+    dependency. **High priority.**
+- [ ] **6.7** Banker direct chip adjustment — the banker can at any time decrease/increase any
+      member's chips. The sibling of 4.15 (which was player-requested + banker-approved)
+      but here it is banker-initiated.
+  - **Work:** reuse the existing funding plumbing (addMemberFunding /
+    buyInTotal); domain + UI; banker-only.
+- [ ] **6.8** Dealer tip after win — after receiving an award, the winning player has a time
+      window (configurable by the banker, e.g. 10s) to tip the dealer, up to
+      a percentage cap (configurable, e.g. 10%) of their own chips.
+  - **Work:** domain (computing the tip from the award, deducting from the stack) + UI (a countdown window) +
+    room settings. Depends on a stable award/settle path (now available via 6.2).
+  - **Note (phase split):** 6.6/6.7/6.8 are close to banker/settlement and stay in this
+    phase. In contrast, 7.7/7.8/7.9 are deliberately deferred to Phase 7, because they touch the room state
+    machine / membership, not settlement.
 
-**DoD:** نتیجه‌ی بازی در history قابل مشاهده.
+**DoD:** the game result is viewable in history.
 
 ---
 
-## Decision Gate (بین Phase 6 و Phase 7) — ارزیابیِ معماری
+## Decision Gate (between Phase 6 and Phase 7) — architecture evaluation
 
-> یک گیتِ تصمیم، نه تسکِ ساخت. باید **بعد از اتمامِ Phase 6 و قبل از شروعِ Phase 7**
-> بررسی شود.
+> A decision gate, not a build task. It must be reviewed **after Phase 6 is finished and before Phase 7 starts**.
 
-- [ ] **DG-1** ارزیابیِ مهاجرت از ساختارِ فعلیِ **layer-based**
-      (`domain`/`application`/`infrastructure`/`presentation`) به **feature-based**.
-  - هزینه/فایده را روی **کدِ موجود** بسنج، نه تئوریک.
-  - اگر **go**: refactor باید برنامه‌ریزی‌شده باشد، با **تستِ سبز در هر قدم**؛
-    هرگز وسطِ یک فیچرِ باز انجام نشود.
-  - اگر **no-go**: تصمیم و دلیلش همین‌جا مکتوب شود تا دوباره باز نشود.
-  - **محدوده:** فقط تصمیم/ارزیابی؛ این آیتم خودش refactor نمی‌کند.
-  - **DoD:** یک تصمیمِ مکتوبِ go/no-go با دلیل؛ اگر go، یک طرحِ فازبندی‌شده.
+- [ ] **DG-1** evaluate migrating from the current **layer-based** structure
+      (`domain`/`application`/`infrastructure`/`presentation`) to **feature-based**.
+  - Measure cost/benefit on the **existing code**, not theoretically.
+  - If **go**: the refactor must be planned, with **green tests at every step**;
+    never done in the middle of an open feature.
+  - If **no-go**: write the decision and its reason down here so it isn't reopened.
+  - **Scope:** decision/evaluation only; this item itself does not refactor.
+  - **DoD:** a written go/no-go decision with a reason; if go, a phased plan.
 
 ---
 
 ## Phase 7 — Hardening
 
-- [ ] **7.1** تست‌های e2e با Playwright (سناریوی کامل + all-in/side-pot).
-- [ ] **7.2** مرور امنیتی طبق چک‌لیست `CLAUDE.md` (IDOR, injection, authz).
-- [ ] **7.3** edge case ها: disconnect وسط نوبت، خروج بانکدار (انتقال نقش)، room خالی.
-  - **یادداشت (وابستگی):** قیدِ موقتِ فعلیِ «بانکدار تا `status==='playing'`
-    نمی‌تواند leave کند» یک stopgap است و به **7.6** (banker-as-non-seated-manager) +
-    انتقالِ نقشِ همین تسک وابسته است؛ هنگامِ کار روی 7.3/7.6 باید بازنگری شود.
-- [ ] **7.4** observability پایه (structured logging) + error boundaries.
-- [ ] **7.5** Redis adapter برای Socket.io (horizontal scale) — اختیاری برای MVP.
+- [ ] **7.1** e2e tests with Playwright (a full scenario + all-in/side-pot).
+- [ ] **7.2** security review per the `CLAUDE.md` checklist (IDOR, injection, authz).
+- [ ] **7.3** edge cases: disconnect mid-turn, banker leaving (role transfer), empty room.
+  - **Note (dependency):** the current temporary constraint "the banker cannot leave until `status==='playing'`"
+    is a stopgap and depends on **7.6** (banker-as-non-seated-manager) +
+    the role transfer of this same task; it must be revisited when working on 7.3/7.6.
+- [ ] **7.4** basic observability (structured logging) + error boundaries.
+- [ ] **7.5** Redis adapter for Socket.io (horizontal scale) — optional for the MVP.
 
-- [ ] **7.6** Banker as non-seated manager — بانکدار الزاماً سرِ میز نمی‌نشیند؛
-      می‌تواند صرفاً **مدیرِ روم/بازی** باشد (بدون صندلی/stack). **تغییرِ مدلِ
-      membership**، وابسته به 7.3 و با اولویتِ بعد از تثبیتِ Phase 4.
-  - **انگیزه:** نقشِ بانکدار (کنترلِ buy-in، deal/advance، settle، پایانِ بازی)
-    مستقل از شرکتِ او در دستِ جاری است. الان یک فرضِ ضمنی داریم که بانکدار یک
-    بازیکنِ نشسته است؛ این فرض باید بشکند.
-  - **اثر:**
-    - `membership/lifecycle`: یک member می‌تواند banker باشد بدون seat/stack؛ در
-      شروعِ دست deal نشود و در ترتیبِ نوبت و محاسبه‌ی side-pot لحاظ نشود.
-    - قیدِ موقتِ banker-leave (بانکدار تا `status==='playing'` نمی‌تواند leave کند)
-      با این مدلِ جدید بازنگری می‌شود.
-    - `presentation`: نمای «managerِ بدونِ صندلی» جدا از نشستن سرِ میز.
-  - **کار (طرحِ اولیه — قبل از شروع به تسکِ دقیق با دامنه تبدیل شود):** نقشِ
-    `banker` مستقل از `seat` در مدلِ membership؛ بازبینیِ lifecycleِ deal/نوبت برای
-    رد کردنِ بانکدارِ غیرنشسته؛ هماهنگی با انتقالِ نقش در 7.3.
-  - **DoD:** بانکدار می‌تواند بدونِ نشستن سرِ میز بازی را مدیریت کند؛ deal/نوبت/
-    side-pot او را نادیده می‌گیرند؛ قیدِ banker-leave مطابقِ مدلِ جدید بازنگری شده.
+- [ ] **7.6** Banker as non-seated manager — the banker does not necessarily sit at the table;
+      they can simply be the **room/game manager** (without a seat/stack). **A change to the
+      membership model**, depends on 7.3 and with priority after Phase 4 is stabilized.
+  - **Motivation:** the banker role (buy-in control, deal/advance, settle, ending the game)
+    is independent of their participation in the current hand. Right now we have an implicit assumption that the banker is a
+    seated player; this assumption must be broken.
+  - **Impact:**
+    - `membership/lifecycle`: a member can be banker without a seat/stack; not dealt at the
+      start of a hand and not included in the turn order and side-pot calculation.
+    - the temporary banker-leave constraint (the banker cannot leave until `status==='playing'`)
+      is revisited with this new model.
+    - `presentation`: a "manager without a seat" view, separate from sitting at the table.
+  - **Work (initial plan — turn it into a precise, scoped task before starting):** the
+    `banker` role independent of `seat` in the membership model; review the deal/turn lifecycle to
+    skip a non-seated banker; coordinate with the role transfer in 7.3.
+  - **DoD:** the banker can manage the game without sitting at the table; deal/turn/
+    side-pot ignore them; the banker-leave constraint is revisited per the new model.
 
-- [ ] **7.7** Banker pause/resume — یک state سطحِ روم به نامِ `'paused'` که همه‌ی
-      اکشن‌ها و turn timerها را فریز می‌کند؛ resume از همان نقطه ادامه می‌دهد.
-  - **کار:** state-machineِ server-authoritative + timer + gateway. سخت‌سازیِ
-    lifecycle.
-- [ ] **7.8** Seat swap with banker approval — بانکدار یک پنجره‌ی 'swap' باز می‌کند
-      که در آن بازیکن‌ها می‌توانند صندلی عوض کنند؛ با بستنِ پنجره توسطِ بانکدار،
-      صندلی‌ها قفل و بازی ادامه می‌یابد.
-  - **کار:** membership/lifecycle؛ مرتبط با 4.14 (sit-out/leave) و 7.6
+- [ ] **7.7** Banker pause/resume — a room-level state called `'paused'` that freezes all
+      actions and turn timers; resume continues from the same point.
+  - **Work:** a server-authoritative state machine + timer + gateway. Lifecycle
+    hardening.
+- [ ] **7.8** Seat swap with banker approval — the banker opens a 'swap' window
+      in which players can change seats; when the banker closes the window,
+      the seats are locked and the game continues.
+  - **Work:** membership/lifecycle; related to 4.14 (sit-out/leave) and 7.6
     (banker-as-manager).
-- [ ] **7.9** Automatic game end by hand-count or time — در شروعِ بازی بانکدار یک
-      limit تعیین می‌کند: N دست (مثلاً 120) یا مدتِ کل (مثلاً 2h، از اولین دست). با
-      رسیدن به limit بازی به‌صورتِ خودکار به صفحه‌ی net-report پایان می‌یابد.
-  - **کار:** وابسته به مسیرِ end-game (6.2). Lifecycle.
+- [ ] **7.9** Automatic game end by hand-count or time — at the start of the game the banker sets a
+      limit: N hands (e.g. 120) or total duration (e.g. 2h, from the first hand). On
+      reaching the limit the game automatically ends to the net-report page.
+  - **Work:** depends on the end-game path (6.2). Lifecycle.
 
-**DoD:** آماده‌ی deploy؛ CI کامل سبز.
+**DoD:** ready to deploy; full CI green.
 
 ---
 
-## یادداشت اجرای هر تسک
+## Per-task execution note
 
 1. `git switch develop && git pull`
 2. `git switch -c feature/<phase>.<task>-<slug>`
-3. اعلام تسک به کاربر.
-4. کار + commit های Conventional.
-5. push + باز کردن PR به سمت `develop`.
-6. منتظر سبز شدن CI و review.
+3. Announce the task to the user.
+4. Work + Conventional commits.
+5. push + open a PR toward `develop`.
+6. Wait for CI to go green and review.
