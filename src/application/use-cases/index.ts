@@ -5,6 +5,7 @@ export * from './leave-room';
 export * from './presence';
 export * from './resync-room';
 export * from './list-user-rooms';
+export * from './list-user-game-history';
 export * from './start-hand';
 export * from './player-act';
 export * from './request-time-extension';

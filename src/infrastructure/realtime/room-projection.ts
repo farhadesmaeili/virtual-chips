@@ -1,4 +1,8 @@
-import type { ChipRequest, UserRoomMembership } from '@/application/ports';
+import type {
+  ChipRequest,
+  UserGameSettlement,
+  UserRoomMembership,
+} from '@/application/ports';
 import type { EndGameResult, RoomSnapshot } from '@/application/use-cases';
 import type { RoomSettings, RoomStatus } from '@/domain/entities';
 
@@ -28,6 +32,29 @@ export interface PublicUserRoom {
 
 export function toPublicUserRoom(room: UserRoomMembership): PublicUserRoom {
   return { roomId: room.roomId, name: room.name, status: room.status };
+}
+
+/**
+ * A finished game in the user's history (task 6.3), as shown to the client. No
+ * raw userId is exposed; `endedAt` is serialized to an ISO string so the wire
+ * contract is explicit (the client parses it).
+ */
+export interface PublicGameHistoryEntry {
+  readonly gameId: string;
+  readonly net: number;
+  readonly roomName: string;
+  readonly endedAt: string;
+}
+
+export function toPublicGameHistoryEntry(
+  settlement: UserGameSettlement,
+): PublicGameHistoryEntry {
+  return {
+    gameId: settlement.gameId,
+    net: settlement.net,
+    roomName: settlement.roomName,
+    endedAt: settlement.endedAt.toISOString(),
+  };
 }
 
 /** A member as broadcast to clients — no raw userId or other internal data. */

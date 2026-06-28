@@ -13,6 +13,7 @@ import {
   EndGame,
   JoinRoom,
   LeaveRoom,
+  ListUserGameHistory,
   ListUserRooms,
   PlayerAct,
   RecordClaim,
@@ -127,6 +128,7 @@ async function main(): Promise<void> {
     sitIn: new SitIn(roomRepository),
     resyncRoom: new ResyncRoom(roomRepository, handStore, chipRequestStore),
     listUserRooms: new ListUserRooms(roomRepository),
+    listUserGameHistory: new ListUserGameHistory(settlementRepository),
     createLimiter,
   };
   const fundingHandlerDeps = {

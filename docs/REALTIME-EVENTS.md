@@ -21,20 +21,22 @@
 | `hand:settle`         | `{ roomId, declarations[][] }`     | banker               | تعیین/تأییدِ برنده‌ها + حرکتِ ژتون (mode A، و confirmِ mode B) |
 | `player:claim`        | `{ roomId, claim }`                | active player (self) | showdown (mode B): claim برابرِ `'win'` یا `'muck'` (6.1)      |
 | `banker:endGame`      | `{ roomId }`                       | banker               | پایان + تسویه                                                  |
+| `history:mine`        | `{}`                               | user (self)          | تاریخچه‌ی بازی‌های کاربر — فقط بازی‌های پایان‌یافته (6.3)      |
 
 ## Server → Client (broadcast به room)
 
-| Event            | Payload                           | توضیح                             |
-| ---------------- | --------------------------------- | --------------------------------- |
-| `room:state`     | `PublicRoomState`                 | snapshot کامل (هنگام join/resync) |
-| `hand:state`     | `PublicHandState`                 | بعد از هر تغییر                   |
-| `turn:changed`   | `{ actingSeat, actionDeadline }`  | شروع نوبت جدید + deadline         |
-| `action:applied` | `{ seat, action, amount }`        | برای انیمیشن/لاگ                  |
-| `pot:updated`    | `{ pots }`                        | تغییر pot/side-pot                |
-| `hand:settled`   | `{ payouts: { seat, amount }[] }` | نتیجه‌ی دست (برای انیمیشن برد)    |
-| `chips:requests` | `{ requests[] }`                  | صفِ درخواست‌های buy-in (4.15)     |
-| `game:ended`     | `{ nets: { seat, net }[], rake }` | net هر بازیکن (بدون userId)       |
-| `error`          | `{ code, message }`               | خطای دامنه‌ی map شده              |
+| Event            | Payload                                           | توضیح                                                                 |
+| ---------------- | ------------------------------------------------- | --------------------------------------------------------------------- |
+| `room:state`     | `PublicRoomState`                                 | snapshot کامل (هنگام join/resync)                                     |
+| `hand:state`     | `PublicHandState`                                 | بعد از هر تغییر                                                       |
+| `turn:changed`   | `{ actingSeat, actionDeadline }`                  | شروع نوبت جدید + deadline                                             |
+| `action:applied` | `{ seat, action, amount }`                        | برای انیمیشن/لاگ                                                      |
+| `pot:updated`    | `{ pots }`                                        | تغییر pot/side-pot                                                    |
+| `hand:settled`   | `{ payouts: { seat, amount }[] }`                 | نتیجه‌ی دست (برای انیمیشن برد)                                        |
+| `chips:requests` | `{ requests[] }`                                  | صفِ درخواست‌های buy-in (4.15)                                         |
+| `game:ended`     | `{ nets: { seat, net }[], rake }`                 | net هر بازیکن (بدون userId)                                           |
+| `history:mine`   | `{ games: { gameId, net, roomName, endedAt }[] }` | تاریخچه‌ی net کاربر؛ `endedAt` به‌صورت ISO string (بدون userId) (6.3) |
+| `error`          | `{ code, message }`                               | خطای دامنه‌ی map شده                                                  |
 
 ## اصول
 
