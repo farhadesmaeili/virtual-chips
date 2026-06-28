@@ -159,3 +159,20 @@ export interface PublicUserRoom {
 export interface RoomsMine {
   readonly rooms: readonly PublicUserRoom[];
 }
+
+/**
+ * A finished game in the user's history (task 6.3). Mirrors the server
+ * projection (`PublicGameHistoryEntry`); `endedAt` is an ISO 8601 string on the
+ * wire (parse with `new Date(endedAt)` for display).
+ */
+export interface PublicGameHistoryEntry {
+  readonly gameId: string;
+  readonly net: number;
+  readonly roomName: string;
+  readonly endedAt: string;
+}
+
+/** Response to `history:mine` — the authenticated user's finished games. */
+export interface HistoryMine {
+  readonly games: readonly PublicGameHistoryEntry[];
+}
