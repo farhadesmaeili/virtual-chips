@@ -322,7 +322,7 @@ Goal: high-level animations with Framer Motion (`docs/ANIMATIONS.md`).
       whose scope is not yet defined. For now it is only recorded so it isn't forgotten; before
       starting it must become a concrete, scoped task. (Reminder: the product deliberately has no hand
       evaluation and the cards are physical — this item must stay compatible with that.)
-- [ ] **6.6** Banker reset current hand — the banker can throw away **the in-progress hand**
+- [x] **6.6** Banker reset current hand — the banker can throw away **the in-progress hand**
       and re-deal (not the whole game). Because the game is manual and human error happens,
       the banker discards and replays the current hand.
   - **Work:** revert the live hand to the pre-deal state of the same hand (only this hand, not the whole
