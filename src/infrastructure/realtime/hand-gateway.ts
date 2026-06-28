@@ -5,6 +5,7 @@ import type {
   PlayerAct,
   RecordClaim,
   RequestTimeExtension,
+  ResetHand,
   SettleHand,
   StartHand,
 } from '@/application/use-cases';
@@ -38,6 +39,7 @@ export class HandGateway {
     private readonly startHand: StartHand,
     private readonly playerAct: PlayerAct,
     private readonly advanceStreet: AdvanceStreet,
+    private readonly resetHandUseCase: ResetHand,
     private readonly settleHand: SettleHand,
     private readonly recordClaimUseCase: RecordClaim,
     private readonly requestTimeExtension: RequestTimeExtension,
@@ -112,6 +114,28 @@ export class HandGateway {
     });
     // Starts a timer only if the new street has someone to act; a paused
     // all-in run-out (awaiting_street again) schedules nothing.
+    await this.resolveTurn(roomId, hand);
+  }
+
+  /**
+   * Resets (re-deals) the in-progress hand at the banker's request (task 6.6;
+   * the use-case enforces banker-only). Member chips are unchanged — the use-case
+   * never writes `RoomMember.chips` — so no `room:state` is emitted; the fresh
+   * pre-deal hand (with re-posted blinds) rides `hand:state` / `pot:updated`, and
+   * the new first actor's timer is armed via `resolveTurn`.
+   */
+  async resetHand(roomId: string, userId: string): Promise<void> {
+    const hand = await this.resetHandUseCase.execute({
+      roomId,
+      requesterId: userId,
+    });
+    const state = toPublicHandState(hand);
+    this.io.to(roomId).emit('hand:state', state);
+    this.io.to(roomId).emit('turn:changed', {
+      actingSeat: state.actingSeat,
+      actionDeadline: state.actionDeadline,
+    });
+    this.io.to(roomId).emit('pot:updated', { pots: state.pots });
     await this.resolveTurn(roomId, hand);
   }
 

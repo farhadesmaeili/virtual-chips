@@ -274,6 +274,16 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     getSocket().emit('hand:advance-street', { roomId });
   }, [roomId]);
 
+  // Reset the in-progress hand (task 6.6): the banker discards and re-deals the
+  // current hand. The server enforces banker-only + the no-hand/settled guards,
+  // re-derives stacks from members' chips (no DB chip change) and re-posts blinds.
+  const resetHand = useCallback((): void => {
+    intent.current = 'action';
+    setPending(true);
+    setActionError(null);
+    getSocket().emit('hand:reset', { roomId });
+  }, [roomId]);
+
   // Time bank (task 4.12). Doesn't set `pending`: the player keeps their turn
   // and may still act; the broadcast hand:state refreshes the deadline + budget.
   const requestTime = useCallback((): void => {
@@ -527,6 +537,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
                 onRequestChips={requestChips}
                 onApproveChips={approveChips}
                 onRejectChips={rejectChips}
+                onResetHand={resetHand}
                 onEndGame={endGame}
               />
             </>

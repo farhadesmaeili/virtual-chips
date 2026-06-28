@@ -32,6 +32,8 @@ export interface MenuModel {
   readonly startHand: StartHandState;
   /** Whether the banker's approve/deny request queue should render. */
   readonly requestQueue: MenuItemState;
+  /** The banker's "reset hand" control (task 6.6): discard + re-deal the hand. */
+  readonly resetHand: MenuItemState;
   /** The banker's "end game" control (task 6.2): settle + close the game. */
   readonly endGame: MenuItemState;
 }
@@ -117,6 +119,12 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
   const requestQueue: MenuItemState =
     isBanker && requestCount > 0 ? { show: true, disabled: pending } : HIDDEN;
 
+  // Reset hand: the banker can discard and re-deal the in-progress hand (task
+  // 6.6) — only while a hand is live. The server enforces banker-only and the
+  // no-hand/settled guards; this is UX gating only.
+  const resetHand: MenuItemState =
+    isBanker && handInPlay ? { show: true, disabled: pending } : HIDDEN;
+
   // End game: the banker can close a running game, but only between hands. While
   // a hand is live the item shows disabled with a reason — reflecting (not
   // duplicating) the server's HandInProgressError, which still enforces it.
@@ -137,6 +145,7 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
     ownRequestPending ||
     startHand.show ||
     requestQueue.show ||
+    resetHand.show ||
     endGame.show;
 
   return {
@@ -148,6 +157,7 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
     ownRequestPending,
     startHand,
     requestQueue,
+    resetHand,
     endGame,
   };
 }

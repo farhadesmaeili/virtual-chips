@@ -61,6 +61,11 @@ export const advanceStreetSchema = z
   .object({ roomId: z.string().min(1) })
   .strict();
 
+// Banker resets (re-deals) the in-progress hand (task 6.6). Carries only the
+// roomId; the requester is the authenticated session user and banker-only is
+// enforced in the use-case.
+export const resetHandSchema = z.object({ roomId: z.string().min(1) }).strict();
+
 // Time bank (task 4.12): carries only the roomId; the acting player is the
 // authenticated session user, never the payload (no userId/seat).
 export const turnRequestTimeSchema = z
@@ -127,6 +132,7 @@ export type RoomsMinePayload = z.infer<typeof roomsMineSchema>;
 export type HistoryMinePayload = z.infer<typeof historyMineSchema>;
 export type HandStartPayload = z.infer<typeof handStartSchema>;
 export type AdvanceStreetPayload = z.infer<typeof advanceStreetSchema>;
+export type ResetHandPayload = z.infer<typeof resetHandSchema>;
 export type TurnRequestTimePayload = z.infer<typeof turnRequestTimeSchema>;
 export type ChipsRequestPayload = z.infer<typeof chipsRequestSchema>;
 export type ChipsApprovePayload = z.infer<typeof chipsApproveSchema>;
