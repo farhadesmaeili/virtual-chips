@@ -126,12 +126,20 @@ export function Lobby(): React.ReactElement {
             {session?.user?.username ?? session?.user?.email ?? 'player'}
           </span>
         </p>
-        <button
-          onClick={() => void signOut()}
-          className="text-xs text-vc-ink-faint underline-offset-2 transition hover:text-vc-ink-muted hover:underline"
-        >
-          Leave
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => router.push('/history')}
+            className="text-xs text-vc-ink-faint underline-offset-2 transition hover:text-vc-ink-muted hover:underline"
+          >
+            View history
+          </button>
+          <button
+            onClick={() => void signOut()}
+            className="text-xs text-vc-ink-faint underline-offset-2 transition hover:text-vc-ink-muted hover:underline"
+          >
+            Leave
+          </button>
+        </div>
       </div>
 
       {!connected && (
