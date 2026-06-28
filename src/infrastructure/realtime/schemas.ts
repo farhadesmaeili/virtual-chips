@@ -49,6 +49,12 @@ export const resyncRoomSchema = z
 // rejects any field — so a client cannot smuggle a userId to read others' rooms.
 export const roomsMineSchema = z.object({}).strict();
 
+// The per-user game history query (task 6.3) needs no input: the user is taken
+// from the authenticated session, never the payload. An empty .strict() object
+// rejects any field — so a client cannot smuggle a userId to read others'
+// history.
+export const historyMineSchema = z.object({}).strict();
+
 export const handStartSchema = z.object({ roomId: z.string().min(1) }).strict();
 
 export const advanceStreetSchema = z
@@ -118,6 +124,7 @@ export type SitOutPayload = z.infer<typeof sitOutSchema>;
 export type SitInPayload = z.infer<typeof sitInSchema>;
 export type ResyncRoomPayload = z.infer<typeof resyncRoomSchema>;
 export type RoomsMinePayload = z.infer<typeof roomsMineSchema>;
+export type HistoryMinePayload = z.infer<typeof historyMineSchema>;
 export type HandStartPayload = z.infer<typeof handStartSchema>;
 export type AdvanceStreetPayload = z.infer<typeof advanceStreetSchema>;
 export type TurnRequestTimePayload = z.infer<typeof turnRequestTimeSchema>;

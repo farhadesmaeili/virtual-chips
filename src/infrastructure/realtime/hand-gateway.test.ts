@@ -8,6 +8,7 @@ import type {
   SaveHandInput,
   SettlementRecordInput,
   SettlementRepository,
+  UserGameSettlement,
   UserRoomMembership,
 } from '@/application/ports';
 import {
@@ -133,6 +134,9 @@ class FakeSettlementRepository implements SettlementRepository {
     settlements: readonly SettlementRecordInput[],
   ): Promise<void> {
     this.saved.push({ gameId, settlements: [...settlements] });
+  }
+  async listForUser(): Promise<UserGameSettlement[]> {
+    return [];
   }
 }
 

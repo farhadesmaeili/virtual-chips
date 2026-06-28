@@ -2,6 +2,7 @@ import type {
   CreateRoom,
   JoinRoom,
   LeaveRoom,
+  ListUserGameHistory,
   ListUserRooms,
   ResyncRoom,
   SitIn,
@@ -11,11 +12,13 @@ import { toPublicHandState } from './hand-projection';
 import type { RateLimiter } from './rate-limiter';
 import {
   toPublicChipRequest,
+  toPublicGameHistoryEntry,
   toPublicRoomState,
   toPublicUserRoom,
 } from './room-projection';
 import {
   createRoomSchema,
+  historyMineSchema,
   joinRoomSchema,
   leaveRoomSchema,
   resyncRoomSchema,
@@ -34,6 +37,7 @@ export interface RoomHandlerDeps {
   readonly sitIn: SitIn;
   readonly resyncRoom: ResyncRoom;
   readonly listUserRooms: ListUserRooms;
+  readonly listUserGameHistory: ListUserGameHistory;
   /** Rate limiter for the expensive room:create action. */
   readonly createLimiter: RateLimiter;
 }
@@ -202,6 +206,27 @@ export function registerRoomHandlers(
       try {
         const rooms = await deps.listUserRooms.execute({ userId });
         socket.emit('rooms:mine', { rooms: rooms.map(toPublicUserRoom) });
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  // Per-user game history (task 6.3): the finished games this user played. The
+  // user is the authenticated socket user — never the payload (which carries no
+  // userId), so this can only ever return the caller's own history.
+  socket.on('history:mine', (payload: unknown) => {
+    void (async () => {
+      const parsed = historyMineSchema.safeParse(payload ?? {});
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid history:mine payload');
+        return;
+      }
+      try {
+        const games = await deps.listUserGameHistory.execute({ userId });
+        socket.emit('history:mine', {
+          games: games.map(toPublicGameHistoryEntry),
+        });
       } catch (error) {
         handleError(socket, error);
       }

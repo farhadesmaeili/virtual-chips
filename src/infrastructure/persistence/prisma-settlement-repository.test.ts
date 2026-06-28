@@ -36,3 +36,45 @@ describe('PrismaSettlementRepository.saveForGame', () => {
     expect(createMany).not.toHaveBeenCalled();
   });
 });
+
+describe('PrismaSettlementRepository.listForUser', () => {
+  it('queries finished games only for the user, newest first', async () => {
+    const findMany = vi.fn().mockResolvedValue([]);
+    const prisma = { settlement: { findMany } } as unknown as PrismaClient;
+
+    const repo = new PrismaSettlementRepository(prisma);
+    await repo.listForUser('alice');
+
+    expect(findMany).toHaveBeenCalledWith({
+      where: { userId: 'alice', game: { endedAt: { not: null } } },
+      orderBy: { game: { endedAt: 'desc' } },
+      include: {
+        game: {
+          select: {
+            id: true,
+            endedAt: true,
+            room: { select: { name: true } },
+          },
+        },
+      },
+    });
+  });
+
+  it('maps each row to the UserGameSettlement shape', async () => {
+    const endedAt = new Date('2026-06-28T00:00:00.000Z');
+    const findMany = vi.fn().mockResolvedValue([
+      {
+        net: 800,
+        game: { id: 'game-1', endedAt, room: { name: 'Friday game' } },
+      },
+    ]);
+    const prisma = { settlement: { findMany } } as unknown as PrismaClient;
+
+    const repo = new PrismaSettlementRepository(prisma);
+    const history = await repo.listForUser('alice');
+
+    expect(history).toEqual([
+      { gameId: 'game-1', net: 800, roomName: 'Friday game', endedAt },
+    ]);
+  });
+});
