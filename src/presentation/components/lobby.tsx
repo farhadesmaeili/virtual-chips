@@ -11,6 +11,7 @@ import type {
   PublicRoomState,
   PublicUserRoom,
   RoomsMine,
+  SettlementMode,
   SocketError,
 } from '@/presentation/lib/socket-events';
 import { useConnectionStore } from '@/presentation/stores/connection-store';
@@ -20,7 +21,11 @@ type RoomEvent =
       type: 'room:create';
       payload: {
         name: string;
-        settings: { smallBlind: number; bigBlind: number };
+        settings: {
+          smallBlind: number;
+          bigBlind: number;
+          settlementMode: SettlementMode;
+        };
       };
     }
   | { type: 'room:join'; payload: { roomId: string } };
@@ -36,6 +41,10 @@ export function Lobby(): React.ReactElement {
   const [name, setName] = useState('');
   const [smallBlind, setSmallBlind] = useState('1');
   const [bigBlind, setBigBlind] = useState('2');
+  // How pots are awarded (task 6.1). Default 'banker' matches the server default,
+  // so existing behavior is unchanged unless the creator opts into 'showdown'.
+  const [settlementMode, setSettlementMode] =
+    useState<SettlementMode>('banker');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -208,11 +217,49 @@ export function Lobby(): React.ReactElement {
             small blind.
           </p>
         )}
+        <div className="flex flex-col gap-1.5">
+          <span className="text-[11px] uppercase tracking-[0.08em] text-vc-ink-faint">
+            Settling pots
+          </span>
+          <div className="grid grid-cols-2 gap-2 rounded-xl border border-white/10 bg-black/25 p-1">
+            {(
+              [
+                { value: 'banker', label: 'Banker decides' },
+                { value: 'showdown', label: 'Players claim' },
+              ] as const
+            ).map((opt) => {
+              const active = settlementMode === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setSettlementMode(opt.value)}
+                  aria-pressed={active}
+                  className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+                    active
+                      ? 'bg-vc-emerald/90 text-vc-felt-edge shadow-[0_6px_16px_-8px_rgb(52_211_153/0.6)]'
+                      : 'text-vc-ink-muted hover:text-vc-ink'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              );
+            })}
+          </div>
+          <p className="text-xs text-vc-ink-faint">
+            {settlementMode === 'banker'
+              ? 'Banker decides: you pick each pot’s winner.'
+              : 'Players claim: players claim win/muck, you confirm.'}
+          </p>
+        </div>
         <button
           onClick={() =>
             run({
               type: 'room:create',
-              payload: { name, settings: { smallBlind: sb, bigBlind: bb } },
+              payload: {
+                name,
+                settings: { smallBlind: sb, bigBlind: bb, settlementMode },
+              },
             })
           }
           disabled={

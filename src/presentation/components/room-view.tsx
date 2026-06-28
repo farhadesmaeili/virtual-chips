@@ -16,6 +16,8 @@ import { celebrationBursts } from './celebration';
 import { type Celebration } from './celebration-layer';
 import { PokerTable } from './poker-table';
 import { RoomIdBadge } from './room-id-badge';
+import { ShowdownClaimControls } from './showdown-claim-controls';
+import { type ClaimChoice } from './showdown-claim-model';
 import { ShowdownControls } from './showdown-controls';
 import { StartHandControl } from './start-hand-control';
 import { StreetControls } from './street-controls';
@@ -231,6 +233,30 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     [roomId],
   );
 
+  // Player-showdown claim (mode B, task 6.1). The hero claims `'win'`/`'muck'`
+  // for THEMSELVES; the seat is resolved from the session server-side, never
+  // sent. Errors flow through the same action-error channel as betting.
+  const claim = useCallback(
+    (choice: ClaimChoice): void => {
+      intent.current = 'action';
+      setPending(true);
+      setActionError(null);
+      getSocket().emit('player:claim', { roomId, claim: choice });
+    },
+    [roomId],
+  );
+
+  // Banker confirm in player-showdown mode (mode B). Deliberately reuses the
+  // existing `hand:settle` path with EMPTY declarations: the server seeds the
+  // winners from the players' stored claims and ignores client declarations, so
+  // the UI never builds per-pot winner sets and never moves a chip.
+  const confirmShowdown = useCallback((): void => {
+    intent.current = 'action';
+    setPending(true);
+    setActionError(null);
+    getSocket().emit('hand:settle', { roomId, declarations: [] });
+  }, [roomId]);
+
   // End the whole game (task 6.2). The server settles net, persists, and
   // broadcasts game:ended + a fresh ended room:state; the menu already gates
   // this to the banker between hands, and the server re-enforces both.
@@ -427,14 +453,31 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
                 )}
 
               {hand?.status === 'awaiting_showdown' ? (
-                <ShowdownControls
-                  hand={hand}
-                  members={room.members}
-                  isBanker={heroIsBanker}
-                  pending={pending}
-                  error={actionError}
-                  onSettle={settle}
-                />
+                // Split by the room's settlement mode. In showdown mode the
+                // players claim and the banker confirms (mode B); otherwise the
+                // banker declares winners directly (mode A, unchanged). The
+                // server re-enforces the mode, so this is purely which tray shows.
+                room.settings.settlementMode === 'showdown' ? (
+                  <ShowdownClaimControls
+                    hand={hand}
+                    members={room.members}
+                    heroSeat={heroSeat}
+                    isBanker={heroIsBanker}
+                    pending={pending}
+                    error={actionError}
+                    onClaim={claim}
+                    onConfirm={confirmShowdown}
+                  />
+                ) : (
+                  <ShowdownControls
+                    hand={hand}
+                    members={room.members}
+                    isBanker={heroIsBanker}
+                    pending={pending}
+                    error={actionError}
+                    onSettle={settle}
+                  />
+                )
               ) : hand?.status === 'awaiting_street' ? (
                 <StreetControls
                   street={hand.street}
