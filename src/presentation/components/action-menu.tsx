@@ -23,6 +23,8 @@ export interface ActionMenuProps {
   readonly onRequestChips: (amount: number) => void;
   readonly onApproveChips: (id: string) => void;
   readonly onRejectChips: (id: string) => void;
+  /** Banker resets (re-deals) the in-progress hand (task 6.6); confirmed inline. */
+  readonly onResetHand: () => void;
   /** Banker ends the game (task 6.2); confirmed inline before it fires. */
   readonly onEndGame: () => void;
 }
@@ -53,6 +55,7 @@ export function ActionMenu({
   onRequestChips,
   onApproveChips,
   onRejectChips,
+  onResetHand,
   onEndGame,
 }: ActionMenuProps): React.ReactElement | null {
   const reduce = useReducedMotionPreference();
@@ -60,6 +63,8 @@ export function ActionMenu({
   const [amount, setAmount] = useState('1000');
   // Two-step confirm for the (irreversible) end-game action; reset on close.
   const [confirmingEnd, setConfirmingEnd] = useState(false);
+  // Two-step confirm for discarding the in-progress hand (task 6.6).
+  const [confirmingReset, setConfirmingReset] = useState(false);
   const panelId = useId();
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
@@ -73,7 +78,10 @@ export function ActionMenu({
   // Drop any half-finished end-game confirmation whenever the panel closes, so
   // reopening always starts from the single "End game" button.
   useEffect(() => {
-    if (!open) setConfirmingEnd(false);
+    if (!open) {
+      setConfirmingEnd(false);
+      setConfirmingReset(false);
+    }
   }, [open]);
 
   // Close on Escape, on outside click, and trap Tab within the panel.
@@ -291,6 +299,45 @@ export function ActionMenu({
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Banker: discard + re-deal the in-progress hand (task 6.6).
+                  Inline two-step confirm — it throws away the live deal. */}
+              {model.resetHand.show && (
+                <div className="mt-1 flex flex-col gap-1.5">
+                  {confirmingReset ? (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => {
+                          onResetHand();
+                          setConfirmingReset(false);
+                        }}
+                        className="flex-1 rounded-lg border border-vc-gold/60 bg-vc-gold/15 px-4 py-2 text-sm font-semibold text-vc-gold transition hover:bg-vc-gold/25 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Confirm reset hand
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingReset(false)}
+                        className="rounded-lg border border-white/10 px-4 py-2 text-sm font-medium text-vc-ink-muted transition hover:text-vc-ink"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={model.resetHand.disabled}
+                      title={model.resetHand.reason}
+                      onClick={() => setConfirmingReset(true)}
+                      className="rounded-lg border border-vc-rail-edge/60 bg-white/[0.04] px-4 py-2 text-sm font-medium text-vc-ink transition hover:bg-white/[0.08] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      Reset hand
+                    </button>
+                  )}
                 </div>
               )}
 

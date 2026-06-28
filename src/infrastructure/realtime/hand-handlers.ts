@@ -7,6 +7,7 @@ import {
   handStartSchema,
   playerActSchema,
   playerClaimSchema,
+  resetHandSchema,
   turnRequestTimeSchema,
 } from './schemas';
 import { emitError, handleError } from './socket-errors';
@@ -58,6 +59,22 @@ export function registerHandHandlers(
       try {
         // Banker-only; the use-case enforces authorization.
         await deps.gateway.advanceStreetDeal(parsed.data.roomId, userId);
+      } catch (error) {
+        handleError(socket, error);
+      }
+    })();
+  });
+
+  socket.on('hand:reset', (payload: unknown) => {
+    void (async () => {
+      const parsed = resetHandSchema.safeParse(payload);
+      if (!parsed.success) {
+        emitError(socket, 'INVALID_PAYLOAD', 'Invalid hand:reset payload');
+        return;
+      }
+      try {
+        // Banker-only; the use-case enforces authorization.
+        await deps.gateway.resetHand(parsed.data.roomId, userId);
       } catch (error) {
         handleError(socket, error);
       }

@@ -32,6 +32,7 @@ import {
 import { AdvanceStreet } from './advance-street';
 import { PlayerAct } from './player-act';
 import { RecordClaim } from './record-claim';
+import { ResetHand } from './reset-hand';
 import { SettleHand } from './settle-hand';
 import { StartHand } from './start-hand';
 
@@ -941,5 +942,135 @@ describe('AdvanceStreet', () => {
     await expect(
       advance().execute({ roomId: 'r1', requesterId: 'banker' }),
     ).rejects.toThrow(NoActiveHandError);
+  });
+});
+
+describe('ResetHand', () => {
+  // 3-handed table; banker seat0. Button=seat0 → SB=seat1 (5), BB=seat2 (10).
+  const seed3 = () =>
+    rooms.seedRoom(room, [
+      member('banker', 0, 100),
+      member('bob', 1, 100),
+      member('carol', 2, 100),
+    ]);
+
+  it('rejects a non-banker', async () => {
+    seed3();
+    const sharedIds = ids();
+    await new StartHand(rooms, store, sharedIds, clock, games).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    await expect(
+      new ResetHand(rooms, store, sharedIds, clock).execute({
+        roomId: 'r1',
+        requesterId: 'bob',
+      }),
+    ).rejects.toThrow(NotBankerError);
+  });
+
+  it('throws NoActiveHandError when there is no live hand', async () => {
+    seed3();
+    await expect(
+      new ResetHand(rooms, store, ids(), clock).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+      }),
+    ).rejects.toThrow(NoActiveHandError);
+  });
+
+  it('throws InvalidActionError when the hand is already settled', async () => {
+    seed3();
+    const sharedIds = ids();
+    const h = await new StartHand(
+      rooms,
+      store,
+      sharedIds,
+      clock,
+      games,
+    ).execute({ roomId: 'r1', requesterId: 'banker' });
+    await store.save('r1', { ...h, status: 'settled' });
+    await expect(
+      new ResetHand(rooms, store, sharedIds, clock).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+      }),
+    ).rejects.toThrow(InvalidActionError);
+  });
+
+  it('re-deals a freshly dealt hand with no actions (in-progress is resettable)', async () => {
+    seed3();
+    const sharedIds = ids();
+    const h1 = await new StartHand(
+      rooms,
+      store,
+      sharedIds,
+      clock,
+      games,
+    ).execute({ roomId: 'r1', requesterId: 'banker' });
+    const h2 = await new ResetHand(rooms, store, sharedIds, clock).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    expect(h2.status).toBe('betting');
+    // Fresh id (shared generator: StartHand=hand-1, ResetHand=hand-2).
+    expect(h2.id).toBe('hand-2');
+    expect(h2.id).not.toBe(h1.id);
+    // Re-posted blinds (SB=seat1=5, BB=seat2=10, currentBet=10).
+    expect(h2.currentBet).toBe(10);
+    expect(h2.players.find((p) => p.seat === 1)?.committedThisStreet).toBe(5);
+    expect(h2.players.find((p) => p.seat === 2)?.committedThisStreet).toBe(10);
+  });
+
+  it('never writes member chips and re-deals stacks from RoomMember.chips minus fresh blinds', async () => {
+    seed3();
+    const sharedIds = ids();
+    await new StartHand(rooms, store, sharedIds, clock, games).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    // Simulate a mid-hand mutation on the stored (discarded) hand: the banker
+    // committed everything. If reset re-derived from the hand it would deal 0;
+    // it must instead re-derive from RoomMember.chips (still 100).
+    const live = await store.get('r1');
+    if (live === null) throw new Error('expected a live hand');
+    await store.save('r1', {
+      ...live,
+      players: live.players.map((p) =>
+        p.seat === 0 ? { ...p, stack: 0, committedTotal: 100 } : p,
+      ),
+    });
+
+    const reset = await new ResetHand(rooms, store, sharedIds, clock).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+
+    // (a) RoomMember.chips is untouched by reset — still the seeded 100 each.
+    const members = await rooms.listMembers('r1');
+    expect(members.map((m) => m.chips)).toEqual([100, 100, 100]);
+    // (b) Re-dealt stacks = pre-hand chips minus the fresh blinds; the banker is
+    // back to a full stack (not the discarded hand's 0).
+    expect(reset.players.find((p) => p.seat === 0)?.stack).toBe(100); // no blind
+    expect(reset.players.find((p) => p.seat === 1)?.stack).toBe(95); // SB 5
+    expect(reset.players.find((p) => p.seat === 2)?.stack).toBe(90); // BB 10
+  });
+
+  it('keeps the current buttonSeat (re-deals the same position, no rotation)', async () => {
+    seed3();
+    const sharedIds = ids();
+    const start = new StartHand(rooms, store, sharedIds, clock, games);
+    const h1 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    expect(h1.buttonSeat).toBe(0);
+    // Settle and start a second hand so the button rotates to seat 1.
+    await store.save('r1', { ...h1, status: 'settled' });
+    const h2 = await start.execute({ roomId: 'r1', requesterId: 'banker' });
+    expect(h2.buttonSeat).toBe(1);
+    // Reset must keep seat 1 (not reset to the first-hand button).
+    const reset = await new ResetHand(rooms, store, sharedIds, clock).execute({
+      roomId: 'r1',
+      requesterId: 'banker',
+    });
+    expect(reset.buttonSeat).toBe(1);
   });
 });

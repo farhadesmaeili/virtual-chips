@@ -145,6 +145,24 @@ describe('deriveMenuItems', () => {
     expect(m.endGame.disabled).toBe(true);
   });
 
+  it('offers reset hand to the banker only while a hand is in play (6.6)', () => {
+    expect(make({ isBanker: true, handInPlay: true }).resetHand.show).toBe(
+      true,
+    );
+    // No live hand → nothing to reset.
+    expect(make({ isBanker: true, handInPlay: false }).resetHand.show).toBe(
+      false,
+    );
+    // Never offered to a non-banker, even mid-hand.
+    expect(make({ handInPlay: true }).resetHand.show).toBe(false);
+  });
+
+  it('disables reset hand while a request is pending', () => {
+    const m = make({ isBanker: true, handInPlay: true, pending: true });
+    expect(m.resetHand.show).toBe(true);
+    expect(m.resetHand.disabled).toBe(true);
+  });
+
   it('keeps the menu present (hasAny) through phase states for a seated banker', () => {
     // awaiting_street: hand in play, no start-hand, but presence still shows.
     expect(make({ isBanker: true, handInPlay: true }).hasAny).toBe(true);

@@ -14,6 +14,7 @@ All payloads are validated with Zod. Naming: `domain:action`.
 | `banker:buyin`        | `{ roomId, targetUserId, amount }` | banker               | Chip buy-in control                                                   |
 | `hand:start`          | `{ roomId }`                       | banker               | Start a new hand                                                      |
 | `hand:advance-street` | `{ roomId }`                       | banker               | Deal the next street (4.7)                                            |
+| `hand:reset`          | `{ roomId }`                       | banker               | Discard and re-deal the in-progress hand (6.6)                        |
 | `chips:request`       | `{ roomId, amount }`               | member               | buy-in request (4.15)                                                 |
 | `chips:approve`       | `{ roomId, requestId }`            | banker               | Approve a chips request                                               |
 | `chips:reject`        | `{ roomId, requestId }`            | banker               | Reject a chips request                                                |

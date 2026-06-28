@@ -17,6 +17,7 @@ import {
   PlayerAct,
   RecordClaim,
   RequestTimeExtension,
+  ResetHand,
   SettleHand,
   StartHand,
 } from '@/application/use-cases';
@@ -211,6 +212,7 @@ beforeEach(() => {
     new StartHand(rooms, store, ids(), clock, games),
     new PlayerAct(rooms, store, clock),
     new AdvanceStreet(rooms, store, clock),
+    new ResetHand(rooms, store, ids(), clock),
     new SettleHand(rooms, store),
     new RecordClaim(rooms, store),
     new RequestTimeExtension(store, clock),
@@ -360,6 +362,7 @@ describe('HandGateway — endGame (6.2)', () => {
       new StartHand(rooms, store, ids(), clock, games),
       new PlayerAct(rooms, store, clock),
       new AdvanceStreet(rooms, store, clock),
+      new ResetHand(rooms, store, ids(), clock),
       new SettleHand(rooms, store),
       new RecordClaim(rooms, store),
       new RequestTimeExtension(store, clock),
