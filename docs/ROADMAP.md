@@ -309,7 +309,7 @@ funding.ts`) به‌صورت موقت chips می‌دهد. باید با جری�
 
 ## Phase 6 — Banker, Settlement & History
 
-- [ ] **6.1** هر دو mode تعیین برنده (banker / showdown-confirm).
+- [x] **6.1** هر دو mode تعیین برنده (banker / showdown-confirm).
 - [x] **6.2** صفحه‌ی تسویه‌ی پایان بازی + گزارش net.
 - [ ] **6.3** صفحه‌ی تاریخچه‌ی بازی‌ها (per user).
 - [ ] **6.4** Straddle (forced bet اختیاری) — **تسکِ جدا و بعدی، وابسته به 4.10**.
