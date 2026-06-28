@@ -163,6 +163,25 @@ describe('deriveMenuItems', () => {
     expect(m.resetHand.disabled).toBe(true);
   });
 
+  it('offers adjust chips to the banker only between hands (6.7)', () => {
+    // Between hands (no live hand) → shown.
+    expect(make({ isBanker: true, handInPlay: false }).adjustChips.show).toBe(
+      true,
+    );
+    // Mid-hand → hidden (server enforces HandInProgressError too).
+    expect(make({ isBanker: true, handInPlay: true }).adjustChips.show).toBe(
+      false,
+    );
+    // Never offered to a non-banker.
+    expect(make({ handInPlay: false }).adjustChips.show).toBe(false);
+  });
+
+  it('disables adjust chips while a request is pending', () => {
+    const m = make({ isBanker: true, handInPlay: false, pending: true });
+    expect(m.adjustChips.show).toBe(true);
+    expect(m.adjustChips.disabled).toBe(true);
+  });
+
   it('keeps the menu present (hasAny) through phase states for a seated banker', () => {
     // awaiting_street: hand in play, no start-hand, but presence still shows.
     expect(make({ isBanker: true, handInPlay: true }).hasAny).toBe(true);

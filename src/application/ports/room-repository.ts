@@ -56,8 +56,12 @@ export interface RoomRepository {
     chips: number,
   ): Promise<void>;
   /**
-   * Adds an approved buy-in: increases both the member's stack and their
-   * cumulative `buyInTotal` (the latter feeds end-of-game net settlement).
+   * Applies a signed funding delta to a member, moving their stack and their
+   * cumulative `buyInTotal` in lockstep (positive = buy-in/top-up, negative =
+   * correction/cash-out). Because both move together the member's net
+   * (`chips - buyInTotal`) is preserved, so end-of-game settlement stays
+   * zero-sum. Callers must guard the floor — this does not prevent a negative
+   * delta from driving either field below zero.
    */
   addMemberFunding(
     roomId: string,

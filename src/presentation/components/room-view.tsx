@@ -322,6 +322,19 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
     [roomId],
   );
 
+  // Banker direct chip adjustment (task 6.7). Targets a member by seat (the
+  // public projection carries no userId); amount is signed (+ add / − remove).
+  // The server enforces banker-only + between-hands + floor guards.
+  const adjustChips = useCallback(
+    (seat: number, amount: number): void => {
+      intent.current = 'funding';
+      setPending(true);
+      setFundingError(null);
+      getSocket().emit('banker:adjustChips', { roomId, seat, amount });
+    },
+    [roomId],
+  );
+
   // Seat presence (task 4.14). The acting user is the authenticated socket user;
   // these payloads carry only the roomId.
   const sitOut = useCallback((): void => {
@@ -527,6 +540,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
               <ActionMenu
                 model={menuModel}
                 requests={chipRequests}
+                members={room.members}
                 heroChips={heroMember?.chips ?? 0}
                 pending={pending}
                 actionError={actionError}
@@ -538,6 +552,7 @@ export function RoomView({ roomId }: { roomId: string }): React.ReactElement {
                 onApproveChips={approveChips}
                 onRejectChips={rejectChips}
                 onResetHand={resetHand}
+                onAdjustChips={adjustChips}
                 onEndGame={endGame}
               />
             </>

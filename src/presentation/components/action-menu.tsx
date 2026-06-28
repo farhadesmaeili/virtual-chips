@@ -4,12 +4,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useReducedMotionPreference } from '@/presentation/animations';
 import type { MenuModel } from './menu-availability';
-import type { PublicChipRequest } from '@/presentation/lib/socket-events';
+import type {
+  PublicChipRequest,
+  PublicRoomMember,
+} from '@/presentation/lib/socket-events';
 
 export interface ActionMenuProps {
   readonly model: MenuModel;
   /** Pending buy-in requests, for the banker's approve/deny queue. */
   readonly requests: readonly PublicChipRequest[];
+  /** Room members, for the banker's chip-adjustment target picker (task 6.7). */
+  readonly members: readonly PublicRoomMember[];
   /** The viewer's stack, to nudge them when they are out of chips. */
   readonly heroChips: number;
   readonly pending: boolean;
@@ -23,6 +28,8 @@ export interface ActionMenuProps {
   readonly onRequestChips: (amount: number) => void;
   readonly onApproveChips: (id: string) => void;
   readonly onRejectChips: (id: string) => void;
+  /** Banker adjusts a member's chips by seat (task 6.7); signed amount. */
+  readonly onAdjustChips: (seat: number, amount: number) => void;
   /** Banker resets (re-deals) the in-progress hand (task 6.6); confirmed inline. */
   readonly onResetHand: () => void;
   /** Banker ends the game (task 6.2); confirmed inline before it fires. */
@@ -45,6 +52,7 @@ const FOCUSABLE =
 export function ActionMenu({
   model,
   requests,
+  members,
   heroChips,
   pending,
   actionError,
@@ -55,12 +63,17 @@ export function ActionMenu({
   onRequestChips,
   onApproveChips,
   onRejectChips,
+  onAdjustChips,
   onResetHand,
   onEndGame,
 }: ActionMenuProps): React.ReactElement | null {
   const reduce = useReducedMotionPreference();
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState('1000');
+  // Banker chip-adjustment form (task 6.7): target seat + a positive magnitude;
+  // direction is chosen explicitly via the Add / Remove buttons.
+  const [adjustSeat, setAdjustSeat] = useState('');
+  const [adjustAmount, setAdjustAmount] = useState('100');
   // Two-step confirm for the (irreversible) end-game action; reset on close.
   const [confirmingEnd, setConfirmingEnd] = useState(false);
   // Two-step confirm for discarding the in-progress hand (task 6.6).
@@ -132,6 +145,24 @@ export function ActionMenu({
   const submitRequest = (): void => {
     const value = Number(amount);
     if (Number.isInteger(value) && value > 0) onRequestChips(value);
+  };
+
+  // Effective target seat: the picked seat, or the first member as a default.
+  const adjustTargetSeat =
+    adjustSeat !== '' ? Number(adjustSeat) : (members[0]?.seat ?? null);
+
+  // Apply a chip adjustment with an explicit sign (+1 add, -1 remove) so the
+  // banker never accidentally sends a negative; the magnitude is always positive.
+  const submitAdjust = (sign: 1 | -1): void => {
+    const magnitude = Number(adjustAmount);
+    if (
+      adjustTargetSeat === null ||
+      !Number.isInteger(magnitude) ||
+      magnitude <= 0
+    ) {
+      return;
+    }
+    onAdjustChips(adjustTargetSeat, sign * magnitude);
   };
 
   return (
@@ -299,6 +330,59 @@ export function ActionMenu({
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {/* Banker: directly adjust a member's chips (task 6.7). Target by
+                  seat (no userId on the wire); direction is explicit (Add /
+                  Remove) so a negative is never sent by accident. */}
+              {model.adjustChips.show && members.length > 0 && (
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-vc-ink-muted">
+                    Adjust chips
+                  </span>
+                  <select
+                    value={
+                      adjustTargetSeat === null ? '' : String(adjustTargetSeat)
+                    }
+                    onChange={(e) => setAdjustSeat(e.target.value)}
+                    aria-label="Member to adjust"
+                    className="rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-vc-ink outline-none focus-visible:border-vc-emerald/60"
+                  >
+                    {members.map((m) => (
+                      <option key={m.seat} value={String(m.seat)}>
+                        {m.username} · seat {m.seat + 1} (
+                        {m.chips.toLocaleString()})
+                      </option>
+                    ))}
+                  </select>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      inputMode="numeric"
+                      value={adjustAmount}
+                      onChange={(e) => setAdjustAmount(e.target.value)}
+                      aria-label="Adjustment amount"
+                      className="w-24 rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 font-mono text-sm tabular-nums text-vc-ink outline-none focus-visible:border-vc-emerald/60"
+                    />
+                    <button
+                      type="button"
+                      disabled={model.adjustChips.disabled}
+                      onClick={() => submitAdjust(1)}
+                      className="rounded-lg border border-vc-emerald/50 bg-vc-emerald/10 px-3 py-1.5 text-sm font-semibold text-vc-emerald transition hover:bg-vc-emerald/20 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      disabled={model.adjustChips.disabled}
+                      onClick={() => submitAdjust(-1)}
+                      className="rounded-lg border border-vc-danger/40 bg-vc-danger/10 px-3 py-1.5 text-sm font-semibold text-vc-danger transition hover:bg-vc-danger/20 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               )}
 

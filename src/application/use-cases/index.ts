@@ -15,3 +15,4 @@ export * from './settle-hand';
 export * from './record-claim';
 export * from './end-game';
 export * from './chip-requests';
+export * from './adjust-member-chips';

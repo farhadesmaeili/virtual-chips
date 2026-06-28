@@ -34,6 +34,8 @@ export interface MenuModel {
   readonly requestQueue: MenuItemState;
   /** The banker's "reset hand" control (task 6.6): discard + re-deal the hand. */
   readonly resetHand: MenuItemState;
+  /** The banker's direct chip-adjustment control (task 6.7), between hands. */
+  readonly adjustChips: MenuItemState;
   /** The banker's "end game" control (task 6.2): settle + close the game. */
   readonly endGame: MenuItemState;
 }
@@ -125,6 +127,11 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
   const resetHand: MenuItemState =
     isBanker && handInPlay ? { show: true, disabled: pending } : HIDDEN;
 
+  // Adjust chips: the banker can credit/debit a member directly (task 6.7), but
+  // only between hands — the server's HandInProgressError enforces the same gate.
+  const adjustChips: MenuItemState =
+    isBanker && !handInPlay ? { show: true, disabled: pending } : HIDDEN;
+
   // End game: the banker can close a running game, but only between hands. While
   // a hand is live the item shows disabled with a reason — reflecting (not
   // duplicating) the server's HandInProgressError, which still enforces it.
@@ -146,6 +153,7 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
     startHand.show ||
     requestQueue.show ||
     resetHand.show ||
+    adjustChips.show ||
     endGame.show;
 
   return {
@@ -158,6 +166,7 @@ export function deriveMenuItems(input: MenuInput): MenuModel {
     startHand,
     requestQueue,
     resetHand,
+    adjustChips,
     endGame,
   };
 }

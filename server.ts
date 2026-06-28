@@ -7,6 +7,7 @@ import next from 'next';
 import { Server, type DefaultEventsMap } from 'socket.io';
 import type { Clock, IdGenerator } from './src/application/ports';
 import {
+  AdjustMemberChips,
   AdvanceStreet,
   ApproveChipRequest,
   CreateRoom,
@@ -144,6 +145,7 @@ async function main(): Promise<void> {
       chipRequestStore,
     ),
     rejectChipRequest: new RejectChipRequest(roomRepository, chipRequestStore),
+    adjustMemberChips: new AdjustMemberChips(roomRepository, handStore),
     requestLimiter: chipRequestLimiter,
   };
   const handGateway = new HandGateway(

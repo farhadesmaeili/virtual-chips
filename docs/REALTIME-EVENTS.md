@@ -4,25 +4,25 @@ All payloads are validated with Zod. Naming: `domain:action`.
 
 ## Client → Server
 
-| Event                 | Payload                            | Authz                | Description                                                           |
-| --------------------- | ---------------------------------- | -------------------- | --------------------------------------------------------------------- |
-| `room:create`         | `{ name, settings }`               | user                 | Create a room, user = banker                                          |
-| `room:join`           | `{ roomId }`                       | user                 | Join (if there is space)                                              |
-| `room:leave`          | `{ roomId }`                       | member               | Leave (not mid-hand; banker not mid-game) (4.14)                      |
-| `room:sit-out`        | `{ roomId }`                       | member (self)        | Sit out; not dealt from the next hand (4.14)                          |
-| `room:sit-in`         | `{ roomId }`                       | member (self)        | Return; dealt again from the next hand (4.14)                         |
-| `banker:buyin`        | `{ roomId, targetUserId, amount }` | banker               | Chip buy-in control                                                   |
-| `hand:start`          | `{ roomId }`                       | banker               | Start a new hand                                                      |
-| `hand:advance-street` | `{ roomId }`                       | banker               | Deal the next street (4.7)                                            |
-| `hand:reset`          | `{ roomId }`                       | banker               | Discard and re-deal the in-progress hand (6.6)                        |
-| `chips:request`       | `{ roomId, amount }`               | member               | buy-in request (4.15)                                                 |
-| `chips:approve`       | `{ roomId, requestId }`            | banker               | Approve a chips request                                               |
-| `chips:reject`        | `{ roomId, requestId }`            | banker               | Reject a chips request                                                |
-| `player:act`          | `{ roomId, action, amount? }`      | acting player        | Betting action                                                        |
-| `hand:settle`         | `{ roomId, declarations[][] }`     | banker               | Declare/confirm winners + move chips (mode A, and confirm for mode B) |
-| `player:claim`        | `{ roomId, claim }`                | active player (self) | showdown (mode B): claim equal to `'win'` or `'muck'` (6.1)           |
-| `banker:endGame`      | `{ roomId }`                       | banker               | End + settlement                                                      |
-| `history:mine`        | `{}`                               | user (self)          | The user's game history — finished games only (6.3)                   |
+| Event                 | Payload                        | Authz                | Description                                                                          |
+| --------------------- | ------------------------------ | -------------------- | ------------------------------------------------------------------------------------ |
+| `room:create`         | `{ name, settings }`           | user                 | Create a room, user = banker                                                         |
+| `room:join`           | `{ roomId }`                   | user                 | Join (if there is space)                                                             |
+| `room:leave`          | `{ roomId }`                   | member               | Leave (not mid-hand; banker not mid-game) (4.14)                                     |
+| `room:sit-out`        | `{ roomId }`                   | member (self)        | Sit out; not dealt from the next hand (4.14)                                         |
+| `room:sit-in`         | `{ roomId }`                   | member (self)        | Return; dealt again from the next hand (4.14)                                        |
+| `hand:start`          | `{ roomId }`                   | banker               | Start a new hand                                                                     |
+| `hand:advance-street` | `{ roomId }`                   | banker               | Deal the next street (4.7)                                                           |
+| `hand:reset`          | `{ roomId }`                   | banker               | Discard and re-deal the in-progress hand (6.6)                                       |
+| `chips:request`       | `{ roomId, amount }`           | member               | buy-in request (4.15)                                                                |
+| `chips:approve`       | `{ roomId, requestId }`        | banker               | Approve a chips request                                                              |
+| `chips:reject`        | `{ roomId, requestId }`        | banker               | Reject a chips request                                                               |
+| `player:act`          | `{ roomId, action, amount? }`  | acting player        | Betting action                                                                       |
+| `hand:settle`         | `{ roomId, declarations[][] }` | banker               | Declare/confirm winners + move chips (mode A, and confirm for mode B)                |
+| `player:claim`        | `{ roomId, claim }`            | active player (self) | showdown (mode B): claim equal to `'win'` or `'muck'` (6.1)                          |
+| `banker:endGame`      | `{ roomId }`                   | banker               | End + settlement                                                                     |
+| `banker:adjustChips`  | `{ roomId, seat, amount }`     | banker               | Adjust a member's chips ± (by seat) in lockstep with buyInTotal, between hands (6.7) |
+| `history:mine`        | `{}`                           | user (self)          | The user's game history — finished games only (6.3)                                  |
 
 ## Server → Client (broadcast to room)
 
