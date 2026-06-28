@@ -1,8 +1,8 @@
-# docs/ARCHITECTURE.md — معماری
+# docs/ARCHITECTURE.md — Architecture
 
-## دید کلی
+## Overview
 
-Virtual Chips یک اپ **server-authoritative** و **real-time** است. تمام منطق و اعتبارسنجی بازی روی سرور انجام می‌شود؛ کلاینت فقط render و ارسال intent می‌کند.
+Virtual Chips is a **server-authoritative** and **real-time** app. All game logic and validation happen on the server; the client only renders and sends intent.
 
 ```
 ┌─────────────┐    Socket.io (WS)     ┌──────────────────────────┐
@@ -25,27 +25,27 @@ Virtual Chips یک اپ **server-authoritative** و **real-time** است. تما
                                            └───────────────┘
 ```
 
-## جریان یک اکشن
+## Flow of one action
 
-1. کلاینت `player:act` را با payload (نوع اکشن + مقدار) به سرور می‌فرستد.
-2. Gateway با **Zod** payload را validate و **session** را authorize می‌کند.
-3. Use-case (`PlayerAct`) state فعلی Hand را از repository می‌گیرد.
-4. `BettingEngine` در domain اکشن را اعمال می‌کند → state جدید یا `DomainError`.
-5. state جدید persist و در ActionLog ثبت می‌شود.
-6. Gateway state عمومی را به همه‌ی اعضای room **broadcast** می‌کند.
-7. اگر نوبت تغییر کرد، timer جدید با `actionDeadline` ست و broadcast می‌شود.
+1. The client sends `player:act` to the server with a payload (action type + amount).
+2. The Gateway validates the payload with **Zod** and authorizes the **session**.
+3. The use-case (`PlayerAct`) gets the current Hand state from the repository.
+4. The `BettingEngine` in domain applies the action → new state or `DomainError`.
+5. The new state is persisted and recorded in ActionLog.
+6. The Gateway **broadcasts** the public state to all members of the room.
+7. If the turn changed, a new timer with `actionDeadline` is set and broadcast.
 
-## چرا custom server؟
+## Why a custom server?
 
-Socket.io به اتصال WebSocket پایدار نیاز دارد که با Route Handler های stateless ساده نیست. یک `server.ts` سفارشی، Next.js و Socket.io را با هم بالا می‌آورد. برای scale افقی، **Redis adapter** پیام‌ها را بین instance ها همگام می‌کند.
+Socket.io needs a persistent WebSocket connection, which is not simple with stateless Route Handlers. A custom `server.ts` brings up Next.js and Socket.io together. For horizontal scale, the **Redis adapter** keeps messages in sync between instances.
 
-## مرزهای لایه‌ها (وابستگی فقط رو به داخل)
+## Layer boundaries (dependencies point inward only)
 
-- `domain` ← هیچ import از بیرون.
-- `application` ← فقط `domain` + interface های port.
-- `infrastructure` ← پیاده‌سازی port ها (Prisma/Socket/Auth).
-- `presentation` ← فقط از طریق use-case ها / socket با backend حرف می‌زند.
+- `domain` ← no imports from outside.
+- `application` ← only `domain` + port interfaces.
+- `infrastructure` ← implementations of the ports (Prisma/Socket/Auth).
+- `presentation` ← talks to the backend only through use-cases / sockets.
 
-## State عمومی vs خصوصی
+## Public vs private state
 
-چون اطلاعات پنهانِ کارت نداریم، تقریباً همه‌ی state عمومی است. با این حال هرگز فیلدهای داخلی (مثلاً userId خام یا session) را به‌جای داده‌ی نمایشی broadcast نکن؛ یک **public projection** از Hand بساز.
+Since we have no hidden card information, almost all state is public. Even so, never broadcast internal fields (e.g. a raw userId or session) instead of display data; build a **public projection** of the Hand.

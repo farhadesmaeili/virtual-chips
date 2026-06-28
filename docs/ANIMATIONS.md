@@ -1,46 +1,46 @@
-# docs/ANIMATIONS.md — راهنمای انیمیشن (الزامی)
+# docs/ANIMATIONS.md — Animation guide (mandatory)
 
-انیمیشن‌ها بخش اصلی تجربه‌ی محصول‌اند. کتابخانه: **Framer Motion**.
+Animations are a core part of the product experience. Library: **Framer Motion**.
 
-## اصول پایه
+## Base principles
 
-- فقط `transform` و `opacity` را انیمیت کن (نه `width/top/left`) تا compositing روی GPU بماند و jank نشود.
-- spring transitions طبیعی: `type: 'spring', stiffness, damping` به‌جای easing خطی برای حرکت‌های فیزیکی.
-- از `AnimatePresence` برای mount/unmount استفاده کن.
-- همیشه `prefers-reduced-motion` را احترام بگذار: در این حالت انیمیشن‌ها را به fade ساده یا instant کاهش بده (`useReducedMotion`).
-- هدف ۶۰fps؛ روی موبایل تست کن.
+- Animate only `transform` and `opacity` (not `width/top/left`) so compositing stays on the GPU and there is no jank.
+- Natural spring transitions: `type: 'spring', stiffness, damping` instead of linear easing for physical movements.
+- Use `AnimatePresence` for mount/unmount.
+- Always respect `prefers-reduced-motion`: in that case reduce animations to a simple fade or instant (`useReducedMotion`).
+- Target 60fps; test on mobile.
 
-## فهرست انیمیشن‌های لازم
+## List of required animations
 
-### 1. حرکت ژتون (Chip motion) — مهم‌ترین
+### 1. Chip motion — the most important
 
-- بازیکن → pot: ژتون‌ها از جلوی صندلی بازیکن به مرکز میز spring می‌شوند.
-- pot → برنده: هنگام `hand:settled`، ژتون‌ها به سمت برنده پرواز می‌کنند.
-- چند ژتون با `staggerChildren` برای حس stack.
+- Player → pot: chips spring from in front of the player's seat to the center of the table.
+- pot → winner: on `hand:settled`, chips fly toward the winner.
+- Multiple chips with `staggerChildren` for a stack feel.
 
-### 2. حلقه‌ی Timer (Countdown ring)
+### 2. Timer ring (Countdown ring)
 
-- یک SVG ring دور آواتار بازیکن فعال که با `actionDeadline` پر/خالی می‌شود.
-- نزدیک پایان: تغییر رنگ به قرمز + pulse ملایم.
-- محاسبه از روی deadline سرور (نه tick).
+- An SVG ring around the active player's avatar that fills/empties with `actionDeadline`.
+- Near the end: color change to red + a gentle pulse.
+- Computed from the server deadline (not a tick).
 
-### 3. تغییر نوبت
+### 3. Turn change
 
-- highlight که نرم بین صندلی‌ها جابه‌جا می‌شود (`layoutId` برای shared layout animation).
+- A highlight that moves smoothly between seats (`layoutId` for a shared layout animation).
 
-### 4. ورود/خروج بازیکن
+### 4. Player enter/leave
 
-- `AnimatePresence` با scale + fade.
+- `AnimatePresence` with scale + fade.
 
-### 5. افکت برد (Celebration)
+### 5. Win effect (Celebration)
 
-- برنده: glow + scale pop + (اختیاری) ذرات/کانفتی سبک.
+- Winner: glow + scale pop + (optional) light particles/confetti.
 
 ### 6. Dealer button & blinds
 
-- جابه‌جایی نرم button با spring در شروع هر دست.
+- Smooth button movement with a spring at the start of each hand.
 
-## ساختار پیشنهادی
+## Suggested structure
 
-- یک ماژول `presentation/animations/` با variants و transition presets مشترک.
-- presets: `chipFly`, `seatHighlight`, `playerEnter`, `winPulse` — تا یکدست بمانند.
+- A `presentation/animations/` module with shared variants and transition presets.
+- presets: `chipFly`, `seatHighlight`, `playerEnter`, `winPulse` — so they stay consistent.

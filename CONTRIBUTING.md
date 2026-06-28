@@ -1,52 +1,52 @@
-# CONTRIBUTING — قوانین مشارکت
+# CONTRIBUTING — Contribution rules
 
-## ⛔️ قوانین اجباری Git
+## ⛔️ Mandatory Git rules
 
-1. **هیچ‌وقت** مستقیم روی `main` یا `develop` کار نکن.
-2. قبل از هر کار: `git branch` بزن و branch فعلی را چک کن.
-3. هر تغییر روی یک **feature branch** انجام می‌شود.
+1. **Never** work directly on `main` or `develop`.
+2. Before any work: run `git branch` and check the current branch.
+3. Every change is made on a **feature branch**.
 
-Pre-commit hook (`scripts/check-branch.sh`) commit روی `main`/`develop` را مسدود می‌کند، ولی این جایگزین دقت تو نیست.
+The pre-commit hook (`scripts/check-branch.sh`) blocks commits on `main`/`develop`, but that is no substitute for your own care.
 
-## مدل branching
+## Branching model
 
 ```
-main      ← فقط release های پایدار (محافظت‌شده)
+main      ← stable releases only (protected)
   ▲
-develop   ← شاخه‌ی یکپارچه‌سازی (محافظت‌شده)
+develop   ← integration branch (protected)
   ▲
-feature/* ← کار روزمره
-fix/*     ← رفع باگ
+feature/* ← day-to-day work
+fix/*     ← bug fixes
 chore/*   ← tooling/docs
 ```
 
-الگوی نام: `feature/<phase>.<task>-<slug>` — مثال: `feature/3.4-turn-timer`.
+Naming pattern: `feature/<phase>.<task>-<slug>` — example: `feature/3.4-turn-timer`.
 
-## جریان کار
+## Workflow
 
 ```bash
 git switch develop && git pull
 git switch -c feature/3.4-turn-timer
-# ... کد + commit ...
+# ... code + commit ...
 git push -u origin feature/3.4-turn-timer
-# سپس PR به سمت develop
+# then a PR toward develop
 ```
 
 ## Conventional Commits
 
-فرمت: `type(scope): subject`
+Format: `type(scope): subject`
 
 types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`, `perf`, `build`, `ci`.
 
-مثال‌ها:
+Examples:
 
 - `feat(engine): add side-pot layer peeling`
 - `fix(realtime): prevent acting out of turn`
 - `test(engine): cover multi all-in side pots`
 
-commit-msg hook با commitlint این فرمت را الزام می‌کند.
+The commit-msg hook enforces this format with commitlint.
 
-## قبل از push
+## Before pushing
 
 ```bash
 pnpm lint && pnpm typecheck && pnpm test && pnpm build
@@ -54,6 +54,6 @@ pnpm lint && pnpm typecheck && pnpm test && pnpm build
 
 ## Pull Request
 
-- به سمت `develop` باز کن.
-- قالب PR را پر کن.
-- CI باید سبز باشد و حداقل یک review لازم است (طبق branch protection).
+- Open it toward `develop`.
+- Fill in the PR template.
+- CI must be green and at least one review is required (per branch protection).

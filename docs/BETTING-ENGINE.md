@@ -1,163 +1,163 @@
-# docs/BETTING-ENGINE.md — مشخصات موتور بت
+# docs/BETTING-ENGINE.md — Betting engine specification
 
-موتور بت قلب پروژه است. این فایل قرارداد رفتاری دقیق آن را تعریف می‌کند تا پیاده‌سازی بدون ابهام انجام شود. موتور باید **pure** باشد: `(state, action) => newState`. هیچ I/O، تصادف، یا زمان واقعی داخلش نباشد (زمان به‌صورت ورودی tick داده می‌شود).
+The betting engine is the heart of the project. This file defines its precise behavioral contract so the implementation can be done without ambiguity. The engine must be **pure**: `(state, action) => newState`. No I/O, randomness, or real time inside it (time is provided as a tick input).
 
-> ما **دست‌ها را ارزیابی نمی‌کنیم**. موتور فقط ژتون، نوبت، pot و تسویه را مدیریت می‌کند. برنده توسط انسان (banker یا showdown) تعیین می‌شود.
+> We **do not evaluate hands**. The engine only manages chips, turns, the pot, and settlement. The winner is determined by a human (banker or showdown).
 
 ---
 
-## 1) مدل State
+## 1) State model
 
 ```
 Hand
 ├── id
 ├── roomId
-├── street: number            // 0..N — «خیابان» بتینگ (preflop/flop/... فقط برچسب)
+├── street: number            // 0..N — the betting "street" (preflop/flop/... just a label)
 ├── players: PlayerInHand[]
 ├── buttonSeat: number        // dealer button
-├── currentBet: number        // بالاترین مبلغ committed در این street
-├── lastRaiseSize: number     // برای محاسبه‌ی min-raise
-├── actingSeat: number | null // نوبت چه کسی است
-├── actionDeadline: number|null// timestamp (epoch ms) پایان نوبت
+├── currentBet: number        // the highest amount committed on this street
+├── lastRaiseSize: number     // for computing the min-raise
+├── actingSeat: number | null // whose turn it is
+├── actionDeadline: number|null// timestamp (epoch ms) of the turn's end
 ├── pots: Pot[]               // main + side pots
 └── status: 'betting' | 'awaiting_showdown' | 'settled'
 
 PlayerInHand
 ├── seat
 ├── userId
-├── stack: number             // ژتون باقیمانده
+├── stack: number             // remaining chips
 ├── committedThisStreet: number
-├── committedTotal: number    // مجموع کل این Hand (برای side-pot)
+├── committedTotal: number    // total for this Hand (for side-pot)
 ├── state: 'active' | 'folded' | 'all_in' | 'sitting_out'
 └── hasActedThisStreet: boolean
 
 Pot
 ├── amount: number
-└── eligibleSeats: number[]   // چه کسانی برای این pot واجد شرایط‌اند
+└── eligibleSeats: number[]   // who is eligible for this pot
 ```
 
 ---
 
-## 2) اکشن‌ها و قوانین اعتبارسنجی
+## 2) Actions and validation rules
 
 `toCall(player) = currentBet - player.committedThisStreet`
 
-| اکشن     | شرط مجاز بودن                                                                     | اثر                                   |
-| -------- | --------------------------------------------------------------------------------- | ------------------------------------- |
-| `FOLD`   | همیشه (وقتی نوبت اوست)                                                            | `state='folded'`                      |
-| `CHECK`  | `toCall == 0`                                                                     | فقط `hasActedThisStreet=true`         |
-| `CALL`   | `toCall > 0` و `stack >= toCall`                                                  | `stack -= toCall`، اضافه به committed |
-| `BET`    | `currentBet == 0` و `amount >= minBet` و `amount <= stack`                        | باز کردن بتینگ                        |
-| `RAISE`  | `currentBet > 0` و raiseTo `>= currentBet + lastRaiseSize` و `<= committed+stack` | افزایش                                |
-| `ALL_IN` | همیشه (وقتی نوبت اوست)                                                            | کل `stack` را commit می‌کند           |
+| Action   | Condition for being allowed                                                           | Effect                              |
+| -------- | ------------------------------------------------------------------------------------- | ----------------------------------- |
+| `FOLD`   | always (when it's their turn)                                                         | `state='folded'`                    |
+| `CHECK`  | `toCall == 0`                                                                         | only `hasActedThisStreet=true`      |
+| `CALL`   | `toCall > 0` and `stack >= toCall`                                                    | `stack -= toCall`, add to committed |
+| `BET`    | `currentBet == 0` and `amount >= minBet` and `amount <= stack`                        | open the betting                    |
+| `RAISE`  | `currentBet > 0` and raiseTo `>= currentBet + lastRaiseSize` and `<= committed+stack` | increase                            |
+| `ALL_IN` | always (when it's their turn)                                                         | commits the entire `stack`          |
 
-- `minBet` = big blind (تنظیمات room).
-- **Min-raise:** حداقل افزایش = اندازه‌ی آخرین bet/raise (`lastRaiseSize`). اولین bet در هر street، `lastRaiseSize = minBet`.
-- اگر `stack < toCall`، بازیکن فقط می‌تواند `ALL_IN` کند (call ناقص).
-- **All-in کمتر از min-raise:** action را برای کسانی که قبلاً اکت کرده‌اند **دوباره باز نمی‌کند** (قانون استاندارد پوکر). در MVP می‌توان ساده‌سازی کرد، ولی این رفتار صحیح است — در کامنت کد قید شود.
+- `minBet` = big blind (room settings).
+- **Min-raise:** the minimum increase = the size of the last bet/raise (`lastRaiseSize`). For the first bet on each street, `lastRaiseSize = minBet`.
+- If `stack < toCall`, the player can only `ALL_IN` (an incomplete call).
+- **An all-in less than the min-raise:** does **not** reopen the action for those who have already acted (standard poker rule). In the MVP it can be simplified, but this behavior is correct — note it in a code comment.
 
-تمام این validation **سمت سرور** و در موتور انجام می‌شود. اکشن نامعتبر → `DomainError` (مثلاً `NotYourTurnError`, `InvalidRaiseError`, `InsufficientChipsError`).
-
----
-
-## 3) پایان یک Street
-
-یک street بسته می‌شود وقتی:
-
-1. حداکثر یک بازیکن `active` باقی مانده باشد (بقیه folded/all_in) — یا —
-2. همه‌ی بازیکن‌های `active`:
-   - `hasActedThisStreet == true`، و
-   - `committedThisStreet == currentBet` (همه برابر شده‌اند).
-
-سپس:
-
-- `committedThisStreet` ها صفر می‌شوند، `currentBet=0`, `lastRaiseSize=minBet`, `hasActedThisStreet=false`.
-- اگر street بعدی وجود دارد → `street++` و نوبت از اولین `active` سمت چپ button.
-- اگر همه‌ی street ها تمام شد یا فقط یک نفر مانده → `status` به سمت showdown/settlement می‌رود (بخش ۵).
-
-**ترتیب نوبت:** ساعتگرد از button. بازیکن‌های `folded`/`all_in`/`sitting_out` رد می‌شوند.
+All of this validation happens **on the server** and in the engine. An invalid action → `DomainError` (e.g. `NotYourTurnError`, `InvalidRaiseError`, `InsufficientChipsError`).
 
 ---
 
-## 4) محاسبه‌ی Side Pots (مهم‌ترین بخش)
+## 3) End of a Street
 
-وقتی بازیکن‌ها all-in با مبالغ مختلف می‌روند، pot به لایه‌ها شکسته می‌شود. هر بازیکن فقط برای pot هایی واجد شرایط است که در آن سهم گذاشته.
+A street closes when:
 
-**الگوریتم (layer peeling):**
+1. At most one `active` player remains (the rest folded/all_in) — or —
+2. All `active` players:
+   - `hasActedThisStreet == true`, and
+   - `committedThisStreet == currentBet` (everyone has matched).
 
-ورودی: لیست بازیکنان با `committedTotal` و این‌که folded هستند یا نه. (بازیکن folded ژتونش در pot می‌ماند ولی واجد شرایط برد نیست.)
+Then:
+
+- The `committedThisStreet` values are zeroed, `currentBet=0`, `lastRaiseSize=minBet`, `hasActedThisStreet=false`.
+- If a next street exists → `street++` and the turn goes to the first `active` player left of the button.
+- If all streets are done or only one person remains → `status` moves toward showdown/settlement (section 5).
+
+**Turn order:** clockwise from the button. `folded`/`all_in`/`sitting_out` players are skipped.
+
+---
+
+## 4) Side Pots calculation (the most important part)
+
+When players go all-in with different amounts, the pot is broken into layers. Each player is only eligible for the pots they contributed a share to.
+
+**Algorithm (layer peeling):**
+
+Input: a list of players with their `committedTotal` and whether they are folded. (A folded player's chips stay in the pot but they are not eligible to win.)
 
 ```
-1. contributions = map<seat, committedTotal>  // شامل folded ها هم
+1. contributions = map<seat, committedTotal>  // including folded ones too
 2. pots = []
-3. while هر contribution مثبتی باقی است:
-4.   minLevel = کوچک‌ترین مقدار مثبت در میان بازیکنان غیر-folded که هنوز سهم دارند
-        (اگر فقط folded ها سهم دارند، minLevel = کوچک‌ترین سهم باقیمانده)
+3. while any positive contribution remains:
+4.   minLevel = the smallest positive amount among the non-folded players who still have a share
+        (if only folded players have a share, minLevel = the smallest remaining share)
 5.   layerAmount = 0
 6.   eligible = []
-7.   for each seat با contribution > 0:
+7.   for each seat with contribution > 0:
 8.       take = min(contribution[seat], minLevel)
 9.       layerAmount += take
 10.      contribution[seat] -= take
-11.      if seat غیر-folded → eligible.push(seat)
+11.      if seat is non-folded → eligible.push(seat)
 12.   pots.push({ amount: layerAmount, eligibleSeats: eligible })
-13. ادغام pot های با eligibleSeats یکسان (اختیاری، تمیزتر)
+13. merge pots with identical eligibleSeats (optional, cleaner)
 ```
 
-**مثال:**
+**Example:**
 
-- A all-in با 100، B all-in با 60، C با 200 (call تا 200).
+- A all-in with 100, B all-in with 60, C with 200 (calls up to 200).
 - contributions: A=100, B=60, C=200.
-- لایه‌ی ۱ (level=60): از هرکدام 60 → main pot = 180، eligible = {A,B,C}.
-- باقیمانده: A=40, C=140.
-- لایه‌ی ۲ (level=40): از A و C هرکدام 40 → side pot 1 = 80، eligible = {A,C}.
-- باقیمانده: C=100.
-- لایه‌ی ۳: فقط C، 100 → side pot 2 = 100، eligible = {C} (به C برمی‌گردد — uncontested).
+- Layer 1 (level=60): 60 from each → main pot = 180, eligible = {A,B,C}.
+- Remaining: A=40, C=140.
+- Layer 2 (level=40): 40 from each of A and C → side pot 1 = 80, eligible = {A,C}.
+- Remaining: C=100.
+- Layer 3: only C, 100 → side pot 2 = 100, eligible = {C} (returned to C — uncontested).
 
-نتیجه: main=180 (A,B,C) ، side1=80 (A,C) ، side2=100 (C).
+Result: main=180 (A,B,C), side1=80 (A,C), side2=100 (C).
 
-> این الگوریتم باید با unit test های متعدد (شامل چند all-in هم‌زمان و folded ها) پوشش داده شود.
+> This algorithm must be covered with numerous unit tests (including multiple simultaneous all-ins and folded players).
 
 ---
 
-## 5) تعیین برنده و تسویه
+## 5) Determining the winner and settlement
 
-### pot بدون رقیب (uncontested)
+### uncontested pot
 
-اگر در یک pot فقط یک بازیکن `eligible` و غیر-folded باقی بماند → خودکار برنده است، بدون نیاز به اعلام انسانی.
+If in a pot only one `eligible` and non-folded player remains → they are automatically the winner, with no need for a human declaration.
 
-### حالت A — Banker-declared
+### Mode A — Banker-declared
 
-در `awaiting_showdown`، بانکدار برای **هر pot** برنده/برنده‌ها را از میان `eligibleSeats` انتخاب می‌کند. تقسیم مساوی برای split (باقیمانده‌ی تقسیم به نزدیک‌ترین بازیکن سمت چپ button — odd chip rule).
+In `awaiting_showdown`, the banker chooses the winner/winners for **each pot** from among the `eligibleSeats`. Equal division for a split (the remainder of the division to the nearest player left of the button — odd chip rule).
 
-### حالت B — Player-showdown
+### Mode B — Player-showdown
 
-بازیکنان `active` باقیمانده هر کدام «claim» یا «muck» می‌کنند؛ سپس **بانکدار تأیید نهایی** می‌کند (چون hand evaluation نداریم). تا قبل از تأیید بانکدار، ژتون منتقل نمی‌شود.
+The remaining `active` players each "claim" or "muck"; then **the banker confirms** (since we have no hand evaluation). Until the banker confirms, no chips are transferred.
 
-تنظیم `room.settlementMode: 'banker' | 'showdown'`.
+Setting `room.settlementMode: 'banker' | 'showdown'`.
 
-### پایان بازی (Banker ends game)
+### End of game (Banker ends game)
 
-بانکدار «پایان» را می‌زند:
+The banker hits "end":
 
 - `net[player] = currentChips - totalBuyIn`
-- مجموع net ها باید صفر باشد (zero-sum). اگر rake فعال است، از این مجموع کسر شده و گزارش می‌شود.
-- نتیجه در DB ذخیره و برای history نگه‌داری می‌شود.
+- The sum of the nets must be zero (zero-sum). If rake is enabled, it is deducted from this sum and reported.
+- The result is stored in the DB and kept for history.
 
 ---
 
-## 6) Timer نوبت
+## 6) Turn timer
 
-- وقتی نوبت به بازیکنی می‌رسد، سرور `actionDeadline = now + room.actionTimeoutMs` را ست و broadcast می‌کند.
-- **کلاینت countdown را از روی deadline رندر می‌کند** (نه با tick پی‌درپی سرور — جلوگیری از spam).
-- اگر deadline بگذرد و بازیکن اکت نکند، سرور auto-action اعمال می‌کند:
-  - اگر `toCall == 0` → `CHECK`
-  - در غیر این صورت → `FOLD`
-- (اختیاری) Time-bank: ذخیره‌ی زمان اضافی برای هر بازیکن.
-- سرور مرجع است؛ deadline سرور معتبر است، نه ساعت کلاینت.
+- When the turn reaches a player, the server sets and broadcasts `actionDeadline = now + room.actionTimeoutMs`.
+- **The client renders the countdown from the deadline** (not via a continuous server tick — to prevent spam).
+- If the deadline passes and the player does not act, the server applies an auto-action:
+  - if `toCall == 0` → `CHECK`
+  - otherwise → `FOLD`
+- (Optional) Time-bank: storing extra time for each player.
+- The server is authoritative; the server's deadline is valid, not the client's clock.
 
 ---
 
-## 7) خطاهای دامنه (typed)
+## 7) Domain errors (typed)
 
-`NotYourTurnError`, `InvalidActionError`, `InvalidRaiseError`, `InsufficientChipsError`, `NotBankerError`, `RoomFullError`, `HandNotInBettingError`. این‌ها در `domain/errors` تعریف و در گذرگاه socket به پیام کاربرپسند map می‌شوند.
+`NotYourTurnError`, `InvalidActionError`, `InvalidRaiseError`, `InsufficientChipsError`, `NotBankerError`, `RoomFullError`, `HandNotInBettingError`. These are defined in `domain/errors` and mapped to a user-friendly message at the socket boundary.

@@ -1,11 +1,11 @@
 ---
 name: Feature request
-about: پیشنهاد یک قابلیت
+about: Propose a feature
 labels: enhancement
 ---
 
-## مسئله / نیاز
+## Problem / need
 
-## راه‌حل پیشنهادی
+## Proposed solution
 
-## فاز/تسک مرتبط در ROADMAP
+## Related phase/task in ROADMAP

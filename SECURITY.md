@@ -1,39 +1,39 @@
-# SECURITY — چک‌لیست امنیتی
+# SECURITY — Security checklist
 
-این چک‌لیست در هر PR باید رعایت شود (مرجع: `CLAUDE.md`).
+This checklist must be followed in every PR (reference: `CLAUDE.md`).
 
 ## Server-authoritative
 
-- [ ] مقدار chips/pot هرگز از client گرفته نمی‌شود.
-- [ ] تمام validation اکشن در موتور دامنه‌ی سمت سرور است.
+- [ ] The chips/pot value is never taken from the client.
+- [ ] All action validation happens in the server-side domain engine.
 
 ## Authorization (IDOR / Broken Access Control)
 
-- [ ] بازیکن فقط در نوبت خودش اکت می‌کند (`NotYourTurnError`).
-- [ ] بازیکن نمی‌تواند برای کاربر دیگری اکشن بفرستد.
-- [ ] اکشن‌های بانکدار فقط با نقش banker (`NotBankerError`).
-- [ ] چک‌ها در use-case هستند، نه فقط در UI.
+- [ ] A player only acts on their own turn (`NotYourTurnError`).
+- [ ] A player cannot send an action for another user.
+- [ ] Banker actions only with the banker role (`NotBankerError`).
+- [ ] The checks are in the use-case, not only in the UI.
 
 ## Input validation
 
-- [ ] همه‌ی payload های socket/API با Zod اعتبارسنجی می‌شوند.
-- [ ] هیچ raw SQL با concatenation (فقط Prisma پارامتری).
+- [ ] All socket/API payloads are validated with Zod.
+- [ ] No raw SQL with concatenation (only parameterized Prisma).
 
 ## Auth & Session
 
-- [ ] اتصال socket هنگام connection احراز هویت می‌شود.
-- [ ] secret ها فقط سمت سرور (`.env`)، نه bundle کلاینت.
-- [ ] password ها hash می‌شوند (هرگز plain text).
+- [ ] The socket connection is authenticated on connection.
+- [ ] Secrets only on the server (`.env`), not in the client bundle.
+- [ ] Passwords are hashed (never plain text).
 
 ## Anti-abuse
 
-- [ ] rate limiting روی ساخت room و اکشن‌ها.
+- [ ] Rate limiting on room creation and actions.
 
 ## XSS/CSRF
 
-- [ ] بدون `dangerouslySetInnerHTML` غیرضروری.
-- [ ] CSRF protection پیش‌فرض Auth.js فعال.
+- [ ] No unnecessary `dangerouslySetInnerHTML`.
+- [ ] Auth.js default CSRF protection enabled.
 
-## گزارش آسیب‌پذیری
+## Reporting a vulnerability
 
-آسیب‌پذیری‌ها را به‌صورت خصوصی گزارش دهید (issue عمومی نسازید).
+Report vulnerabilities privately (do not open a public issue).
