@@ -184,6 +184,35 @@ describe('CreateRoom', () => {
     });
     expect(snapshot.settings.bigBlind).toBe(10);
   });
+
+  it('derives buy-in bounds (10x/20x BB) when the creator omits them', async () => {
+    const snapshot = await new CreateRoom(repo, fakeIds()).execute({
+      bankerId: 'banker',
+      name: 'Table',
+      settings: { smallBlind: 5, bigBlind: 10 },
+    });
+    expect(snapshot.settings.minBuyIn).toBe(100); // 10 * 10
+    expect(snapshot.settings.maxBuyIn).toBe(200); // 20 * 10
+  });
+
+  it('derives buy-in bounds from the default BB when no settings are given', async () => {
+    const snapshot = await new CreateRoom(repo, fakeIds()).execute({
+      bankerId: 'banker',
+      name: 'Table',
+    });
+    expect(snapshot.settings.minBuyIn).toBe(20); // 10 * default BB 2
+    expect(snapshot.settings.maxBuyIn).toBe(40); // 20 * default BB 2
+  });
+
+  it('respects supplied buy-in bounds, including an explicit null maximum', async () => {
+    const snapshot = await new CreateRoom(repo, fakeIds()).execute({
+      bankerId: 'banker',
+      name: 'Table',
+      settings: { bigBlind: 10, minBuyIn: 300, maxBuyIn: null },
+    });
+    expect(snapshot.settings.minBuyIn).toBe(300);
+    expect(snapshot.settings.maxBuyIn).toBeNull();
+  });
 });
 
 describe('JoinRoom', () => {

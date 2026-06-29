@@ -10,6 +10,8 @@ const snapshot: RoomSnapshot = {
     actionTimeoutMs: 30000,
     smallBlind: 1,
     bigBlind: 2,
+    minBuyIn: 20,
+    maxBuyIn: 40,
     settlementMode: 'banker',
   },
   bankerId: 'banker-user-id',

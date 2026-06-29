@@ -5,11 +5,19 @@ import { z } from 'zod';
 /** Sane upper bound for a blind so a typo can't open an absurd table. */
 const MAX_BLIND = 1_000_000;
 
+/** Sane upper bound for a buy-in bound, matching the chips:request cap. */
+const MAX_BUY_IN = 1_000_000;
+
 export const roomSettingsSchema = z
   .object({
     smallBlind: z.number().int().positive().max(MAX_BLIND).optional(),
     bigBlind: z.number().int().positive().max(MAX_BLIND).optional(),
     actionTimeoutMs: z.number().int().min(1000).optional(),
+    // Buy-in bounds: minBuyIn a positive int; maxBuyIn a positive int or null
+    // ("no maximum"). Both optional — the server derives them from the big blind
+    // when omitted.
+    minBuyIn: z.number().int().positive().max(MAX_BUY_IN).optional(),
+    maxBuyIn: z.number().int().positive().max(MAX_BUY_IN).nullable().optional(),
     settlementMode: z.enum(['banker', 'showdown']).optional(),
   })
   .strict()
@@ -21,6 +29,16 @@ export const roomSettingsSchema = z
       s.bigBlind === undefined ||
       s.bigBlind > s.smallBlind,
     { message: 'bigBlind must be greater than smallBlind', path: ['bigBlind'] },
+  )
+  // When both buy-in bounds are given (max not null), the max must be at least
+  // the min. A null max means "no maximum" and is always allowed.
+  .refine(
+    (s) =>
+      s.maxBuyIn === undefined ||
+      s.maxBuyIn === null ||
+      s.minBuyIn === undefined ||
+      s.maxBuyIn >= s.minBuyIn,
+    { message: 'maxBuyIn must be at least minBuyIn', path: ['maxBuyIn'] },
   );
 
 export const createRoomSchema = z

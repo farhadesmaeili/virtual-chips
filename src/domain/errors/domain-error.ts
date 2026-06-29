@@ -30,6 +30,7 @@ export type DomainErrorCode =
   | 'INVALID_SETTLEMENT'
   | 'CHIP_REQUEST_NOT_FOUND'
   | 'CHIP_REQUEST_PENDING'
+  | 'BUY_IN_LIMIT'
   | 'FORBIDDEN'
   | 'CANNOT_LEAVE_MID_HAND'
   | 'BANKER_CANNOT_LEAVE';
@@ -273,6 +274,35 @@ export class ChipRequestPendingError extends DomainError {
 
   constructor() {
     super('You already have a chip request waiting for the banker');
+  }
+}
+
+/**
+ * Why a buy-in was rejected against the room's limits:
+ * - `below_min`: a first buy-in under the table minimum.
+ * - `exceeds_space`: would push the stack past the table maximum.
+ * - `full`: the stack is already at (or over) the table maximum.
+ *
+ * Defined here (the errors module imports nothing from entities) so both the
+ * pure validator and the error can share it without a cycle.
+ */
+export type BuyInLimitReason = 'below_min' | 'exceeds_space' | 'full';
+
+const BUY_IN_LIMIT_MESSAGES: Readonly<Record<BuyInLimitReason, string>> = {
+  below_min: 'Buy-in is below the table minimum',
+  exceeds_space: 'Buy-in exceeds the table maximum',
+  full: 'Your stack is already at the table maximum',
+};
+
+/**
+ * Thrown when a buy-in request (or its approval) violates the room's per-table
+ * buy-in limits. The `reason` carries the specific rule that failed.
+ */
+export class BuyInLimitError extends DomainError {
+  readonly code = 'BUY_IN_LIMIT';
+
+  constructor(readonly reason: BuyInLimitReason) {
+    super(BUY_IN_LIMIT_MESSAGES[reason]);
   }
 }
 

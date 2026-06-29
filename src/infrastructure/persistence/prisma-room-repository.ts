@@ -26,6 +26,8 @@ export class PrismaRoomRepository implements RoomRepository {
         actionTimeoutMs: room.settings.actionTimeoutMs,
         smallBlind: room.settings.smallBlind,
         bigBlind: room.settings.bigBlind,
+        minBuyIn: room.settings.minBuyIn,
+        maxBuyIn: room.settings.maxBuyIn,
         settlementMode: toPrismaSettlementMode(room.settings.settlementMode),
       },
     });

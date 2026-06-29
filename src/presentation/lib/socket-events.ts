@@ -9,6 +9,10 @@ export interface RoomSettings {
   readonly actionTimeoutMs: number;
   readonly smallBlind: number;
   readonly bigBlind: number;
+  /** Table minimum for a first buy-in (chips). */
+  readonly minBuyIn: number;
+  /** Table maximum stack (chips), or null for no maximum. */
+  readonly maxBuyIn: number | null;
   readonly settlementMode: SettlementMode;
 }
 

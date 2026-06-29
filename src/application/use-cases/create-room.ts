@@ -1,5 +1,9 @@
 import type { IdGenerator, RoomRepository } from '@/application/ports';
-import { createRoom, type RoomSettings } from '@/domain/entities';
+import {
+  createRoom,
+  deriveBuyInDefaults,
+  type RoomSettings,
+} from '@/domain/entities';
 import { toRoomSnapshot, type RoomSnapshot } from './room-snapshot';
 
 export interface CreateRoomInput {
@@ -23,7 +27,9 @@ export class CreateRoom {
       id: this.ids.generate(),
       name: input.name,
       bankerId: input.bankerId,
-      settings: input.settings,
+      // Fill the buy-in bounds from the big blind (10x/20x) when the creator
+      // didn't specify them; supplied values (incl. an explicit null max) win.
+      settings: deriveBuyInDefaults(input.settings),
     });
     await this.rooms.create(room);
     await this.rooms.addMember(room.id, {
