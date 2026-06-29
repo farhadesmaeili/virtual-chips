@@ -1,7 +1,7 @@
 'use client';
 
 import { AnimatePresence, motion } from 'framer-motion';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useReducedMotionPreference } from '@/presentation/animations';
 import type { ActionAvailability, ActionKind } from './action-availability';
 import { AddTimeButton } from './add-time-button';
@@ -29,6 +29,17 @@ export interface ActionPanelProps {
 
 const clamp = (v: number, lo: number, hi: number): number =>
   Math.max(lo, Math.min(hi, v));
+
+/**
+ * Coerce a free-typed exact-amount string into a legal, clamped number on
+ * COMMIT (blur / Enter / confirm) — never on every keystroke. An empty,
+ * non-numeric, or zero entry (`Number(...) || min` is falsy for `0`/`NaN`)
+ * snaps up to `min`; anything out of range is clamped into `[min, max]`. This
+ * keeps the field freely typable mid-edit while guaranteeing the value that
+ * leaves this component is always within the tested betting bounds.
+ */
+export const commitAmount = (draft: string, min: number, max: number): number =>
+  clamp(Number(draft) || min, min, max);
 
 /**
  * The player's action controls. Only the actions the server would accept are
@@ -113,6 +124,24 @@ function TurnControls({
     availability;
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(sizing?.min ?? 0);
+  // Free-typed text for the exact-amount field. The committed number lives in
+  // `amount`; this is only the in-progress string, so a leading digit smaller
+  // than `min` is no longer swallowed mid-typing. Kept in sync whenever the
+  // slider or a preset moves `amount`.
+  const [draft, setDraft] = useState(String(sizing?.min ?? 0));
+  useEffect(() => setDraft(String(amount)), [amount]);
+
+  // Commit the typed draft to a legal value (on blur / Enter / confirm) and
+  // return it, so the gold confirm button can submit exactly what the user
+  // sees without depending on blur firing before its click.
+  const commitDraft = (): number => {
+    const lo = sizing?.min ?? 0;
+    const hi = sizing?.max ?? lo;
+    const committed = commitAmount(draft, lo, hi);
+    setAmount(committed);
+    setDraft(String(committed));
+    return committed;
+  };
 
   const raiseLabel = sizing?.mode === 'bet' ? 'Bet' : 'Raise';
 
@@ -179,6 +208,9 @@ function TurnControls({
               toCall={toCall}
               amount={amount}
               onAmount={setAmount}
+              draft={draft}
+              onDraftChange={setDraft}
+              onCommitDraft={commitDraft}
             />
           </motion.div>
         )}
@@ -221,7 +253,8 @@ function TurnControls({
               tone="gold"
               disabled={pending}
               onClick={() => {
-                onAct(sizing.mode === 'bet' ? 'BET' : 'RAISE', amount);
+                const committed = commitDraft();
+                onAct(sizing.mode === 'bet' ? 'BET' : 'RAISE', committed);
               }}
             >
               {sizing.mode === 'bet' ? 'Bet ' : 'Raise to '}
@@ -267,6 +300,9 @@ function SizingTray({
   toCall,
   amount,
   onAmount,
+  draft,
+  onDraftChange,
+  onCommitDraft,
 }: {
   mode: 'bet' | 'raise';
   min: number;
@@ -277,6 +313,9 @@ function SizingTray({
   toCall: number;
   amount: number;
   onAmount: (value: number) => void;
+  draft: string;
+  onDraftChange: (value: string) => void;
+  onCommitDraft: () => void;
 }): React.ReactElement {
   const snap = (v: number): number =>
     clamp(Math.round(v / step) * step, min, max);
@@ -345,8 +384,12 @@ function SizingTray({
           min={min}
           max={max}
           step={step}
-          value={amount}
-          onChange={(e) => onAmount(clamp(Number(e.target.value), min, max))}
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          onBlur={onCommitDraft}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') onCommitDraft();
+          }}
           className="ml-auto w-24 rounded-lg border border-white/10 bg-black/30 px-2 py-1 text-right font-mono text-sm tabular-nums text-vc-ink outline-none focus:border-vc-emerald/60"
           aria-label="Exact amount"
         />
