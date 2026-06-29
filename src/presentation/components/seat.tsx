@@ -12,6 +12,7 @@ import {
 } from '@/presentation/animations';
 import { ChipStack } from './chip';
 import { CountdownRing } from './countdown-ring';
+import { formatStackChips } from '@/presentation/lib/format-chips';
 import { actionVerbLabel, labelFade } from './seat-action';
 import type { SeatSlot } from './seat-layout';
 import type {
@@ -289,7 +290,9 @@ function StackReadout({
 }): React.ReactElement {
   const reduced = useReducedMotionPreference();
   const value = useMotionValue(stack);
-  const text = useTransform(value, (v) => Math.round(v).toLocaleString());
+  // Large stacks render compact ("1.2M") so they never overflow the tight seat
+  // nameplate on a narrow phone; the exact value stays available via title/aria.
+  const text = useTransform(value, (v) => formatStackChips(Math.round(v)));
 
   useEffect(() => {
     if (reduced) {
@@ -300,8 +303,14 @@ function StackReadout({
     return () => controls.stop();
   }, [stack, reduced, value]);
 
+  const exact = Math.round(stack).toLocaleString();
+
   return (
-    <div className="font-mono text-sm font-semibold tabular-nums text-vc-gold">
+    <div
+      className="font-mono text-sm font-semibold tabular-nums text-vc-gold"
+      title={exact}
+      aria-label={`Stack ${exact}`}
+    >
       {allIn ? 'All in' : <motion.span>{text}</motion.span>}
     </div>
   );

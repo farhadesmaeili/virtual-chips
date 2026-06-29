@@ -299,17 +299,20 @@ export function ActionMenu({
                         key={r.id}
                         className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-black/20 px-3 py-2"
                       >
-                        <span className="text-sm text-vc-ink">
-                          <span className="font-medium">{r.username}</span>
-                          <span className="text-vc-ink-faint">
-                            {' '}
-                            · seat {r.seat + 1}
-                          </span>{' '}
-                          <span className="font-mono tabular-nums text-vc-gold">
-                            {r.amount.toLocaleString()}
+                        <span className="flex min-w-0 flex-1 items-center gap-1 text-sm text-vc-ink">
+                          <span className="min-w-0 truncate font-medium">
+                            {r.username}
+                          </span>
+                          <span className="shrink-0">
+                            <span className="text-vc-ink-faint">
+                              · seat {r.seat + 1}
+                            </span>{' '}
+                            <span className="font-mono tabular-nums text-vc-gold">
+                              {r.amount.toLocaleString()}
+                            </span>
                           </span>
                         </span>
-                        <span className="flex items-center gap-1.5">
+                        <span className="flex shrink-0 items-center gap-1.5">
                           <button
                             type="button"
                             disabled={pending}
