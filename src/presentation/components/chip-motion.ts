@@ -3,29 +3,24 @@
 // geometry, so the wiring stays a thin, testable shell.
 
 import { chipColor, topDenomination } from './chip-denominations';
-import { MAX_SEATS, seatSlots } from './seat-layout';
+import {
+  MAX_SEATS,
+  type Point,
+  seatChipAnchor,
+  seatSlots,
+  TABLE_CENTER,
+} from './seat-layout';
 import type {
   ActionApplied,
   AppliedActionType,
   HandSettled,
 } from '@/presentation/lib/socket-events';
 
-/**
- * A point on the table as a percentage of the seat-overlay box — the same
- * coordinate space as `seatSlots`, so chip endpoints line up with seats without
- * any hard-coded coordinates.
- */
-export interface Point {
-  readonly xPct: number;
-  readonly yPct: number;
-}
-
-/**
- * The pot / table center. `seatSlots` arranges seats around (50, 50), so this is
- * the geometric center of the seat ring — derived from the layout, not a magic
- * spot.
- */
-export const TABLE_CENTER: Point = { xPct: 50, yPct: 50 };
+// `Point` and `TABLE_CENTER` now live in the geometry module (seat-layout) so
+// seats and chip endpoints share one source. Re-export them here so existing
+// importers from chip-motion keep their path.
+export { TABLE_CENTER };
+export type { Point };
 
 /** Center of `seat` in overlay %, from the shared `seatSlots` geometry. */
 export function seatPoint(seat: number): Point {
@@ -118,7 +113,9 @@ export function flightsFor(
   if (motion.kind === 'to-pot') {
     return [
       {
-        from: seatPoint(motion.fromSeat),
+        // Lift from the in-front chip slot (not the bare avatar center) so the
+        // commit flight starts where the live bet chips sit.
+        from: seatChipAnchor(motion.fromSeat),
         to: TABLE_CENTER,
         color: chipTint(motion.amount ?? fallbackAmount),
       },
@@ -126,7 +123,10 @@ export function flightsFor(
   }
   return motion.awards.map((award) => ({
     from: TABLE_CENTER,
-    to: seatPoint(award.seat),
+    // Land on the in-front chip slot, in front of the avatar toward the pot —
+    // correct for every seat (the offset follows each seat's towardCenter), not
+    // on the nameplate under the avatar.
+    to: seatChipAnchor(award.seat),
     color: chipTint(award.amount),
   }));
 }
