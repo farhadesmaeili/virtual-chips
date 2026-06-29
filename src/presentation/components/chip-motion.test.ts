@@ -14,6 +14,7 @@ import {
   seatPoint,
   type ChipMotion,
 } from './chip-motion';
+import { seatChipAnchor } from './seat-layout';
 
 function action(
   act: AppliedActionType,
@@ -123,10 +124,11 @@ describe('seatPoint', () => {
 });
 
 describe('flightsFor', () => {
-  it('makes one seat→center flight for a commit, tinted by its amount', () => {
+  it('makes one slot→center flight for a commit, tinted by its amount', () => {
     const specs = flightsFor({ kind: 'to-pot', fromSeat: 0, amount: 500 }, 0);
     expect(specs).toHaveLength(1);
-    expect(specs[0]?.from).toEqual(seatPoint(0));
+    // Lifts from the in-front chip slot, not the bare seat center.
+    expect(specs[0]?.from).toEqual(seatChipAnchor(0));
     expect(specs[0]?.to).toEqual(TABLE_CENTER);
     expect(specs[0]?.color).toBe(chipTint(500));
   });
@@ -139,7 +141,7 @@ describe('flightsFor', () => {
     expect(specs[0]?.color).toBe(chipTint(1000));
   });
 
-  it('makes one center→seat flight per winner, tinted by each award', () => {
+  it('makes one center→slot flight per winner, tinted by each award', () => {
     const motion: ChipMotion = {
       kind: 'to-winners',
       awards: [
@@ -149,14 +151,15 @@ describe('flightsFor', () => {
     };
     const specs = flightsFor(motion, 0);
     expect(specs).toHaveLength(2);
+    // Lands on the in-front chip slot of each winner, not the bare seat center.
     expect(specs[0]).toEqual({
       from: TABLE_CENTER,
-      to: seatPoint(1),
+      to: seatChipAnchor(1),
       color: chipTint(25),
     });
     expect(specs[1]).toEqual({
       from: TABLE_CENTER,
-      to: seatPoint(3),
+      to: seatChipAnchor(3),
       color: chipTint(1000),
     });
   });
