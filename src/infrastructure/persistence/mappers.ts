@@ -63,6 +63,8 @@ export interface PrismaRoomRow {
   readonly actionTimeoutMs: number;
   readonly smallBlind: number;
   readonly bigBlind: number;
+  readonly minBuyIn: number;
+  readonly maxBuyIn: number | null;
   readonly settlementMode: PrismaSettlementMode;
 }
 
@@ -77,6 +79,8 @@ export function toDomainRoom(row: PrismaRoomRow): Room {
       actionTimeoutMs: row.actionTimeoutMs,
       smallBlind: row.smallBlind,
       bigBlind: row.bigBlind,
+      minBuyIn: row.minBuyIn,
+      maxBuyIn: row.maxBuyIn,
       settlementMode: toDomainSettlementMode(row.settlementMode),
     },
   };

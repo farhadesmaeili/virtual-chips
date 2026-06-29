@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Room" ADD COLUMN     "minBuyIn" INTEGER NOT NULL DEFAULT 20;
+ALTER TABLE "Room" ADD COLUMN     "maxBuyIn" INTEGER;

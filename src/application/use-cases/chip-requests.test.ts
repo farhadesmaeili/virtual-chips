@@ -13,6 +13,7 @@ import {
   type Room,
 } from '@/domain/entities';
 import {
+  BuyInLimitError,
   ChipRequestNotFoundError,
   ChipRequestPendingError,
   HandInProgressError,
@@ -114,7 +115,14 @@ function member(userId: string, seat: number): RoomMemberRecord {
   };
 }
 
-const room = createRoom({ id: 'r1', name: 'Table', bankerId: 'banker' });
+// Generous buy-in bounds so the baseline request/approve tests stay valid; the
+// limit-specific tests below seed their own rooms with tight bounds.
+const room = createRoom({
+  id: 'r1',
+  name: 'Table',
+  bankerId: 'banker',
+  settings: { minBuyIn: 100, maxBuyIn: 100_000 },
+});
 
 let rooms: FakeRoomRepository;
 let store: InMemoryChipRequestStore;
@@ -172,6 +180,71 @@ describe('RequestChips', () => {
   });
 });
 
+describe('RequestChips buy-in limits', () => {
+  // A table with tight bounds: first buy in [100, max stack 1000].
+  const limited = createRoom({
+    id: 'r1',
+    name: 'Table',
+    bankerId: 'banker',
+    settings: { minBuyIn: 100, maxBuyIn: 1000 },
+  });
+
+  function seatedWith(chips: number): RoomMemberRecord {
+    return {
+      userId: 'bob',
+      username: 'bob',
+      seat: 1,
+      chips,
+      buyInTotal: chips,
+      sittingOut: false,
+    };
+  }
+
+  function request(amount: number): Promise<unknown> {
+    return new RequestChips(rooms, store, ids(), clock).execute({
+      roomId: 'r1',
+      userId: 'bob',
+      amount,
+    });
+  }
+
+  it('rejects a first buy below the minimum', async () => {
+    rooms.seed(limited, [member('banker', 0), seatedWith(0)]);
+    await expect(request(50)).rejects.toThrow(BuyInLimitError);
+  });
+
+  it('rejects a first buy that exceeds the maximum stack', async () => {
+    rooms.seed(limited, [member('banker', 0), seatedWith(0)]);
+    await expect(request(1500)).rejects.toThrow(BuyInLimitError);
+  });
+
+  it('allows a top-up that is below the minimum (min not applied to top-ups)', async () => {
+    rooms.seed(limited, [member('banker', 0), seatedWith(500)]);
+    await expect(request(50)).resolves.toHaveLength(1);
+  });
+
+  it('rejects a top-up that would exceed the maximum stack', async () => {
+    rooms.seed(limited, [member('banker', 0), seatedWith(500)]);
+    await expect(request(600)).rejects.toThrow(BuyInLimitError);
+  });
+
+  it('rejects any request once the stack is already full', async () => {
+    rooms.seed(limited, [member('banker', 0), seatedWith(1000)]);
+    await expect(request(1)).rejects.toThrow(BuyInLimitError);
+  });
+
+  it('allows any large amount when there is no maximum', async () => {
+    const noMax = createRoom({
+      id: 'r1',
+      name: 'Table',
+      bankerId: 'banker',
+      settings: { minBuyIn: 100, maxBuyIn: null },
+    });
+    rooms.seed(noMax, [member('banker', 0), seatedWith(0)]);
+    await expect(request(900_000)).resolves.toHaveLength(1);
+  });
+});
+
 describe('ApproveChipRequest', () => {
   async function queued(userId: string, amount: number): Promise<string> {
     const list = await new RequestChips(rooms, store, ids(), clock).execute({
@@ -215,6 +288,37 @@ describe('ApproveChipRequest', () => {
         requestId: 'nope',
       }),
     ).rejects.toThrow(ChipRequestNotFoundError);
+  });
+
+  it('re-validates at approve time against the current stack, without moving chips', async () => {
+    // Tight table: max stack 1000.
+    const limited = createRoom({
+      id: 'r1',
+      name: 'Table',
+      bankerId: 'banker',
+      settings: { minBuyIn: 100, maxBuyIn: 1000 },
+    });
+    rooms.seed(limited, [member('banker', 0), member('bob', 1)]);
+
+    // Bob queues a valid first buy of 600 (chips 0 → within [100, 1000]).
+    const requestId = await queued('bob', 600);
+
+    // Between request and approval the banker tops bob up to 600 (task 6.7),
+    // so funding the 600 now would overshoot the 1000 cap.
+    await rooms.addMemberFunding('r1', 'bob', 600);
+
+    await expect(
+      new ApproveChipRequest(rooms, store).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        requestId,
+      }),
+    ).rejects.toThrow(BuyInLimitError);
+
+    // No chips moved on the rejected approval; the request stays pending.
+    const bob = (await rooms.listMembers('r1')).find((m) => m.seat === 1);
+    expect(bob?.chips).toBe(600);
+    expect(await store.hasPending('r1', 'bob')).toBe(true);
   });
 });
 

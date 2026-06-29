@@ -5,8 +5,9 @@ import type {
   IdGenerator,
   RoomRepository,
 } from '@/application/ports';
-import { isBanker } from '@/domain/entities';
+import { isBanker, validateBuyInRequest } from '@/domain/entities';
 import {
+  BuyInLimitError,
   ChipRequestNotFoundError,
   ChipRequestPendingError,
   InvalidChipsAmountError,
@@ -55,6 +56,16 @@ export class RequestChips {
     if (await this.requests.hasPending(roomId, userId)) {
       throw new ChipRequestPendingError();
     }
+
+    // Enforce the table's buy-in limits against the member's current stack
+    // (requests happen between hands, so chips is authoritative here).
+    const limit = validateBuyInRequest({
+      currentChips: member.chips,
+      minBuyIn: room.settings.minBuyIn,
+      maxBuyIn: room.settings.maxBuyIn,
+      amount,
+    });
+    if (!limit.ok) throw new BuyInLimitError(limit.reason);
 
     await this.requests.add({
       id: this.ids.generate(),
@@ -107,12 +118,26 @@ export class ApproveChipRequest {
       throw new ChipRequestNotFoundError(requestId);
     }
 
+    // Re-validate against the member's CURRENT stack: the banker may have
+    // adjusted chips (task 6.7) between the request and this approval, so the
+    // limit must hold at the moment chips actually move — before funding.
+    const members = await this.rooms.listMembers(roomId);
+    const member = members.find((m) => m.userId === request.userId);
+    if (member === undefined) throw new NotRoomMemberError(roomId);
+    const limit = validateBuyInRequest({
+      currentChips: member.chips,
+      minBuyIn: room.settings.minBuyIn,
+      maxBuyIn: room.settings.maxBuyIn,
+      amount: request.amount,
+    });
+    if (!limit.ok) throw new BuyInLimitError(limit.reason);
+
     await this.rooms.addMemberFunding(roomId, request.userId, request.amount);
     await this.requests.remove(requestId);
 
-    const members = await this.rooms.listMembers(roomId);
+    const updatedMembers = await this.rooms.listMembers(roomId);
     return {
-      snapshot: toRoomSnapshot(room, members),
+      snapshot: toRoomSnapshot(room, updatedMembers),
       requests: await this.requests.listByRoom(roomId),
     };
   }

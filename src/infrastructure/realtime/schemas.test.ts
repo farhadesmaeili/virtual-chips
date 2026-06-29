@@ -1,5 +1,38 @@
 import { describe, expect, it } from 'vitest';
-import { endGameSchema, playerClaimSchema } from './schemas';
+import {
+  endGameSchema,
+  playerClaimSchema,
+  roomSettingsSchema,
+} from './schemas';
+
+describe('roomSettingsSchema buy-in bounds', () => {
+  it('accepts positive integer minBuyIn / maxBuyIn', () => {
+    expect(
+      roomSettingsSchema.safeParse({ minBuyIn: 100, maxBuyIn: 1000 }).success,
+    ).toBe(true);
+  });
+
+  it('accepts a null maxBuyIn (no maximum)', () => {
+    expect(
+      roomSettingsSchema.safeParse({ minBuyIn: 100, maxBuyIn: null }).success,
+    ).toBe(true);
+  });
+
+  it('accepts omitting both (server derives them)', () => {
+    expect(roomSettingsSchema.safeParse({ bigBlind: 10 }).success).toBe(true);
+  });
+
+  it('rejects a maxBuyIn below the minBuyIn', () => {
+    expect(
+      roomSettingsSchema.safeParse({ minBuyIn: 1000, maxBuyIn: 100 }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a non-positive or non-integer minBuyIn', () => {
+    expect(roomSettingsSchema.safeParse({ minBuyIn: 0 }).success).toBe(false);
+    expect(roomSettingsSchema.safeParse({ minBuyIn: 1.5 }).success).toBe(false);
+  });
+});
 
 describe('endGameSchema', () => {
   it('accepts a payload with a non-empty roomId', () => {

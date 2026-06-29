@@ -14,6 +14,8 @@ describe('createRoom', () => {
       actionTimeoutMs: 30_000,
       smallBlind: 1,
       bigBlind: 2,
+      minBuyIn: 20,
+      maxBuyIn: 40,
       settlementMode: 'banker',
     });
   });
@@ -83,6 +85,50 @@ describe('createRoom', () => {
         settings: { bigBlind: 2.5 },
       }),
     ).toThrow();
+  });
+
+  it('rejects a minBuyIn below 1', () => {
+    expect(() =>
+      createRoom({
+        id: 'r',
+        name: 'n',
+        bankerId: 'b',
+        settings: { minBuyIn: 0, maxBuyIn: 100 },
+      }),
+    ).toThrow(InvalidRoomSettingsError);
+  });
+
+  it('rejects a maxBuyIn below the minBuyIn', () => {
+    expect(() =>
+      createRoom({
+        id: 'r',
+        name: 'n',
+        bankerId: 'b',
+        settings: { minBuyIn: 200, maxBuyIn: 100 },
+      }),
+    ).toThrow(InvalidRoomSettingsError);
+  });
+
+  it('rejects a non-integer maxBuyIn', () => {
+    expect(() =>
+      createRoom({
+        id: 'r',
+        name: 'n',
+        bankerId: 'b',
+        settings: { minBuyIn: 100, maxBuyIn: 150.5 },
+      }),
+    ).toThrow(InvalidRoomSettingsError);
+  });
+
+  it('allows a null maxBuyIn (no maximum)', () => {
+    const r = createRoom({
+      id: 'r',
+      name: 'n',
+      bankerId: 'b',
+      settings: { minBuyIn: 100, maxBuyIn: null },
+    });
+    expect(r.settings.minBuyIn).toBe(100);
+    expect(r.settings.maxBuyIn).toBeNull();
   });
 });
 

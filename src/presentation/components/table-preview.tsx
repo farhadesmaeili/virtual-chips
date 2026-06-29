@@ -21,6 +21,8 @@ const room: PublicRoomState = {
     actionTimeoutMs: 30_000,
     smallBlind: 10,
     bigBlind: 20,
+    minBuyIn: 200,
+    maxBuyIn: 400,
     settlementMode: 'banker',
   },
   members: [

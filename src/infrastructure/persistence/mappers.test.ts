@@ -54,6 +54,8 @@ describe('toDomainRoom', () => {
     actionTimeoutMs: 20000,
     smallBlind: 5,
     bigBlind: 10,
+    minBuyIn: 100,
+    maxBuyIn: 200,
     settlementMode: PrismaSettlementMode.SHOWDOWN,
   };
 
@@ -67,8 +69,16 @@ describe('toDomainRoom', () => {
         actionTimeoutMs: 20000,
         smallBlind: 5,
         bigBlind: 10,
+        minBuyIn: 100,
+        maxBuyIn: 200,
         settlementMode: 'showdown',
       },
     });
+  });
+
+  it('carries a null maxBuyIn (no maximum) through unchanged', () => {
+    expect(
+      toDomainRoom({ ...row, maxBuyIn: null }).settings.maxBuyIn,
+    ).toBeNull();
   });
 });

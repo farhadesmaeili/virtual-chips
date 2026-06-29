@@ -35,6 +35,8 @@ model Room {
   actionTimeoutMs Int            @default(30000)
   smallBlind      Int            @default(1)
   bigBlind        Int            @default(2)
+  minBuyIn        Int            @default(20) // 10 * default BB(2); real derivation in app layer
+  maxBuyIn        Int? // null = no maximum
   settlementMode  SettlementMode @default(BANKER)
 
   createdAt DateTime @default(now())
