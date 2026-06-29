@@ -5,6 +5,10 @@ import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useReducedMotionPreference } from '@/presentation/animations';
+import {
+  isBuyInValid,
+  recomputeBuyInPrefill,
+} from '@/presentation/lib/buy-in-defaults';
 import { friendlyError } from '@/presentation/lib/error-messages';
 import { getSocket } from '@/presentation/lib/socket';
 import type {
@@ -25,6 +29,8 @@ type RoomEvent =
           smallBlind: number;
           bigBlind: number;
           settlementMode: SettlementMode;
+          minBuyIn: number;
+          maxBuyIn: number | null;
         };
       };
     }
@@ -41,6 +47,15 @@ export function Lobby(): React.ReactElement {
   const [name, setName] = useState('');
   const [smallBlind, setSmallBlind] = useState('1');
   const [bigBlind, setBigBlind] = useState('2');
+  // Buy-in inputs (buy-in PR-2), seeded from the initial big blind (10x/20x of
+  // BB=2). They stay in sync with the big blind until the banker edits them
+  // (dirty), after which their value is preserved. The server is authoritative
+  // and re-derives/validates these; the inputs are UX only.
+  const [minBuyIn, setMinBuyIn] = useState('20');
+  const [maxBuyIn, setMaxBuyIn] = useState('40');
+  const [minDirty, setMinDirty] = useState(false);
+  const [maxDirty, setMaxDirty] = useState(false);
+  const [noMax, setNoMax] = useState(false);
   // How pots are awarded (task 6.1). Default 'banker' matches the server default,
   // so existing behavior is unchanged unless the creator opts into 'showdown'.
   const [settlementMode, setSettlementMode] =
@@ -79,6 +94,8 @@ export function Lobby(): React.ReactElement {
   // authority on blind values.
   const blindsValid =
     Number.isInteger(sb) && Number.isInteger(bb) && sb > 0 && bb > sb;
+  // Buy-in validation is UX only; the server (Zod refine) is the authority.
+  const buyInValid = isBuyInValid({ min: minBuyIn, max: maxBuyIn, noMax });
 
   function run(event: RoomEvent): void {
     if (!connected || busy) return;
@@ -214,7 +231,20 @@ export function Lobby(): React.ReactElement {
               step={1}
               inputMode="numeric"
               value={bigBlind}
-              onChange={(e) => setBigBlind(e.target.value)}
+              onChange={(e) => {
+                const v = e.target.value;
+                setBigBlind(v);
+                // Keep the (non-dirty) buy-in prefills tracking the big blind.
+                const next = recomputeBuyInPrefill({
+                  bigBlind: Number(v),
+                  minDirty,
+                  maxDirty,
+                  currentMin: minBuyIn,
+                  currentMax: maxBuyIn,
+                });
+                setMinBuyIn(next.min);
+                setMaxBuyIn(next.max);
+              }}
               className={`${fieldClass} w-full`}
             />
           </label>
@@ -223,6 +253,59 @@ export function Lobby(): React.ReactElement {
           <p className="text-xs text-vc-ink-faint">
             Blinds must be whole numbers with the big blind larger than the
             small blind.
+          </p>
+        )}
+        <div className="flex gap-3">
+          <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <span className="text-[11px] uppercase tracking-[0.08em] text-vc-ink-faint">
+              Min buy-in
+            </span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              value={minBuyIn}
+              onChange={(e) => {
+                setMinBuyIn(e.target.value);
+                setMinDirty(true);
+              }}
+              className={`${fieldClass} w-full`}
+            />
+          </label>
+          <label className="flex min-w-0 flex-1 flex-col gap-1.5">
+            <span className="text-[11px] uppercase tracking-[0.08em] text-vc-ink-faint">
+              Max buy-in
+            </span>
+            <input
+              type="number"
+              min={1}
+              step={1}
+              inputMode="numeric"
+              value={maxBuyIn}
+              onChange={(e) => {
+                setMaxBuyIn(e.target.value);
+                setMaxDirty(true);
+              }}
+              disabled={noMax}
+              className={`${fieldClass} w-full disabled:cursor-not-allowed disabled:opacity-50`}
+            />
+          </label>
+        </div>
+        <label className="flex items-center gap-2 text-xs text-vc-ink-muted">
+          <input
+            type="checkbox"
+            checked={noMax}
+            onChange={(e) => setNoMax(e.target.checked)}
+            className="h-4 w-4 rounded border-white/20 bg-black/25 text-vc-emerald accent-vc-emerald"
+          />
+          No maximum buy-in
+        </label>
+        {!buyInValid && (
+          <p className="text-xs text-vc-ink-faint">
+            {noMax
+              ? 'The minimum buy-in must be a whole number of at least 1.'
+              : 'Buy-ins must be whole numbers with the maximum at least the minimum.'}
           </p>
         )}
         <div className="flex flex-col gap-1.5">
@@ -266,12 +349,22 @@ export function Lobby(): React.ReactElement {
               type: 'room:create',
               payload: {
                 name,
-                settings: { smallBlind: sb, bigBlind: bb, settlementMode },
+                settings: {
+                  smallBlind: sb,
+                  bigBlind: bb,
+                  settlementMode,
+                  minBuyIn: Number(minBuyIn),
+                  maxBuyIn: noMax ? null : Number(maxBuyIn),
+                },
               },
             })
           }
           disabled={
-            !connected || busy || name.trim().length === 0 || !blindsValid
+            !connected ||
+            busy ||
+            name.trim().length === 0 ||
+            !blindsValid ||
+            !buyInValid
           }
           className="rounded-xl bg-vc-emerald px-4 py-3 font-semibold text-vc-felt-edge shadow-[0_8px_20px_-6px_rgb(52_211_153/0.5)] transition hover:bg-vc-emerald/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60"
         >
