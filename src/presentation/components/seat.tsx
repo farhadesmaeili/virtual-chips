@@ -1,7 +1,13 @@
 'use client';
 
-import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
-import { useEffect } from 'react';
+import {
+  AnimatePresence,
+  animate,
+  motion,
+  useMotionValue,
+  useTransform,
+} from 'framer-motion';
+import { useEffect, useRef, useState } from 'react';
 import {
   betPost,
   playerEnter,
@@ -12,7 +18,10 @@ import {
 } from '@/presentation/animations';
 import { ChipStack } from './chip';
 import { CountdownRing } from './countdown-ring';
-import { formatStackChips } from '@/presentation/lib/format-chips';
+import {
+  formatStackChips,
+  stackHasHiddenPrecision,
+} from '@/presentation/lib/format-chips';
 import { actionVerbLabel, labelFade } from './seat-action';
 import { seatBetChipOffset, type SeatSlot } from './seat-layout';
 import type {
@@ -278,6 +287,13 @@ function LastActionLabel({
  * frame — only the text node updates (the same approach as the 5.2 ring). Under
  * reduced motion it snaps to the value instantly. The tween always settles on
  * the authoritative `stack`, and the "All in" display is preserved.
+ *
+ * When the compact string hides precision (large stacks), the readout becomes an
+ * in-place disclosure: hovering (desktop), focusing (keyboard), or tapping
+ * (mobile) reveals the exact grouped balance in a small popover. The idle/closed
+ * visual is byte-identical to the non-interactive readout — the compact value
+ * stays the default. The popover is purely visual (`aria-hidden`); the exact
+ * value is announced via the trigger's `aria-label`.
  */
 function StackReadout({
   stack,
@@ -291,6 +307,8 @@ function StackReadout({
   // Large stacks render compact ("1.2M") so they never overflow the tight seat
   // nameplate on a narrow phone; the exact value stays available via title/aria.
   const text = useTransform(value, (v) => formatStackChips(Math.round(v)));
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     if (reduced) {
@@ -301,16 +319,78 @@ function StackReadout({
     return () => controls.stop();
   }, [stack, reduced, value]);
 
+  // Dismiss the disclosure on Escape and on a pointer landing outside the
+  // trigger. Mirrors the inline pattern in action-menu.tsx (kept inline, not a
+  // shared hook, to match house style).
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    const onPointerDown = (e: PointerEvent): void => {
+      if (
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('pointerdown', onPointerDown);
+    };
+  }, [open]);
+
   const exact = Math.round(stack).toLocaleString();
+  const className = 'font-mono text-sm font-semibold tabular-nums text-vc-gold';
+  const inner = allIn ? 'All in' : <motion.span>{text}</motion.span>;
+  const interactive = !allIn && stackHasHiddenPrecision(stack);
+
+  if (!interactive) {
+    return (
+      <div className={className} title={exact} aria-label={`Stack ${exact}`}>
+        {inner}
+      </div>
+    );
+  }
 
   return (
-    <div
-      className="font-mono text-sm font-semibold tabular-nums text-vc-gold"
-      title={exact}
+    <button
+      ref={triggerRef}
+      type="button"
+      className={`${className} relative m-0 inline-flex appearance-none items-center border-0 bg-transparent p-0`}
       aria-label={`Stack ${exact}`}
+      aria-expanded={open}
+      onPointerEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+      onClick={() => setOpen(true)}
     >
-      {allIn ? 'All in' : <motion.span>{text}</motion.span>}
-    </div>
+      {inner}
+      <AnimatePresence>
+        {open && (
+          <motion.span
+            role="tooltip"
+            aria-hidden="true"
+            className="absolute left-1/2 top-full z-20 mt-1 -translate-x-1/2 whitespace-nowrap rounded bg-vc-felt-deep/95 px-2 py-1 font-mono text-xs tabular-nums text-vc-gold shadow-lg ring-1 ring-vc-gold/20"
+            style={{ transformOrigin: 'top center' }}
+            initial={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+            animate={reduced ? { opacity: 1 } : { opacity: 1, scale: 1 }}
+            exit={reduced ? { opacity: 0 } : { opacity: 0, scale: 0.95 }}
+            transition={
+              reduced
+                ? { duration: 0.12 }
+                : { type: 'spring', stiffness: 500, damping: 32 }
+            }
+          >
+            {exact}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </button>
   );
 }
 

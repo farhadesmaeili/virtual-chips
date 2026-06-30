@@ -42,6 +42,17 @@ export function formatStackChips(value: number): string {
 }
 
 /**
+ * True when the compact seat-stack string hides precision that the exact grouped
+ * value would reveal. Used to decide whether revealing the exact balance is useful
+ * at all: for small stacks formatStackChips already returns the full grouped value,
+ * so compact === exact and a reveal affordance would be redundant.
+ */
+export function stackHasHiddenPrecision(value: number): boolean {
+  const rounded = Math.round(value);
+  return formatStackChips(rounded) !== rounded.toLocaleString();
+}
+
+/**
  * Truncate `value / unit` to at most `decimals` places (toward zero) and render
  * it with `suffix`, trimming trailing zeros and a trailing dot. Integer math
  * throughout to avoid float drift: `value` is a whole chip count, and
