@@ -13,11 +13,11 @@ export const BUY_IN_MAX_BB_MULTIPLE = 20;
 
 /**
  * Hard ceiling on any single chip balance and on a member's cumulative
- * `buyInTotal`. `buyInTotal` is a Postgres Int accumulator incremented on every
- * funding op (buy-in / banker adjust) with an unbounded rebuy count, so a
- * per-op cap alone would let it overflow the Int column (2,147,483,647). The
+ * `buyInTotal`. `buyInTotal` is a Postgres BigInt accumulator incremented on
+ * every funding op (buy-in / banker adjust) with an unbounded rebuy count; the
  * cumulative guard ({@link validateFundingCeiling}) keeps both fields under this
- * value. Chosen so `20 * MAX_BLIND === MAX_CHIP_AMOUNT`.
+ * value (the column type widened to BigInt so the ceiling can later be raised
+ * without overflow). Chosen so `20 * MAX_BLIND === MAX_CHIP_AMOUNT`.
  */
 export const MAX_CHIP_AMOUNT = 100_000_000;
 

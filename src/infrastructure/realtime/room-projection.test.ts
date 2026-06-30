@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { RoomSnapshot } from '@/application/use-cases';
-import { toPublicRoomState } from './room-projection';
+import type { EndGameResult, RoomSnapshot } from '@/application/use-cases';
+import { toPublicGameEnded, toPublicRoomState } from './room-projection';
 
 const snapshot: RoomSnapshot = {
   id: 'r1',
@@ -63,5 +63,37 @@ describe('toPublicRoomState', () => {
     expect(serialized).not.toContain('userId');
     expect(serialized).not.toContain('banker-user-id');
     expect(serialized).not.toContain('other-user-id');
+  });
+});
+
+describe('chip-value serialization guard', () => {
+  // The boundary converts bigint -> number on read, so a chip value reaching a
+  // socket payload is always a number. JSON.stringify throws on a bigint, so
+  // these assertions prove no raw bigint leaks into a broadcast.
+  it('toPublicRoomState serializes and round-trips chip values', () => {
+    const json = JSON.stringify(toPublicRoomState(snapshot));
+    expect(() => JSON.parse(json)).not.toThrow();
+    const parsed = JSON.parse(json) as ReturnType<typeof toPublicRoomState>;
+    expect(parsed.members[0]?.chips).toBe(100);
+    expect(parsed.settings.bigBlind).toBe(2);
+  });
+
+  it('toPublicGameEnded serializes and round-trips net/rake', () => {
+    const result: EndGameResult = {
+      gameId: 'game-1',
+      nets: [
+        { seat: 0, userId: 'banker-user-id', net: 800 },
+        { seat: 1, userId: 'other-user-id', net: -800 },
+      ],
+      rake: 0,
+      snapshot,
+    };
+    const json = JSON.stringify(toPublicGameEnded(result));
+    expect(() => JSON.parse(json)).not.toThrow();
+    expect(json).not.toContain('banker-user-id');
+    expect(json).not.toContain('other-user-id');
+    const parsed = JSON.parse(json) as ReturnType<typeof toPublicGameEnded>;
+    expect(parsed.nets[0]?.net).toBe(800);
+    expect(parsed.rake).toBe(0);
   });
 });
