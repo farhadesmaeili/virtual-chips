@@ -9,6 +9,7 @@ import {
   createHand,
   createPlayerInHand,
   createRoom,
+  MAX_CHIP_AMOUNT,
   type Hand,
   type Room,
 } from '@/domain/entities';
@@ -16,6 +17,7 @@ import {
   BuyInLimitError,
   ChipRequestNotFoundError,
   ChipRequestPendingError,
+  FundingCeilingError,
   HandInProgressError,
   InsufficientChipsError,
   InvalidChipsAmountError,
@@ -320,6 +322,98 @@ describe('ApproveChipRequest', () => {
     expect(bob?.chips).toBe(600);
     expect(await store.hasPending('r1', 'bob')).toBe(true);
   });
+
+  describe('cumulative funding ceiling', () => {
+    // A table with no maximum stack, so only the global ceiling can bind.
+    const noMax = createRoom({
+      id: 'r1',
+      name: 'Table',
+      bankerId: 'banker',
+      settings: { minBuyIn: 100, maxBuyIn: null },
+    });
+
+    /** Seats bob with explicit chips/buyInTotal at an otherwise-uncapped table. */
+    function seedBob(chips: number, buyInTotal: number): void {
+      rooms.seed(noMax, [
+        member('banker', 0),
+        {
+          userId: 'bob',
+          username: 'bob',
+          seat: 1,
+          chips,
+          buyInTotal,
+          sittingOut: false,
+        },
+      ]);
+    }
+
+    it('approves a first buy landing exactly on the ceiling', async () => {
+      seedBob(0, 0);
+      const requestId = await queued('bob', MAX_CHIP_AMOUNT);
+      const { snapshot } = await new ApproveChipRequest(rooms, store).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        requestId,
+      });
+      expect(snapshot.members.find((m) => m.seat === 1)?.chips).toBe(
+        MAX_CHIP_AMOUNT,
+      );
+    });
+
+    it('approves a first buy one below the ceiling', async () => {
+      seedBob(0, 0);
+      const requestId = await queued('bob', MAX_CHIP_AMOUNT - 1);
+      const { snapshot } = await new ApproveChipRequest(rooms, store).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        requestId,
+      });
+      expect(snapshot.members.find((m) => m.seat === 1)?.chips).toBe(
+        MAX_CHIP_AMOUNT - 1,
+      );
+    });
+
+    it('rejects a first buy one over the ceiling with FUNDING_CEILING', async () => {
+      seedBob(0, 0);
+      const requestId = await queued('bob', MAX_CHIP_AMOUNT + 1);
+      const error = await new ApproveChipRequest(rooms, store)
+        .execute({ roomId: 'r1', requesterId: 'banker', requestId })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(FundingCeilingError);
+      expect((error as FundingCeilingError).code).toBe('FUNDING_CEILING');
+      // No chips moved; the request stays pending.
+      expect(
+        (await rooms.listMembers('r1')).find((m) => m.seat === 1)?.chips,
+      ).toBe(0);
+      expect(await store.hasPending('r1', 'bob')).toBe(true);
+    });
+
+    it('rejects a cumulative op whose amount is under the per-op cap but overflows buyInTotal', async () => {
+      // chips is low, but buyInTotal already near the ceiling: a small buy-in
+      // that is fine per-op would push the unbounded accumulator over.
+      seedBob(0, MAX_CHIP_AMOUNT - 100);
+      const requestId = await queued('bob', 200);
+      await expect(
+        new ApproveChipRequest(rooms, store).execute({
+          roomId: 'r1',
+          requesterId: 'banker',
+          requestId,
+        }),
+      ).rejects.toThrow(FundingCeilingError);
+    });
+
+    it('rejects an over-ceiling approval even when the table has no maximum', async () => {
+      seedBob(0, 0);
+      const requestId = await queued('bob', MAX_CHIP_AMOUNT + 1);
+      await expect(
+        new ApproveChipRequest(rooms, store).execute({
+          roomId: 'r1',
+          requesterId: 'banker',
+          requestId,
+        }),
+      ).rejects.toThrow(FundingCeilingError);
+    });
+  });
 });
 
 describe('RejectChipRequest', () => {
@@ -513,5 +607,77 @@ describe('AdjustMemberChips', () => {
       amount: 100,
     });
     expect((await bob()).chips).toBe(600);
+  });
+
+  describe('cumulative funding ceiling', () => {
+    it('adjusts a credit landing exactly on the ceiling', async () => {
+      rooms.seed(room, funded({ bobChips: 0, bobBuyIn: 0 }));
+      await new AdjustMemberChips(rooms, hands).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 1,
+        amount: MAX_CHIP_AMOUNT,
+      });
+      expect((await bob()).chips).toBe(MAX_CHIP_AMOUNT);
+    });
+
+    it('adjusts a credit one below the ceiling', async () => {
+      rooms.seed(room, funded({ bobChips: 0, bobBuyIn: 0 }));
+      await new AdjustMemberChips(rooms, hands).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 1,
+        amount: MAX_CHIP_AMOUNT - 1,
+      });
+      expect((await bob()).chips).toBe(MAX_CHIP_AMOUNT - 1);
+    });
+
+    it('rejects a credit one over the ceiling with FUNDING_CEILING', async () => {
+      rooms.seed(room, funded({ bobChips: 0, bobBuyIn: 0 }));
+      const error = await new AdjustMemberChips(rooms, hands)
+        .execute({
+          roomId: 'r1',
+          requesterId: 'banker',
+          targetSeat: 1,
+          amount: MAX_CHIP_AMOUNT + 1,
+        })
+        .catch((e: unknown) => e);
+      expect(error).toBeInstanceOf(FundingCeilingError);
+      expect((error as FundingCeilingError).code).toBe('FUNDING_CEILING');
+      // No chips moved on the rejected adjust.
+      expect((await bob()).chips).toBe(0);
+    });
+
+    it('rejects a cumulative credit whose total pushes past the ceiling', async () => {
+      rooms.seed(
+        room,
+        funded({
+          bobChips: MAX_CHIP_AMOUNT - 100,
+          bobBuyIn: MAX_CHIP_AMOUNT - 100,
+        }),
+      );
+      await expect(
+        new AdjustMemberChips(rooms, hands).execute({
+          roomId: 'r1',
+          requesterId: 'banker',
+          targetSeat: 1,
+          amount: 200,
+        }),
+      ).rejects.toThrow(FundingCeilingError);
+    });
+
+    it('still allows a negative adjust at the ceiling (cash-out is a no-op for the guard)', async () => {
+      rooms.seed(
+        room,
+        funded({ bobChips: MAX_CHIP_AMOUNT, bobBuyIn: MAX_CHIP_AMOUNT }),
+      );
+      await new AdjustMemberChips(rooms, hands).execute({
+        roomId: 'r1',
+        requesterId: 'banker',
+        targetSeat: 1,
+        amount: -200,
+      });
+      expect((await bob()).chips).toBe(MAX_CHIP_AMOUNT - 200);
+    });
   });
 });

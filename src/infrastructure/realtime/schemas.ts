@@ -1,12 +1,10 @@
 import { z } from 'zod';
+import { MAX_BLIND, MAX_CHIP_AMOUNT } from '@/domain/entities';
 
 /** Zod schemas for socket payloads (docs/REALTIME-EVENTS.md). */
 
-/** Sane upper bound for a blind so a typo can't open an absurd table. */
-const MAX_BLIND = 1_000_000;
-
 /** Sane upper bound for a buy-in bound, matching the chips:request cap. */
-const MAX_BUY_IN = 1_000_000;
+const MAX_BUY_IN = MAX_CHIP_AMOUNT;
 
 export const roomSettingsSchema = z
   .object({
@@ -107,7 +105,7 @@ export const chipsRequestSchema = z
   .object({
     roomId: z.string().min(1),
     // A sane upper bound so a typo can't request an absurd buy-in.
-    amount: z.number().int().positive().max(1_000_000),
+    amount: z.number().int().positive().max(MAX_CHIP_AMOUNT),
   })
   .strict();
 
@@ -132,7 +130,7 @@ export const adjustChipsSchema = z
       .number()
       .int()
       .refine((n) => n !== 0, { message: 'amount must be non-zero' })
-      .refine((n) => Math.abs(n) <= 1_000_000, {
+      .refine((n) => Math.abs(n) <= MAX_CHIP_AMOUNT, {
         message: 'amount out of range',
       }),
   })

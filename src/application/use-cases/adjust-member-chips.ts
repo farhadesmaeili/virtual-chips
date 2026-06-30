@@ -1,5 +1,5 @@
 import type { HandStore, RoomRepository } from '@/application/ports';
-import { isBanker } from '@/domain/entities';
+import { isBanker, validateFundingCeiling } from '@/domain/entities';
 import {
   HandInProgressError,
   InsufficientChipsError,
@@ -85,6 +85,10 @@ export class AdjustMemberChips {
     if (member.buyInTotal + amount < 0) {
       throw new InsufficientChipsError(member.buyInTotal, -amount);
     }
+
+    // Cumulative ceiling: a positive adjust may not push chips or the unbounded
+    // buyInTotal accumulator past MAX_CHIP_AMOUNT (a negative adjust is a no-op).
+    validateFundingCeiling(member.chips, member.buyInTotal, amount);
 
     // Lockstep: positive credits both, negative debits both — net is preserved.
     await this.rooms.addMemberFunding(roomId, member.userId, amount);
