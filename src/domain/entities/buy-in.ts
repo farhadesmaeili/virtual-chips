@@ -12,14 +12,26 @@ export const BUY_IN_MIN_BB_MULTIPLE = 10;
 export const BUY_IN_MAX_BB_MULTIPLE = 20;
 
 /**
- * Hard ceiling on any single chip balance and on a member's cumulative
- * `buyInTotal`. `buyInTotal` is a Postgres BigInt accumulator incremented on
- * every funding op (buy-in / banker adjust) with an unbounded rebuy count; the
- * cumulative guard ({@link validateFundingCeiling}) keeps both fields under this
- * value (the column type widened to BigInt so the ceiling can later be raised
- * without overflow). Chosen so `20 * MAX_BLIND === MAX_CHIP_AMOUNT`.
+ * PRODUCT cap on a single chip balance: the largest per-table maximum stack
+ * (used to derive/bound a room's `maxBuyIn` when it is a number). It is NOT the
+ * cumulative funding guard — that is {@link MAX_CHIP_TOTAL}. Chosen so
+ * `20 * MAX_BLIND === MAX_CHIP_AMOUNT`.
  */
 export const MAX_CHIP_AMOUNT = 100_000_000;
+
+/**
+ * TECHNICAL precision-safe ceiling, ALWAYS enforced by
+ * {@link validateFundingCeiling} on every funding op, regardless of a room's
+ * `maxBuyIn`. `buyInTotal` is a Postgres BigInt accumulator incremented on every
+ * funding op (buy-in / banker adjust) with an unbounded rebuy count; this guard
+ * keeps both `chips` and the cumulative `buyInTotal` under this value so a
+ * "No maximum buy-in" table (`maxBuyIn === null`) imposes no product cap on a
+ * player's total while still staying precision-safe. Chosen so
+ * `MAX_SEATS * MAX_CHIP_TOTAL` stays well below `Number.MAX_SAFE_INTEGER`
+ * (2^53), keeping every cross-seat aggregate (pots, nets, totals) exact in the
+ * number-based domain.
+ */
+export const MAX_CHIP_TOTAL = 1_000_000_000_000;
 
 /** Upper bound for a blind, kept so `20 * MAX_BLIND === MAX_CHIP_AMOUNT`. */
 export const MAX_BLIND = 5_000_000;
@@ -79,8 +91,10 @@ export function validateBuyInRequest(
  * Cumulative funding guard, applied on EVERY funding operation before chips
  * move. Throws {@link FundingCeilingError} if the operation would push either
  * the member's chips OR their cumulative `buyInTotal` past {@link
- * MAX_CHIP_AMOUNT}. Unlike a per-op cap, this bounds the running total so the
- * unguarded `buyInTotal` Int accumulator cannot overflow across many rebuys.
+ * MAX_CHIP_TOTAL} (the technical precision-safe ceiling, NOT the product cap
+ * {@link MAX_CHIP_AMOUNT}). Unlike a per-op cap, this bounds the running total
+ * so the unbounded `buyInTotal` accumulator stays precision-safe across many
+ * rebuys — including a "No maximum buy-in" table where rebuys are unlimited.
  *
  * A negative `amount` (cash-out / correction) is a no-op: neither sum can grow,
  * so the ceiling cannot be breached.
@@ -91,9 +105,9 @@ export function validateFundingCeiling(
   amount: number,
 ): void {
   if (
-    currentChips + amount > MAX_CHIP_AMOUNT ||
-    currentBuyInTotal + amount > MAX_CHIP_AMOUNT
+    currentChips + amount > MAX_CHIP_TOTAL ||
+    currentBuyInTotal + amount > MAX_CHIP_TOTAL
   ) {
-    throw new FundingCeilingError(MAX_CHIP_AMOUNT);
+    throw new FundingCeilingError(MAX_CHIP_TOTAL);
   }
 }

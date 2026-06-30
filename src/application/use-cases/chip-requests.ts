@@ -137,7 +137,9 @@ export class ApproveChipRequest {
     if (!limit.ok) throw new BuyInLimitError(limit.reason);
 
     // Cumulative ceiling: neither chips nor the unbounded buyInTotal accumulator
-    // may overflow past MAX_CHIP_AMOUNT once this funding is applied.
+    // may overflow past MAX_CHIP_TOTAL (the technical precision-safe limit) once
+    // this funding is applied — this guard, not the per-table maxBuyIn, is what
+    // keeps a No-Max table precision-safe.
     validateFundingCeiling(member.chips, member.buyInTotal, request.amount);
 
     await this.rooms.addMemberFunding(roomId, request.userId, request.amount);

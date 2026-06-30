@@ -11,7 +11,10 @@
  *
  * Safe because every chip value is far below `Number.MAX_SAFE_INTEGER` (2^53) at
  * the current ceiling; the helpers assert that bound so an out-of-range value can
- * never silently lose precision.
+ * never silently lose precision. The domain's technical ceiling (`MAX_CHIP_TOTAL`,
+ * 1e12) sits well below `Number.MAX_SAFE_INTEGER`, so this assertion is a strictly
+ * weaker, layer-appropriate backstop; it deliberately does not import the domain
+ * constant.
  */
 
 const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);

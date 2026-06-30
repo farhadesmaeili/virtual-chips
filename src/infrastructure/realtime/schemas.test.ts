@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { MAX_CHIP_TOTAL } from '@/domain/entities';
 import {
+  adjustChipsSchema,
+  chipsRequestSchema,
   endGameSchema,
   playerClaimSchema,
   roomSettingsSchema,
@@ -31,6 +34,63 @@ describe('roomSettingsSchema buy-in bounds', () => {
   it('rejects a non-positive or non-integer minBuyIn', () => {
     expect(roomSettingsSchema.safeParse({ minBuyIn: 0 }).success).toBe(false);
     expect(roomSettingsSchema.safeParse({ minBuyIn: 1.5 }).success).toBe(false);
+  });
+});
+
+describe('chip-amount wire caps (technical ceiling)', () => {
+  it('chipsRequestSchema accepts an amount exactly at the technical ceiling', () => {
+    expect(
+      chipsRequestSchema.safeParse({ roomId: 'r1', amount: MAX_CHIP_TOTAL })
+        .success,
+    ).toBe(true);
+  });
+
+  it('chipsRequestSchema rejects an amount one over the technical ceiling', () => {
+    expect(
+      chipsRequestSchema.safeParse({ roomId: 'r1', amount: MAX_CHIP_TOTAL + 1 })
+        .success,
+    ).toBe(false);
+  });
+
+  it('chipsRequestSchema accepts a buy-in well past the old 100M product cap', () => {
+    expect(
+      chipsRequestSchema.safeParse({ roomId: 'r1', amount: 1_380_000_000 })
+        .success,
+    ).toBe(true);
+  });
+
+  it('adjustChipsSchema accepts a credit/debit exactly at the technical ceiling', () => {
+    expect(
+      adjustChipsSchema.safeParse({
+        roomId: 'r1',
+        seat: 1,
+        amount: MAX_CHIP_TOTAL,
+      }).success,
+    ).toBe(true);
+    expect(
+      adjustChipsSchema.safeParse({
+        roomId: 'r1',
+        seat: 1,
+        amount: -MAX_CHIP_TOTAL,
+      }).success,
+    ).toBe(true);
+  });
+
+  it('adjustChipsSchema rejects an amount one over the technical ceiling (either sign)', () => {
+    expect(
+      adjustChipsSchema.safeParse({
+        roomId: 'r1',
+        seat: 1,
+        amount: MAX_CHIP_TOTAL + 1,
+      }).success,
+    ).toBe(false);
+    expect(
+      adjustChipsSchema.safeParse({
+        roomId: 'r1',
+        seat: 1,
+        amount: -(MAX_CHIP_TOTAL + 1),
+      }).success,
+    ).toBe(false);
   });
 });
 
