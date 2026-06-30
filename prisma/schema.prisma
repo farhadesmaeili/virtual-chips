@@ -33,10 +33,10 @@ model Room {
 
   // Game settings (mirror the domain RoomSettings value object).
   actionTimeoutMs Int            @default(30000)
-  smallBlind      Int            @default(1)
-  bigBlind        Int            @default(2)
-  minBuyIn        Int            @default(20) // 10 * default BB(2); real derivation in app layer
-  maxBuyIn        Int? // null = no maximum
+  smallBlind      BigInt         @default(1)
+  bigBlind        BigInt         @default(2)
+  minBuyIn        BigInt         @default(20) // 10 * default BB(2); real derivation in app layer
+  maxBuyIn        BigInt? // null = no maximum
   settlementMode  SettlementMode @default(BANKER)
 
   createdAt DateTime @default(now())
@@ -54,8 +54,8 @@ model RoomMember {
   roomId     String
   userId     String
   seat       Int
-  buyInTotal Int      @default(0)
-  chips      Int      @default(0)
+  buyInTotal BigInt   @default(0)
+  chips      BigInt   @default(0)
   // Sit-out keeps the seat and chips but skips new hands until the player sits
   // back in (task 4.14). Persisted so it carries across hands.
   sittingOut Boolean  @default(false)
@@ -103,7 +103,7 @@ model ActionLog {
   handId    String
   seat      Int
   action    ActionType
-  amount    Int?
+  amount    BigInt?
   createdAt DateTime   @default(now())
 
   hand Hand @relation(fields: [handId], references: [id], onDelete: Cascade)
@@ -115,7 +115,7 @@ model Settlement {
   id        String   @id @default(cuid())
   gameId    String
   userId    String
-  net       Int // positive = win, negative = loss
+  net       BigInt // positive = win, negative = loss
   createdAt DateTime @default(now())
 
   game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)

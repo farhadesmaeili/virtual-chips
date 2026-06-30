@@ -18,10 +18,11 @@ describe('PrismaSettlementRepository.saveForGame', () => {
       { userId: 'bob', net: -800 },
     ]);
 
+    // net is written as bigint (the column is BigInt) — proves write conversion.
     expect(createMany).toHaveBeenCalledWith({
       data: [
-        { gameId: 'game-1', userId: 'alice', net: 800 },
-        { gameId: 'game-1', userId: 'bob', net: -800 },
+        { gameId: 'game-1', userId: 'alice', net: 800n },
+        { gameId: 'game-1', userId: 'bob', net: -800n },
       ],
     });
   });
@@ -62,9 +63,10 @@ describe('PrismaSettlementRepository.listForUser', () => {
 
   it('maps each row to the UserGameSettlement shape', async () => {
     const endedAt = new Date('2026-06-28T00:00:00.000Z');
+    // The real Prisma client returns net as bigint; the stub mirrors that.
     const findMany = vi.fn().mockResolvedValue([
       {
-        net: 800,
+        net: 800n,
         game: { id: 'game-1', endedAt, room: { name: 'Friday game' } },
       },
     ]);
@@ -73,6 +75,7 @@ describe('PrismaSettlementRepository.listForUser', () => {
     const repo = new PrismaSettlementRepository(prisma);
     const history = await repo.listForUser('alice');
 
+    // net comes back as number — proves read conversion at the boundary.
     expect(history).toEqual([
       { gameId: 'game-1', net: 800, roomName: 'Friday game', endedAt },
     ]);

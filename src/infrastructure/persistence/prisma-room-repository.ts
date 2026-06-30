@@ -6,6 +6,7 @@ import type {
   UserRoomMembership,
 } from '@/application/ports';
 import type { Room, RoomStatus } from '@/domain/entities';
+import { toChipBigInt, toChipBigIntOrNull, toChipNumber } from './chip-codec';
 import {
   toDomainRoom,
   toDomainRoomStatus,
@@ -24,10 +25,10 @@ export class PrismaRoomRepository implements RoomRepository {
         bankerId: room.bankerId,
         status: toPrismaRoomStatus(room.status),
         actionTimeoutMs: room.settings.actionTimeoutMs,
-        smallBlind: room.settings.smallBlind,
-        bigBlind: room.settings.bigBlind,
-        minBuyIn: room.settings.minBuyIn,
-        maxBuyIn: room.settings.maxBuyIn,
+        smallBlind: toChipBigInt(room.settings.smallBlind),
+        bigBlind: toChipBigInt(room.settings.bigBlind),
+        minBuyIn: toChipBigInt(room.settings.minBuyIn),
+        maxBuyIn: toChipBigIntOrNull(room.settings.maxBuyIn),
         settlementMode: toPrismaSettlementMode(room.settings.settlementMode),
       },
     });
@@ -55,8 +56,8 @@ export class PrismaRoomRepository implements RoomRepository {
         roomId,
         userId: member.userId,
         seat: member.seat,
-        buyInTotal: member.buyInTotal,
-        chips: member.chips,
+        buyInTotal: toChipBigInt(member.buyInTotal),
+        chips: toChipBigInt(member.chips),
       },
       include: { user: { select: { username: true } } },
     });
@@ -64,8 +65,8 @@ export class PrismaRoomRepository implements RoomRepository {
       userId: created.userId,
       username: created.user.username,
       seat: created.seat,
-      buyInTotal: created.buyInTotal,
-      chips: created.chips,
+      buyInTotal: toChipNumber(created.buyInTotal),
+      chips: toChipNumber(created.chips),
       sittingOut: created.sittingOut,
     };
   }
@@ -83,7 +84,7 @@ export class PrismaRoomRepository implements RoomRepository {
   ): Promise<void> {
     await this.prisma.roomMember.update({
       where: { roomId_userId: { roomId, userId } },
-      data: { chips },
+      data: { chips: toChipBigInt(chips) },
     });
   }
 
@@ -95,8 +96,8 @@ export class PrismaRoomRepository implements RoomRepository {
     await this.prisma.roomMember.update({
       where: { roomId_userId: { roomId, userId } },
       data: {
-        chips: { increment: amount },
-        buyInTotal: { increment: amount },
+        chips: { increment: toChipBigInt(amount) },
+        buyInTotal: { increment: toChipBigInt(amount) },
       },
     });
   }
@@ -122,8 +123,8 @@ export class PrismaRoomRepository implements RoomRepository {
       userId: m.userId,
       username: m.user.username,
       seat: m.seat,
-      buyInTotal: m.buyInTotal,
-      chips: m.chips,
+      buyInTotal: toChipNumber(m.buyInTotal),
+      chips: toChipNumber(m.chips),
       sittingOut: m.sittingOut,
     }));
   }

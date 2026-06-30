@@ -7,6 +7,7 @@ import type {
   RoomStatus as DomainRoomStatus,
   SettlementMode as DomainSettlementMode,
 } from '@/domain/entities';
+import { toChipNumber, toChipNumberOrNull } from './chip-codec';
 
 // --- Enum mapping (database UPPER_CASE <-> domain lower_case unions) ---
 
@@ -61,10 +62,10 @@ export interface PrismaRoomRow {
   readonly bankerId: string;
   readonly status: PrismaRoomStatus;
   readonly actionTimeoutMs: number;
-  readonly smallBlind: number;
-  readonly bigBlind: number;
-  readonly minBuyIn: number;
-  readonly maxBuyIn: number | null;
+  readonly smallBlind: bigint;
+  readonly bigBlind: bigint;
+  readonly minBuyIn: bigint;
+  readonly maxBuyIn: bigint | null;
   readonly settlementMode: PrismaSettlementMode;
 }
 
@@ -77,10 +78,10 @@ export function toDomainRoom(row: PrismaRoomRow): Room {
     status: toDomainRoomStatus(row.status),
     settings: {
       actionTimeoutMs: row.actionTimeoutMs,
-      smallBlind: row.smallBlind,
-      bigBlind: row.bigBlind,
-      minBuyIn: row.minBuyIn,
-      maxBuyIn: row.maxBuyIn,
+      smallBlind: toChipNumber(row.smallBlind),
+      bigBlind: toChipNumber(row.bigBlind),
+      minBuyIn: toChipNumber(row.minBuyIn),
+      maxBuyIn: toChipNumberOrNull(row.maxBuyIn),
       settlementMode: toDomainSettlementMode(row.settlementMode),
     },
   };

@@ -52,10 +52,11 @@ describe('toDomainRoom', () => {
     bankerId: 'u1',
     status: PrismaRoomStatus.PLAYING,
     actionTimeoutMs: 20000,
-    smallBlind: 5,
-    bigBlind: 10,
-    minBuyIn: 100,
-    maxBuyIn: 200,
+    // Chip columns come back from Prisma as bigint; the mapper converts them.
+    smallBlind: 5n,
+    bigBlind: 10n,
+    minBuyIn: 100n,
+    maxBuyIn: 200n,
     settlementMode: PrismaSettlementMode.SHOWDOWN,
   };
 

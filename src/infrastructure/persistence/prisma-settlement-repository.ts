@@ -4,6 +4,7 @@ import type {
   SettlementRepository,
   UserGameSettlement,
 } from '@/application/ports';
+import { toChipBigInt, toChipNumber } from './chip-codec';
 
 export class PrismaSettlementRepository implements SettlementRepository {
   constructor(private readonly prisma: PrismaClient) {}
@@ -17,7 +18,7 @@ export class PrismaSettlementRepository implements SettlementRepository {
       data: settlements.map((s) => ({
         gameId,
         userId: s.userId,
-        net: s.net,
+        net: toChipBigInt(s.net),
       })),
     });
   }
@@ -38,7 +39,7 @@ export class PrismaSettlementRepository implements SettlementRepository {
     });
     return rows.map((r) => ({
       gameId: r.game.id,
-      net: r.net,
+      net: toChipNumber(r.net),
       roomName: r.game.room.name,
       // endedAt non-null guaranteed by the where filter.
       endedAt: r.game.endedAt as Date,
