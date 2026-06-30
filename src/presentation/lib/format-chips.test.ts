@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatStackChips } from './format-chips';
+import { formatStackChips, stackHasHiddenPrecision } from './format-chips';
 
 describe('formatStackChips', () => {
   // Below the 100K threshold: exact, grouped thousands — precision matters here.
@@ -49,5 +49,31 @@ describe('formatStackChips', () => {
     expect(formatStackChips(-1_000_000)).toBe('-1,000,000');
     expect(formatStackChips(Number.NaN)).toBe('NaN');
     expect(formatStackChips(Number.POSITIVE_INFINITY)).toBe('∞');
+  });
+});
+
+describe('stackHasHiddenPrecision', () => {
+  // Below the compaction threshold the compact string equals the exact grouped
+  // value, so revealing the exact balance would add nothing.
+  it('returns false when compact already shows the full grouped value', () => {
+    expect(stackHasHiddenPrecision(5_000)).toBe(false);
+    expect(stackHasHiddenPrecision(99_999)).toBe(false); // just under threshold
+    expect(stackHasHiddenPrecision(0)).toBe(false);
+  });
+
+  // At/above the threshold the compact notation drops precision, so the exact
+  // value is worth revealing.
+  it('returns true when compact notation hides precision', () => {
+    expect(stackHasHiddenPrecision(100_000)).toBe(true); // at threshold
+    expect(stackHasHiddenPrecision(1_000_000)).toBe(true);
+    expect(stackHasHiddenPrecision(999_999_999)).toBe(true);
+    expect(stackHasHiddenPrecision(1_254_783_925)).toBe(true);
+  });
+
+  // Defensive inputs route through the same plain-grouping fallback in
+  // formatStackChips, so compact === exact and there is nothing to reveal.
+  it('returns false for negative and non-finite values', () => {
+    expect(stackHasHiddenPrecision(-5_000)).toBe(false);
+    expect(stackHasHiddenPrecision(Number.POSITIVE_INFINITY)).toBe(false);
   });
 });
