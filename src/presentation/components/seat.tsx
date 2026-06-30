@@ -360,11 +360,11 @@ function StackReadout({
     <button
       ref={triggerRef}
       type="button"
-      className={`${className} relative m-0 inline-flex appearance-none items-center border-0 bg-transparent p-0`}
+      className={`${className} relative -mx-2 -my-1 inline-flex appearance-none items-center border-0 bg-transparent px-2 py-1`}
       aria-label={`Stack ${exact}`}
       aria-expanded={open}
       onPointerEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onPointerLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
       onClick={() => setOpen(true)}
