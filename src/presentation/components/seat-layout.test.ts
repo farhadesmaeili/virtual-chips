@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BET_CHIP_OFFSET_PX,
   CHIP_ANCHOR_INSET_PCT,
   MAX_SEATS,
   TABLE_CENTER,
+  seatBetChipOffset,
   seatChipAnchor,
   seatSlots,
+  type SeatSlot,
 } from './seat-layout';
 
 /** Euclidean distance between two overlay-% points. */
@@ -118,5 +121,54 @@ describe('seatChipAnchor', () => {
   it('falls back to the table center for an unknown seat', () => {
     expect(seatChipAnchor(999)).toEqual(TABLE_CENTER);
     expect(seatChipAnchor(-1)).toEqual(TABLE_CENTER);
+  });
+});
+
+describe('seatBetChipOffset', () => {
+  const slots = seatSlots(MAX_SEATS);
+  // Representative seats derived from geometry (y grows downward), not hardcoded
+  // indices: bottom = largest yPct, top = smallest yPct, left/right = the x rails.
+  const bottom = slots.reduce((a, b) => (b.yPct > a.yPct ? b : a));
+  const top = slots.reduce((a, b) => (b.yPct < a.yPct ? b : a));
+  const left = slots.reduce((a, b) => (b.xPct < a.xPct ? b : a));
+  const right = slots.reduce((a, b) => (b.xPct > a.xPct ? b : a));
+
+  it('is a positive scalar multiple of the seat towardCenter (points to center)', () => {
+    for (const slot of slots) {
+      const off = seatBetChipOffset(slot);
+      expect(off.x).toBeCloseTo(slot.towardCenter.x * BET_CHIP_OFFSET_PX, 6);
+      expect(off.y).toBeCloseTo(slot.towardCenter.y * BET_CHIP_OFFSET_PX, 6);
+    }
+  });
+
+  it('nudges in the correct direction per quadrant', () => {
+    expect(seatBetChipOffset(bottom).y).toBeLessThan(0); // bottom seat: chips move up
+    expect(seatBetChipOffset(top).y).toBeGreaterThan(0); // top seat: chips move down
+    expect(seatBetChipOffset(left).x).toBeGreaterThan(0); // left rail: chips move right
+    expect(seatBetChipOffset(right).x).toBeLessThan(0); // right rail: chips move left
+  });
+
+  it('has magnitude equal to BET_CHIP_OFFSET_PX (towardCenter is a unit vector)', () => {
+    for (const slot of slots) {
+      const off = seatBetChipOffset(slot);
+      expect(Math.hypot(off.x, off.y)).toBeCloseTo(BET_CHIP_OFFSET_PX, 4);
+    }
+  });
+
+  it('mirrors x for the two horizontally-mirrored rail seats', () => {
+    expect(seatBetChipOffset(left).x).toBeCloseTo(
+      -seatBetChipOffset(right).x,
+      4,
+    );
+  });
+
+  it('returns no offset for a degenerate (zero) towardCenter', () => {
+    const degenerate: SeatSlot = {
+      seat: 99,
+      xPct: 50,
+      yPct: 50,
+      towardCenter: { x: 0, y: 0 },
+    };
+    expect(seatBetChipOffset(degenerate)).toEqual({ x: 0, y: 0 });
   });
 });

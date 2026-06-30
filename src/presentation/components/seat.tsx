@@ -14,7 +14,7 @@ import { ChipStack } from './chip';
 import { CountdownRing } from './countdown-ring';
 import { formatStackChips } from '@/presentation/lib/format-chips';
 import { actionVerbLabel, labelFade } from './seat-action';
-import type { SeatSlot } from './seat-layout';
+import { seatBetChipOffset, type SeatSlot } from './seat-layout';
 import type {
   AppliedActionType,
   PublicHandPlayer,
@@ -76,6 +76,9 @@ export function Seat({
   const presenceVariants = useMotionVariants(playerEnter);
   // Blind/bet chips appearing in front of the seat (task 5.4).
   const betVariants = useMotionVariants(betPost);
+  // Per-seat px nudge toward table center, kept on its own element so it never
+  // clobbers the Tailwind centering/lift base of the bet-chip block.
+  const off = seatBetChipOffset(slot);
 
   return (
     <motion.div
@@ -110,25 +113,20 @@ export function Seat({
                 "upgraded" to one later. The stack is tinted by its top chip
                 denomination. */}
             {bet > 0 && (
-              <div
-                className="vc-bet absolute -top-1 left-1/2 flex -translate-x-1/2 -translate-y-full items-center gap-1.5"
-                style={{
-                  transform: `translate(calc(-50% + ${slot.towardCenter.x * 28}px), ${
-                    slot.towardCenter.y * 28
-                  }px)`,
-                }}
-              >
-                <motion.div
-                  className="flex items-center gap-1.5"
-                  variants={betVariants}
-                  initial="initial"
-                  animate="animate"
-                >
-                  <ChipStack amount={bet} size={16} height={3} />
-                  <span className="font-mono text-xs font-semibold tabular-nums text-vc-gold [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]">
-                    {bet.toLocaleString()}
-                  </span>
-                </motion.div>
+              <div className="vc-bet absolute -top-1 left-1/2 flex -translate-x-1/2 -translate-y-full items-center gap-1.5">
+                <div style={{ transform: `translate(${off.x}px, ${off.y}px)` }}>
+                  <motion.div
+                    className="flex items-center gap-1.5"
+                    variants={betVariants}
+                    initial="initial"
+                    animate="animate"
+                  >
+                    <ChipStack amount={bet} size={16} height={3} />
+                    <span className="font-mono text-xs font-semibold tabular-nums text-vc-gold [text-shadow:0_1px_2px_rgb(0_0_0/0.6)]">
+                      {bet.toLocaleString()}
+                    </span>
+                  </motion.div>
+                </div>
               </div>
             )}
 
