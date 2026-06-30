@@ -10,15 +10,25 @@ describe('formatStackChips', () => {
     expect(formatStackChips(99_999)).toBe('99,999');
   });
 
-  // At/above the threshold: compact notation. These strings are whatever Intl
-  // emits (uppercase K/M, rounded to one fraction digit) — locked here so a
-  // formatting drift is caught.
-  it('renders stacks at/above 100K in compact notation', () => {
+  // At/above the threshold: pure, truncating compact notation. K keeps up to 2
+  // decimals, M up to 3; values round toward zero (never up), and trailing
+  // zeros / a bare trailing dot are trimmed.
+  it('renders stacks 100K–1M in truncated "K" notation', () => {
     expect(formatStackChips(100_000)).toBe('100K');
-    expect(formatStackChips(999_999)).toBe('1M');
+    expect(formatStackChips(100_550)).toBe('100.55K');
+    expect(formatStackChips(120_450)).toBe('120.45K');
+    expect(formatStackChips(999_999)).toBe('999.99K'); // truncates, never 1M
+    expect(formatStackChips(999_990)).toBe('999.99K');
+    expect(formatStackChips(100_500)).toBe('100.5K'); // trailing zero trimmed
+  });
+
+  it('renders stacks at/above 1M in truncated "M" notation', () => {
     expect(formatStackChips(1_000_000)).toBe('1M');
-    expect(formatStackChips(1_234_567)).toBe('1.2M');
-    expect(formatStackChips(12_345_678)).toBe('12.3M');
+    expect(formatStackChips(1_574_532)).toBe('1.574M');
+    expect(formatStackChips(1_500_000)).toBe('1.5M'); // trailing zeros trimmed
+    expect(formatStackChips(12_345_678)).toBe('12.345M');
+    expect(formatStackChips(12_000_000)).toBe('12M');
+    expect(formatStackChips(1_234_567)).toBe('1.234M');
   });
 
   // Defensive: non-finite / negative never produce a misleading compact string.
