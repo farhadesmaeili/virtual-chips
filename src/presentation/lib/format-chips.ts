@@ -6,15 +6,15 @@
  * Small stacks stay digit-exact (grouped thousands) because precision matters
  * when the number is small. Once a stack is large enough to overflow the tight
  * seat nameplate on a narrow phone, it switches to a compact notation
- * ("100.55K", "1.574M") that keeps the magnitude readable without truncating the
- * displayed digit count — the exact value is still surfaced via the readout's
+ * ("100.5K", "1.5M", "999.9B") that keeps the magnitude readable without
+ * overflowing the plate — the exact value is still surfaced via the readout's
  * `title` / `aria-label`.
  *
  * The compact path is a pure, locale-independent, TRUNCATING formatter (no
- * `Intl`): K values keep up to 2 decimals, M values up to 3, always rounding
- * toward zero so a balance never reads higher than it is (e.g. 999_999 → the
- * honest "999.99K", never a flattering "1M"). The decimal separator is always
- * ".", and trailing zeros (and a bare trailing ".") are trimmed.
+ * `Intl`): every tier (K/M/B/T) keeps a single decimal, always rounding toward
+ * zero so a balance never reads higher than it is (e.g. 999_999 → the honest
+ * "999.9K", never a flattering "1M"). The decimal separator is always ".", and
+ * a trailing zero (and a bare trailing ".") is trimmed.
  */
 export function formatStackChips(value: number): string {
   // Defensive: non-finite or negative values fall back to plain grouping rather
@@ -25,10 +25,20 @@ export function formatStackChips(value: number): string {
   if (value < 100_000) {
     return value.toLocaleString();
   }
+  // 1-decimal compaction across every tier (K/M/B/T) keeps the string at most 6
+  // chars (e.g. "999.9B"), so it fits the fixed-width seat nameplate at every
+  // screen size; the exact value is still surfaced via the title/aria-label at
+  // the call site, so the lost precision is display-only.
   if (value < 1_000_000) {
-    return compactTruncated(value, 1_000, 2, 'K');
+    return compactTruncated(value, 1_000, 1, 'K');
   }
-  return compactTruncated(value, 1_000_000, 3, 'M');
+  if (value < 1_000_000_000) {
+    return compactTruncated(value, 1_000_000, 1, 'M');
+  }
+  if (value < 1_000_000_000_000) {
+    return compactTruncated(value, 1_000_000_000, 1, 'B');
+  }
+  return compactTruncated(value, 1_000_000_000_000, 1, 'T');
 }
 
 /**
