@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { validateBuyInRequest } from './buy-in';
+import { FundingCeilingError } from '../errors';
+import {
+  MAX_CHIP_AMOUNT,
+  validateBuyInRequest,
+  validateFundingCeiling,
+} from './buy-in';
 
 describe('validateBuyInRequest', () => {
   const MIN = 100;
@@ -143,5 +148,52 @@ describe('validateBuyInRequest', () => {
         }),
       ).toEqual({ ok: true });
     });
+  });
+});
+
+describe('validateFundingCeiling', () => {
+  it('accepts when chips + amount lands exactly on the ceiling', () => {
+    expect(() => validateFundingCeiling(0, 0, MAX_CHIP_AMOUNT)).not.toThrow();
+  });
+
+  it('accepts when chips + amount is one below the ceiling', () => {
+    expect(() =>
+      validateFundingCeiling(0, 0, MAX_CHIP_AMOUNT - 1),
+    ).not.toThrow();
+  });
+
+  it('throws FundingCeilingError when chips + amount is one over the ceiling', () => {
+    expect(() => validateFundingCeiling(0, 0, MAX_CHIP_AMOUNT + 1)).toThrow(
+      FundingCeilingError,
+    );
+  });
+
+  it('throws when buyInTotal + amount exceeds the ceiling while chips stays under', () => {
+    // chips + amount is far below the ceiling, but the accumulator would overflow.
+    expect(() => validateFundingCeiling(0, MAX_CHIP_AMOUNT, 1)).toThrow(
+      FundingCeilingError,
+    );
+  });
+
+  it('throws on a cumulative op whose amount is under the per-op cap but pushes the total over', () => {
+    const currentBuyInTotal = MAX_CHIP_AMOUNT - 100;
+    const amount = 200; // well under any per-op cap, but 100 over once applied
+    expect(() =>
+      validateFundingCeiling(MAX_CHIP_AMOUNT - 100, currentBuyInTotal, amount),
+    ).toThrow(FundingCeilingError);
+  });
+
+  it('never throws for a negative amount (cash-out) near the ceiling', () => {
+    expect(() =>
+      validateFundingCeiling(MAX_CHIP_AMOUNT, MAX_CHIP_AMOUNT, -1),
+    ).not.toThrow();
+  });
+
+  it('caps chips directly, independent of any table maximum', () => {
+    // The helper takes no maxBuyIn: a room with no table cap is still bounded
+    // because chips + amount is checked against MAX_CHIP_AMOUNT outright.
+    expect(() => validateFundingCeiling(MAX_CHIP_AMOUNT, 0, 1)).toThrow(
+      FundingCeilingError,
+    );
   });
 });

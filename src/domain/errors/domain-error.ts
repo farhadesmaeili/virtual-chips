@@ -31,6 +31,7 @@ export type DomainErrorCode =
   | 'CHIP_REQUEST_NOT_FOUND'
   | 'CHIP_REQUEST_PENDING'
   | 'BUY_IN_LIMIT'
+  | 'FUNDING_CEILING'
   | 'FORBIDDEN'
   | 'CANNOT_LEAVE_MID_HAND'
   | 'BANKER_CANNOT_LEAVE';
@@ -303,6 +304,22 @@ export class BuyInLimitError extends DomainError {
 
   constructor(readonly reason: BuyInLimitReason) {
     super(BUY_IN_LIMIT_MESSAGES[reason]);
+  }
+}
+
+/**
+ * Thrown when a funding operation (buy-in approval or banker adjust) would push
+ * a member's chips or cumulative `buyInTotal` past the hard ceiling. Distinct
+ * from {@link BuyInLimitError} (a per-table limit): this is a global guard that
+ * keeps the unbounded `buyInTotal` Int accumulator from overflowing.
+ */
+export class FundingCeilingError extends DomainError {
+  readonly code = 'FUNDING_CEILING';
+
+  constructor(readonly maxChipAmount: number) {
+    super(
+      `Funding would exceed the maximum chip balance (${maxChipAmount.toLocaleString('en-US')})`,
+    );
   }
 }
 

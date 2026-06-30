@@ -5,7 +5,11 @@ import type {
   IdGenerator,
   RoomRepository,
 } from '@/application/ports';
-import { isBanker, validateBuyInRequest } from '@/domain/entities';
+import {
+  isBanker,
+  validateBuyInRequest,
+  validateFundingCeiling,
+} from '@/domain/entities';
 import {
   BuyInLimitError,
   ChipRequestNotFoundError,
@@ -131,6 +135,10 @@ export class ApproveChipRequest {
       amount: request.amount,
     });
     if (!limit.ok) throw new BuyInLimitError(limit.reason);
+
+    // Cumulative ceiling: neither chips nor the unbounded buyInTotal accumulator
+    // may overflow past MAX_CHIP_AMOUNT once this funding is applied.
+    validateFundingCeiling(member.chips, member.buyInTotal, request.amount);
 
     await this.rooms.addMemberFunding(roomId, request.userId, request.amount);
     await this.requests.remove(requestId);
