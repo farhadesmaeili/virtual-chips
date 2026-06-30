@@ -3,6 +3,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { useReducedMotionPreference } from '@/presentation/animations';
+import { formatStackChips } from '@/presentation/lib/format-chips';
 import type { ActionAvailability, ActionKind } from './action-availability';
 import { AddTimeButton } from './add-time-button';
 
@@ -240,10 +241,8 @@ function TurnControls({
             disabled={!canCall || pending}
             onClick={() => onAct('CALL')}
           >
-            Call{' '}
-            <span className="font-mono tabular-nums">
-              {toCall.toLocaleString()}
-            </span>
+            Call
+            <ActionAmount value={toCall} />
           </ActionButton>
         )}
 
@@ -257,10 +256,8 @@ function TurnControls({
                 onAct(sizing.mode === 'bet' ? 'BET' : 'RAISE', committed);
               }}
             >
-              {sizing.mode === 'bet' ? 'Bet ' : 'Raise to '}
-              <span className="font-mono tabular-nums">
-                {amount.toLocaleString()}
-              </span>
+              {sizing.mode === 'bet' ? 'Bet' : 'Raise to'}
+              <ActionAmount value={amount} />
             </ActionButton>
           ) : (
             <ActionButton
@@ -281,9 +278,7 @@ function TurnControls({
           onClick={() => onAct('ALL_IN')}
         >
           All in
-          <span className="ml-1 font-mono text-xs tabular-nums opacity-80">
-            {allInTo.toLocaleString()}
-          </span>
+          <ActionAmount value={allInTo} />
         </ActionButton>
       </div>
     </div>
@@ -429,9 +424,25 @@ function ActionButton({
       transition={{ duration: 0.12 }}
       disabled={disabled}
       onClick={onClick}
-      className={`flex items-center justify-center gap-1 rounded-xl px-3 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${TONES[tone]}`}
+      className={`flex min-w-0 items-center justify-center gap-1 rounded-xl px-3 py-3 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-40 ${TONES[tone]}`}
     >
       {children}
     </motion.button>
+  );
+}
+
+/**
+ * Shared label-amount renderer for the action buttons (Call / Bet-Raise /
+ * All-in). Compacts the amount (K/M/B/T) via {@link formatStackChips} so a
+ * worst-case value can never widen the button past its grid track, and
+ * truncates (with `min-w-0`) so it shrinks to the track instead of spilling.
+ * Pure presentation — no logic beyond delegating to the already-tested
+ * formatter — so the three buttons can't drift apart again.
+ */
+function ActionAmount({ value }: { value: number }): React.ReactElement {
+  return (
+    <span className="min-w-0 truncate font-mono tabular-nums">
+      {formatStackChips(value)}
+    </span>
   );
 }
