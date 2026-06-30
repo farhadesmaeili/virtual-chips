@@ -87,7 +87,8 @@ export class AdjustMemberChips {
     }
 
     // Cumulative ceiling: a positive adjust may not push chips or the unbounded
-    // buyInTotal accumulator past MAX_CHIP_AMOUNT (a negative adjust is a no-op).
+    // buyInTotal accumulator past MAX_CHIP_TOTAL, the technical precision-safe
+    // limit (a negative adjust is a no-op).
     validateFundingCeiling(member.chips, member.buyInTotal, amount);
 
     // Lockstep: positive credits both, negative debits both — net is preserved.
