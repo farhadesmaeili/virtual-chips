@@ -71,6 +71,26 @@ export function seatChipAnchor(seat: number, capacity = MAX_SEATS): Point {
   };
 }
 
+/**
+ * Per-seat pixel nudge that moves the in-front bet chips toward the table center,
+ * clear of the avatar/name. The direction comes from the seat's quadrant-correct
+ * {@link SeatSlot.towardCenter} unit vector, so it points the right way for every
+ * seat (up for the bottom hero, down for top seats, sideways for the rails); the
+ * magnitude ({@link BET_CHIP_OFFSET_PX}) is browser-tuned. Kept at 28 to preserve
+ * today's working bottom-seat distance.
+ */
+export const BET_CHIP_OFFSET_PX = 28;
+
+export function seatBetChipOffset(slot: SeatSlot): {
+  readonly x: number;
+  readonly y: number;
+} {
+  return {
+    x: slot.towardCenter.x * BET_CHIP_OFFSET_PX,
+    y: slot.towardCenter.y * BET_CHIP_OFFSET_PX,
+  };
+}
+
 const round = (n: number): number => Math.round(n * 100) / 100;
 
 /**
