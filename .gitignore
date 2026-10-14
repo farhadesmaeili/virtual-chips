@@ -34,3 +34,6 @@ test-results/
 
 # SESSION-HANDOFF
 SESSION-HANDOFF.md
+
+# local Obsidian vault settings (Brain Markdown remains versionable)
+/docs/brain/.obsidian/
