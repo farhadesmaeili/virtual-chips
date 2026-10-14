@@ -2,6 +2,18 @@
 
 > Claude Code reads this file automatically. Before doing anything, read this file completely and follow it.
 
+## Project memory
+
+Before a task, read [Brain home](docs/brain/00-HOME.md) and follow the shared
+[memory protocol](docs/brain/MEMORY-PROTOCOL.md): verify Git state, read current
+state and the active task, then load only relevant notes and canonical sources.
+Verify claims before updating memory. After the work, inspect actual changes and
+test results and prepare a [handoff](docs/brain/templates/HANDOFF.md) under that
+same protocol. This is agent-guided Markdown maintenance, not automatic sync.
+Explicit task restrictions override the generic Git workflow below; preserve an
+already prepared branch when instructed. Codex skill discovery and manual Claude
+use are explained in [Brain home](docs/brain/00-HOME.md#agent-entry-points).
+
 ---
 
 ## ⛔️ Mandatory rules (MANDATORY — before anything)
